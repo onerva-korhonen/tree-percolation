@@ -21,5 +21,7 @@ Pe_tan = np.array([0.02, 0.02])
 # terminating conduits in the Mrad article
 seeds_NPc = [205, 9699, 8324, 2123, 1818, 1834, 3042, 5247, 4319, 2912]
 seeds_Pc = [6118, 1394, 2921, 3663, 4560, 7851, 1996, 5142, 5924,  464]
+seed_ICC_rad = 63083
+seed_ICC_tan = 73956
 
 

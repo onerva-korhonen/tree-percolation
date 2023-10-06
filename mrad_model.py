@@ -45,12 +45,20 @@ def create_mrad_network(cfg):
         Pe_tan: np.array, probabilities for building an inter-conduit connection (ICC) in the tangential direction, 
                 first and second element defined similarly as in NPc
         
-        
-
     Returns
     -------
-    None.
-
+    conduits: np.array, has one row for each element belonging to a conduit and 5 columns:
+              1) the row index of the element
+              2) the column index of the element
+              3) the radial (depth) index of the element
+              4) the index of the conduit the element belongs to (from 0 to n_contuits)
+              5) the index of the element (from 0 to n_conduit_elements)
+    conns: np.array, has one row for each ICC and five columns, containing
+              1) index of the first conduit of the ICC
+              2) index of the second conduit of the ICC
+              3) a constant
+              4) index of the first conduit of the ICC
+              5) index of the second conduit of the ICC
     """
     # Reading data
     save_switch = cfg.get('save_switch',True)
@@ -151,7 +159,98 @@ def create_mrad_network(cfg):
         if (conduits[i - 1, 3] == conduits[i, 3]):
             conx_axi.append(np.array([conduits[i - 1, :], conduits[i, :]]))
         
+    # finding potential pit connections between conduits
     
+    max_depth = int(np.max(conduits[:, 2]))
+    pot_conx_rad = []
+    pot_conx_tan = []
+    n_rows = net_size[0] - 1
+    
+    for i, conduit in enumerate(conduits):
+        # TODO: indexing changed from Petri's code, check that works
+        row = conduit[0]
+        column = conduit[1]
+        depth = conduit[2]
+        conduit_index = conduit[3]
+        node_index = conduit[4]
+        if ((row == 0) or (row == n_rows)):
+            continue # no pit connections in the first and last rows
+        
+        # check if there is a horizontally (= in column direction) adjacent
+        # element that is part of another conduit. The maximal number of 
+        # potential connections in a 3D networks is 8 for each element.
+        for conduit2 in conduits[i + 1:]:
+            row2 = conduit2[0]
+            column2 = conduit2[1]
+            depth2 = conduit2[2]
+            conduit2_index = conduit2[3]
+            node2_index = conduit2[4]
+            
+            if ((abs(column2 - column) > 1) and (abs(depth2 - depth) > 1) and (depth2 != max_depth) and (depth != 0)):
+                break # the conduits in next rows are further away than this one, so let's break the loop
+            
+            if (row2 == row):
+                if (column2 - column == 1) and (depth2 == depth):
+                    pot_conx_rad.append(np.array([row, column, depth, conduit_index, node_index],
+                                                 [row2, column2, depth2, conduit2_index, node2_index]))
+                elif (((column2 - column == 1) and (depth2 - depth == 1)) or \
+                     ((depth2 - depth == 1) and (column2 - column <= 1) and (column2 - column >= 0)) or \
+                     ((depth == 0) and (depth2 == max_depth) and (column2 - column <= 1) and (column2 - column >= 0))):  
+                    pot_conx_tan.append(np.array([row, column, depth, conduit_index, node_index],
+                                                 [row2, column2, depth2, conduit2_index, node2_index]))
+                    
+    # picking the actual pit connections
+
+    Pe_rad_rad = (rad_dist*Pe_rad[0] + (1 - rad_dist)*Pe_rad[1])
+    Pe_tan_rad = (rad_dist*Pe_tan[0] + (1 - rad_dist)*Pe_tan[1])
+    
+    if fixed_random:
+        np.random.seed(params.seed_ICC_rad)
+    prob_rad = np.random.rand(len(pot_conx_rad), 1)
+    if fixed_random:
+        np.random.seed(params.seed_ICC_tan)
+    prob_tan = np.random.rand(len(pot_conx_tan), 1)
+    
+    conx = []
+    
+    for pot_con, p in zip(pot_conx_rad, prob_rad):
+        if (p >= (1 - np.mean(Pe_rad_rad[pot_con[:,1].astype(int)]))):
+            conx.append(pot_con)
+            
+    for pot_con, p in zip(pot_conx_tan, prob_tan):
+        if (p >= (1 - np.mean(Pe_tan_rad[pot_con[:,1].astype(int)]))):
+            conx.apped(pot_con)
+        
+    # TODO: removed from here a redundant (?) definition of ICC_cons, check that works        
+    ICC_conns = np.zeros((len(conx), 5))
+    for i, con in enumerate(conx):
+        ICC_conns[i, 0] = con[0][4].astype(int)
+        ICC_conns[i, 1] = con[1][4].astype(int)
+        ICC_conns[i, 2] = 100
+        ICC_conns[i, 3] = conduits[con[0][4].astype(int), 3]
+        ICC_conns[i, 4] = conduits[con[1][4].astype(int), 3]
+        
+    # ICC_conns has for each ICC one row and five columns, containing
+    # 1) index of the first conduit of the ICC
+    # 2) index of the second conduit of the ICC
+    # 3) a constant
+    # 4) index of the first conduit of the ICC
+    # 5) index of the second conduit of the ICC
+    # TODO: check the last two rows, this kind of doesn't make sense
+    
+    CEC_conns = np.zeros((len(conx_axi), 5))
+    for i, con in enumerate(conx_axi):
+        CEC_conns[i, 0] = con[0][4].astype(int)
+        CEC_conns[i, 1] = con[1][4].astype(int)
+        CEC_conns[i, 1] = 1000
+        
+    # The last two columns of CEC_conns are all zeros and added only for getting
+    # matching dimensions
+        
+    conns = np.concatenate([CEC_conns, ICC_conns])
+    conns = pd.DataFrame(conns, columns = ['A','B','C','D','E']).sort_values(by=['A', 'B']).to_numpy()
+    
+    return conduits, conns
             
     
 # Conduit map operations
