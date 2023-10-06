@@ -233,7 +233,7 @@ def create_mrad_network(cfg):
     # ICC_conns has for each ICC one row and five columns, containing
     # 1) index of the first conduit of the ICC
     # 2) index of the second conduit of the ICC
-    # 3) a constant
+    # 3) constant indicating ICC (throat) type
     # 4) index of the first conduit of the ICC
     # 5) index of the second conduit of the ICC
     # TODO: check the last two rows, this kind of doesn't make sense
@@ -325,5 +325,91 @@ def clean_conduit_map(conduit_map, start_ind=1, end_ind=-1, reset_ind=0):
             keep[start_or_end_indices[1:]] = conduit_map_column[start_or_end_indices[1:]]*conduit_map_column[start_or_end_indices[0:-1]] == -1
             cleaned_conduit_map[:, j, k] = np.abs(conduit_map_column * keep)
     return cleaned_conduit_map
+
+# OpenPNM-related accessories
+
+def mrad_to_openpnm(conduits, conns):
+    """
+    Transforms a network created following the Mrad model into an OpenPNM network.
+
+    Parameters
+    ----------
+    conduits : np.array
+        has one row for each element belonging to a conduit and 5 columns:
+        1) the row index of the element
+        2) the column index of the element
+        3) the radial (depth) index of the element
+        4) the index of the conduit the element belongs to (from 0 to n_contuits)
+        5) the index of the element (from 0 to n_conduit_elements)
+    conns : np.array
+        has one row for each ICC and five columns, containing
+        1) index of the first conduit of the ICC
+        2) index of the second conduit of the ICC
+        3) constant indicating ICC (throat) type
+        4) index of the first conduit of the ICC
+        5) index of the second conduit of the ICC
+
+    Returns
+    -------
+    None.
+
+    """
+    ws = op.Workspace()
+    ws.clear()
+    
+    proj = ws.new_roject('name = diffpornetwork')
+    
+    pn = op.op.network.Network(project=proj, coords=conduits[:, 0:3], conns=conns[:, 0:2].astype(int))
+    pn['throat.type'] = conns[:, 2].astype(int)
+    
+def clean_network(net):
+    """
+    Cleans an OpenPNM network object using openpnm.utils.check_network_health and in addition
+    removes conduits that don't have a connection to the inlet (first) or outlet (last) row through
+    the cluster to which they belong
+
+    Parameters
+    ----------
+    net : openpnm.Network()
+        network object
+
+    Returns
+    -------
+    clean_net : openpnm.Network()
+        the network object after cleaning
+    """
+    # TODO: write the function
+    
             
-            
+# Visualization
+
+def visualize_network_with_openpnm(conduits, conns):
+    """
+    Visualizes a conduit network using the OpenPNM visualization tools.
+    
+    Parameters:
+    -----------
+    conduits: np.array, has one row for each element belonging to a conduit and 5 columns:
+              1) the row index of the element
+              2) the column index of the element
+              3) the radial (depth) index of the element
+              4) the index of the conduit the element belongs to (from 0 to n_contuits)
+              5) the index of the element (from 0 to n_conduit_elements)
+    conns: np.array, has one row for each ICC and five columns, containing
+              1) index of the first conduit of the ICC
+              2) index of the second conduit of the ICC
+              3) a constant
+              4) index of the first conduit of the ICC
+              5) index of the second conduit of the ICC
+
+    Returns
+    -------
+    None.
+
+    """
+    pn = mrad_to_openpnm(conduits, conns)
+    ts = pn.find_neighbor_throats(pores=pn.pores('all'))
+    
+    ax = op.visualization.plot_coordinates(network=pn, pores=pn.pores('all'), c='r')
+    ax = op.visualization.plot_connections(network=pn, throats=ts, ax=ax, c='b')
+                                           
