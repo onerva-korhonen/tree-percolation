@@ -56,7 +56,7 @@ def create_mrad_network(cfg):
     conns: np.array, has one row for each ICC and five columns, containing
               1) index of the first conduit of the ICC
               2) index of the second conduit of the ICC
-              3) a constant
+              3) a constant indicating connection (throat) type (1000: between conduit elements, 100: ICC)
               4) index of the first conduit of the ICC
               5) index of the second conduit of the ICC
     """
@@ -70,7 +70,7 @@ def create_mrad_network(cfg):
     Pe_rad = cfg.get('Pe_rad', params.Pe_rad)
     Pe_tan = cfg.get('Pe_ran', params.Pe_tan)
     
-    rad_dist = np.ones(net_size)
+    rad_dist = np.ones(net_size[1])
     
     if fixed_random:
         seeds_NPc = params.seeds_NPc
@@ -96,7 +96,7 @@ def create_mrad_network(cfg):
         # TODO: same here, should < be >?
     cond_end = np.concatenate(cond_end, axis=1)
     
-    temp_start = np.zeros(1, net_size[1], net_size[2])
+    temp_start = np.zeros([1, net_size[1], net_size[2]])
     for j in range(net_size[2]): # looping in the radial (depth) direction
         for i in range(net_size[1]): # looping in the column direction
             # construct a conduit at the first row of this column if there is
@@ -107,7 +107,7 @@ def create_mrad_network(cfg):
             # construct a conduit at the first row of this column if the last 
             # 1 among the 50 first entries of the cond_start matrix is at a more
             # advanced postition than the last 1 among the 50 entries of the cond_end matrix
-            if (np.where(cond_start[0:50, i, j])[0].size > 0) and (np.where(cond_end[0:50, i, j])[0][-1] > np.where(cond_start[0:50, i, j])[0][-1]):
+            if (np.where(cond_start[0:50, i, j])[0].size > 0) and (np.where(cond_end[0:50, i, j])[0][-1] < np.where(cond_start[0:50, i, j])[0][-1]):
                 temp_start[0, i, j] = 1
     
     # Cleaning up the obtained start and end points
@@ -124,7 +124,7 @@ def create_mrad_network(cfg):
     
     # constructing the conduit array
     start_and_end_indices = np.where(conduit_map)
-    start_and_end_coords = np.array(start_and_end_indices[0], start_and_end_indices[1], start_and_end_indices[2]).T
+    start_and_end_coords = np.array([start_and_end_indices[0], start_and_end_indices[1], start_and_end_indices[2]]).T
     start_and_end_coords_sorted = pd.DataFrame(start_and_end_coords, columns = ['A','B','C']).sort_values(by=['C', 'B']).to_numpy()
     
     conduits = []
@@ -134,7 +134,7 @@ def create_mrad_network(cfg):
     for i in range(0, len(start_and_end_coords_sorted), 2):
         start_row = start_and_end_coords_sorted[i, 0]
         end_row = start_and_end_coords_sorted[i+1, 0]
-        conduit = np.zeros(end_row - start_row + 1, 5)
+        conduit = np.zeros((end_row - start_row + 1, 5))
         conduit[:, 0] = np.linspace(start_row, end_row, end_row - start_row + 1).astype(int)
         conduit[:, 1] = start_and_end_coords_sorted[i, 1]
         conduit[:, 2] = start_and_end_coords_sorted[i, 2]
@@ -167,7 +167,6 @@ def create_mrad_network(cfg):
     n_rows = net_size[0] - 1
     
     for i, conduit in enumerate(conduits):
-        # TODO: indexing changed from Petri's code, check that works
         row = conduit[0]
         column = conduit[1]
         depth = conduit[2]
@@ -191,13 +190,13 @@ def create_mrad_network(cfg):
             
             if (row2 == row):
                 if (column2 - column == 1) and (depth2 == depth):
-                    pot_conx_rad.append(np.array([row, column, depth, conduit_index, node_index],
-                                                 [row2, column2, depth2, conduit2_index, node2_index]))
+                    pot_conx_rad.append(np.array([[row, column, depth, conduit_index, node_index],
+                                                 [row2, column2, depth2, conduit2_index, node2_index]]))
                 elif (((column2 - column == 1) and (depth2 - depth == 1)) or \
                      ((depth2 - depth == 1) and (column2 - column <= 1) and (column2 - column >= 0)) or \
                      ((depth == 0) and (depth2 == max_depth) and (column2 - column <= 1) and (column2 - column >= 0))):  
-                    pot_conx_tan.append(np.array([row, column, depth, conduit_index, node_index],
-                                                 [row2, column2, depth2, conduit2_index, node2_index]))
+                    pot_conx_tan.append(np.array([[row, column, depth, conduit_index, node_index],
+                                                 [row2, column2, depth2, conduit2_index, node2_index]]))
                     
     # picking the actual pit connections
 
@@ -219,9 +218,8 @@ def create_mrad_network(cfg):
             
     for pot_con, p in zip(pot_conx_tan, prob_tan):
         if (p >= (1 - np.mean(Pe_tan_rad[pot_con[:,1].astype(int)]))):
-            conx.apped(pot_con)
-        
-    # TODO: removed from here a redundant (?) definition of ICC_cons, check that works        
+            conx.append(pot_con)
+                
     ICC_conns = np.zeros((len(conx), 5))
     for i, con in enumerate(conx):
         ICC_conns[i, 0] = con[0][4].astype(int)
@@ -233,7 +231,7 @@ def create_mrad_network(cfg):
     # ICC_conns has for each ICC one row and five columns, containing
     # 1) index of the first conduit of the ICC
     # 2) index of the second conduit of the ICC
-    # 3) constant indicating ICC (throat) type
+    # 3) constant indicating connection (throat) type (1000: between conduit elements, 100: ICC)
     # 4) index of the first conduit of the ICC
     # 5) index of the second conduit of the ICC
     # TODO: check the last two rows, this kind of doesn't make sense
@@ -242,7 +240,7 @@ def create_mrad_network(cfg):
     for i, con in enumerate(conx_axi):
         CEC_conns[i, 0] = con[0][4].astype(int)
         CEC_conns[i, 1] = con[1][4].astype(int)
-        CEC_conns[i, 1] = 1000
+        CEC_conns[i, 2] = 1000
         
     # The last two columns of CEC_conns are all zeros and added only for getting
     # matching dimensions
@@ -316,14 +314,15 @@ def clean_conduit_map(conduit_map, start_ind=1, end_ind=-1, reset_ind=0):
                          end point); the first 1 of each column is always a start point,
                          followed by an end point etc.)
     """
+    conduit_map = np.transpose(conduit_map)
     cleaned_conduit_map = np.zeros(conduit_map.shape)
-    # TODO: looping changed from Petri's code; check if works
     for k, conduit_map_slice in enumerate(conduit_map):
         for j, conduit_map_column in enumerate(conduit_map_slice):
-            start_or_end_indices = np.where(conduit_map_column == start_ind or conduit_map_column == end_ind)[0]
+            start_or_end_indices = np.nonzero(conduit_map_column)[0]
             keep = np.ones(len(conduit_map_column)).astype('bool')
             keep[start_or_end_indices[1:]] = conduit_map_column[start_or_end_indices[1:]]*conduit_map_column[start_or_end_indices[0:-1]] == -1
-            cleaned_conduit_map[:, j, k] = np.abs(conduit_map_column * keep)
+            cleaned_conduit_map[k, j, :] = np.abs(conduit_map_column * keep)
+    cleaned_conduit_map = np.transpose(cleaned_conduit_map)
     return cleaned_conduit_map
 
 # OpenPNM-related accessories
@@ -351,16 +350,18 @@ def mrad_to_openpnm(conduits, conns):
 
     Returns
     -------
-    None.
+    pn: openpnm.Network object
 
     """
     ws = op.Workspace()
     ws.clear()
     
-    proj = ws.new_roject('name = diffpornetwork')
+    proj = ws.new_project('name = diffpornetwork')
     
-    pn = op.op.network.Network(project=proj, coords=conduits[:, 0:3], conns=conns[:, 0:2].astype(int))
+    pn = op.network.Network(project=proj, coords=conduits[:, 0:3], conns=conns[:, 0:2].astype(int))
     pn['throat.type'] = conns[:, 2].astype(int)
+    
+    return pn
     
 def clean_network(net):
     """
