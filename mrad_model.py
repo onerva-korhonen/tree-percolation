@@ -59,7 +59,7 @@ def create_mrad_network(cfg):
               has one row for each connection between conduit elements and five columns, containing
               1) index of the first conduit element of the connection
               2) index of the second conduit element of the connection
-              3) a constant indicating connection (throat) type (1000: between conduit elements, 100: ICC)
+              3) a constant indicating connection (throat) type (1000: between conduit elements, 100: ICC) # TODO: these constants could be given as params
               4) index of the first conduit of the connection
               5) index of the second conduit of the connection
     """
@@ -253,6 +253,84 @@ def create_mrad_network(cfg):
     
     return conduit_elements, conns
             
+def simulate_flow(net, cfg):
+    """
+    Performs a Stokes flow simulation and a simple advection-diffusion simulation
+    using an OpenPNM network object.
+    
+    Parameters:
+    -----------
+    net : openpnm.Network(object)
+        pores correspond to conduit elements, throats to connections between the elements
+    cfg : dict
+        contains (all default values match the Mrad et al. article):
+            use_cylindrical_coords: bln, should Mrad model coordinates be interpreted as cylindrical ones in visualizations?
+            Lce: float, length of a conduit element
+            Dc: float, average conduit diameter (m)
+            Dc_cv: float, coefficient of variation of conduit diameter
+            Dp: float, average pit membrane pore diameter (m)
+            Dm: float, average membrane diameter (m)
+            fc: float, average contact fraction between two conduits
+            fpf: float, average pit field fraction between two conduits
+            Tm: float, average thickness of membranes (m)
+            conduit_diameters: np.array of floats, diameters of the conduits
+            
+            
+
+    Returns
+    -------
+    None.
+
+    """
+    use_cylindrical_coords = cfg.get('use_cylindrical_coordinates', True)
+    Lce = cfg.get('Lce', params.Lce)
+    Dc = cfg.get('Dc', params.Dc)
+    Dc_cv = cfg.get('Dc_cv', params.Dc_cv)
+    Dp = cfg.get('Dp', params.Dp)
+    Dm = cfg.get('Dm', params.Dm)
+    fc = cfg.get('fc', params.fc)
+    fpf = cfg.get('fpf', params.fpf)
+    Tm = cfg.get('Tm', params.Tm)
+    conduit_diameters = cfg.get('conduit_diameters', params.conduit_diameters)
+    
+    coords = net['pore.coords']
+    conns = net['throat.conns']
+    conn_types = net['throat.type']
+    
+    if use_cylindrical_coords:
+        pore_coords = mrad_to_cartesian(coords, Lce)
+    else:
+        pore_coords = Lce * coords
+    
+    # finding throats that belong to each conduit
+    
+    ce_mask = conn_types == 1000 # ce_mask == 1 if the corresponding throat is a connection between two elements in the same conduit
+    ce_coords = conns[ce_mask]
+    icc_coords = conns[~ce_mask]
+    
+    # TODO: consider making the following into a function of its own
+    
+    #The array 'conduits' contains the separate conduits, which are found by finding
+    #nodes with consecutive indices
+    #The array 'conduits' includes the indices of the first and last node of the conduit
+    #and the number of nodes in the conduit
+    
+    conduits = []
+    cntr = 0
+    start_node = ce_coords[0, 0]
+    end_node = ce_coords[0, 1]
+    for i in range(1, len(ce_coords)):
+        cntr += 1
+        if ce_coords[i, 0] - ce_coords[i - 1, 1] > 0:
+            conduits.append(np.array([start_node, end_node, cntr + 1]))
+            cntr = 0
+            start_node = ce_coords[i, 0]
+        end_node = ce_coords[i, 1]
+    conduits.append(np.array([start_node, end_node, cntr + 2]))
+    conduits = np.asarray(conduits)
+        
+    
+    
     
 # Conduit map operations
     
@@ -478,8 +556,40 @@ def save_network(net, save_path):
     """
     np.savez(save_path, coord_cleaned=net['pore.coords'], conns_cleaned=net['throat.conns'], conn_types=net['throat.type'])
     
+def read_network(net_path, coord_key='coords_cleaned', conn_key='conns_cleaned', type_key='conn_types'):
+    """
+    Reads a network saved in npz format.
+    
+    Parameters
+    ----------
+    net_path : str
+        path to which the network has been saved
+    coord_key : str
+        key under which the pore coordinates have been saved
+    conn_key : str
+        key under which the throats have been saved
+    type_key : str
+        key under which the throat types have been saved
+
+    Returns
+    -------
+    net : openpnm.Network() object
+    coords : np.array
+        coordinates of the network pores
+    conns : np.array
+        throats of the network
+    conn_types : np.array
+        types of the throats # TODO: add explanation
+    """
+    net = np.load(net_path)
+    coords = net[coord_key]
+    conns = net[conn_key]
+    conn_types = net[type_key]
+    
+    return net, coords, conns, conn_types
+    
         
-# Other asseccories:
+# Other accessories:
 
 def get_conduit_degree(conduit_elements, throat_conduits, outlet_row_index):
     """
@@ -533,6 +643,46 @@ def get_conduit_degree(conduit_elements, throat_conduits, outlet_row_index):
             conduit_degree_info[i, 3] = 1
     
     return conduit_degree_info
+
+def mrad_to_cartesian(coords, conduit_element_length=params.Lce, heartwood_d=params.heartwood_d):
+    """
+    Interpreting the Mrad model coordinates as cylindrical ones, constructs a set of Cartesian
+    coordinates that can be used to produce a cylinder-like visualization.
+
+    Parameters
+    ----------
+    coords : np.array
+        the Mrad model coordinates: 
+            row corresponds to cylindrical z
+            column corresponds to cylindrical r
+            depth (= index of radial plane) corresponds to cylindrical theta
+    conduit_element_length : float
+        length of a conduit element (default value from the Mrad et al. article)
+
+    Returns
+    -------
+    cartesian_coords : np.array
+        cartesian coordinates
+    """
+    coords = coords.astype(int)
+    
+    r = heartwood_d + coords[:, 1]
+    theta_step = (2*np.pi)/(np.max(coords[:, 2]) + 1)
+    theta_values = np.arange(0, 2*np.pi, theta_step)
+    theta = np.array([theta_values[coords[s, 2]] for s in range(len(theta_values))])
+    
+    x = r*np.cos(theta)
+    y = r*np.sin(theta)
+    z = coords[:, 0]
+    
+    cartesian_coords = conduit_element_length * np.stack((y, x, z), axis=1)
+    
+    return cartesian_coords
+    
+    
+    
+    
+    
             
 # Visualization
 
