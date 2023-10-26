@@ -47,6 +47,7 @@ conduit_diameters = np.array([2.59695012020929e-05, 1.89719235427943e-05, 2.5044
 2.73704191410586e-05, 2.39992270493166e-05, 2.46867108581783e-05, 2.75365215826140e-05,
 2.51083054817169e-05, 2.45249109338536e-05, 2.50905860934747e-05, 2.32785502665617e-05,
 2.22240413910612e-05 ])
+tf = 30e-9 # microfibril strand thickness (m)
 
 # probabilities used for network construction
 Pc = np.array([0.75, 0.75])
@@ -60,5 +61,9 @@ seeds_NPc = [205, 9699, 8324, 2123, 1818, 1834, 3042, 5247, 4319, 2912]
 seeds_Pc = [6118, 1394, 2921, 3663, 4560, 7851, 1996, 5142, 5924,  464]
 seed_ICC_rad = 63083
 seed_ICC_tan = 73956
+
+# throat-type indicators
+icc_indicator = 100
+cec_indicator = 1000
 
 

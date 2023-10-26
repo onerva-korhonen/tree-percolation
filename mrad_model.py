@@ -45,6 +45,8 @@ def create_mrad_network(cfg):
                 first and second element defined similarly as in NPc
         Pe_tan: np.array, probabilities for building an inter-conduit connection (ICC) in the tangential direction, 
                 first and second element defined similarly as in NPc
+        cec_indicator: int, value used to indicate that the type of a throat is CE
+        icc_indicator: int, value used to indicate that the type of a throat is ICC
         
     Returns
     -------
@@ -59,7 +61,7 @@ def create_mrad_network(cfg):
               has one row for each connection between conduit elements and five columns, containing
               1) index of the first conduit element of the connection
               2) index of the second conduit element of the connection
-              3) a constant indicating connection (throat) type (1000: between conduit elements, 100: ICC) # TODO: these constants could be given as params
+              3) a constant indicating connection (throat) type (in Mrad Matlab implementation, 1000: between conduit elements, 100: ICC)
               4) index of the first conduit of the connection
               5) index of the second conduit of the connection
     """
@@ -72,6 +74,8 @@ def create_mrad_network(cfg):
     NPc = cfg.get('NPc',params.NPc)
     Pe_rad = cfg.get('Pe_rad', params.Pe_rad)
     Pe_tan = cfg.get('Pe_ran', params.Pe_tan)
+    cec_indicator = cfg.get('cec_indicator', params.cec_indicator)
+    icc_indicator = cfg.get('icc_indicator', params.icc_indicator)
     
     rad_dist = np.ones(net_size[1])
     
@@ -227,14 +231,14 @@ def create_mrad_network(cfg):
     for i, con in enumerate(conx):
         ICC_conns[i, 0] = con[0][4].astype(int)
         ICC_conns[i, 1] = con[1][4].astype(int)
-        ICC_conns[i, 2] = 100
+        ICC_conns[i, 2] = icc_indicator
         ICC_conns[i, 3] = conduit_elements[con[0][4].astype(int), 3]
         ICC_conns[i, 4] = conduit_elements[con[1][4].astype(int), 3]
         
     # ICC_conns has for each ICC one row and five columns, containing
     # 1) index of the first conduit element of the ICC
     # 2) index of the second conduit element of the ICC
-    # 3) constant indicating connection (throat) type (100: ICC)
+    # 3) constant indicating connection (throat) type
     # 4) index of the first conduit of the ICC
     # 5) index of the second conduit of the ICC
     
@@ -242,10 +246,9 @@ def create_mrad_network(cfg):
     for i, con in enumerate(conx_axi):
         CEC_conns[i, 0] = con[0][4].astype(int)
         CEC_conns[i, 1] = con[1][4].astype(int)
-        CEC_conns[i, 2] = 1000
+        CEC_conns[i, 2] = cec_indicator
         
-    # The constant in the third column of CEC_conns, 1000, indicates that the connection is between elements in
-    # the same conduit. The last two columns are all zeros and added only for getting
+    # The three first columns are defined as in ICC_conns. The last two columns are all zeros and added only for getting
     # matching dimensions
         
     conns = np.concatenate([CEC_conns, ICC_conns])
@@ -273,7 +276,12 @@ def simulate_flow(net, cfg):
             fc: float, average contact fraction between two conduits
             fpf: float, average pit field fraction between two conduits
             Tm: float, average thickness of membranes (m)
-            conduit_diameters: np.array of floats, diameters of the conduits
+            conduit_diameters: np.array of floats, diameters of the conduits, or 'lognormal'
+            to draw diameters from a lognormal distribution defined by Dc and Dc_cv
+            cec_indicator: int, value used to indicate that the type of a throat is CE
+            icc_indicator: int, value used to indicate that the type of a throat is ICC
+            tf: float, microfibril strand thickness (m)
+            visualize_sim_network : bln, should the network created for the simulation be visualized
             
             
 
@@ -292,6 +300,10 @@ def simulate_flow(net, cfg):
     fpf = cfg.get('fpf', params.fpf)
     Tm = cfg.get('Tm', params.Tm)
     conduit_diameters = cfg.get('conduit_diameters', params.conduit_diameters)
+    cec_indicator = cfg.get('cec_indicator', params.cec_indicator)
+    icc_indicator = cfg.get('icc_indicator', params.icc_indicator)
+    tf = cfg.get('tf', params.tf)
+    visualize_sim_network = cfg.get('visualize_sim_network', False)
     
     coords = net['pore.coords']
     conns = net['throat.conns']
@@ -302,33 +314,86 @@ def simulate_flow(net, cfg):
     else:
         pore_coords = Lce * coords
     
-    # finding throats that belong to each conduit
+    # finding throats that belong to each conduit and conduit and pore diameters
     
-    ce_mask = conn_types == 1000 # ce_mask == 1 if the corresponding throat is a connection between two elements in the same conduit
-    ce_coords = conns[ce_mask]
-    icc_coords = conns[~ce_mask]
+    cec_mask = conn_types == cec_indicator # cec_mask == 1 if the corresponding throat is a connection between two elements in the same conduit
+    cecs = conns[cec_mask]
+    iccs = conns[~cec_mask]
     
-    # TODO: consider making the following into a function of its own
+    conduits = get_conduits(cecs) # contains the start and end elements and size of each conduit
+
+    conduit_indices = np.zeros(np.shape(pore_coords)[0])
+    for i, conduit in enumerate(conduits):
+        conduit_indices[conduit[0] : conduit[1] + 1] = i + 1
+    conduit_indices = conduit_indices.astype(int) # contains the index of the conduit to which each element belongs, indexing starts from 1
     
-    #The array 'conduits' contains the separate conduits, which are found by finding
-    #nodes with consecutive indices
-    #The array 'conduits' includes the indices of the first and last node of the conduit
-    #and the number of nodes in the conduit
-    
-    conduits = []
-    cntr = 0
-    start_node = ce_coords[0, 0]
-    end_node = ce_coords[0, 1]
-    for i in range(1, len(ce_coords)):
-        cntr += 1
-        if ce_coords[i, 0] - ce_coords[i - 1, 1] > 0:
-            conduits.append(np.array([start_node, end_node, cntr + 1]))
-            cntr = 0
-            start_node = ce_coords[i, 0]
-        end_node = ce_coords[i, 1]
-    conduits.append(np.array([start_node, end_node, cntr + 2]))
-    conduits = np.asarray(conduits)
+    conduit_icc_count = np.zeros(len(conduits)) # contains the number of ICCs per conduit
+    for i, conduit in enumerate(conduits):
+        mask = (iccs[:, :] >= conduit[0]) & (iccs[:, :] < conduit[1] + 1)
+        conduit_icc_count[i] = np.sum(mask)
         
+    if conduit_diameters == 'lognormal':
+        Dc_std = Dc_cv*Dc
+        Dc_m = np.log(Dc**2 / np.sqrt(Dc_std**2 + Dc**2))
+        Dc_s = np.sqrt(np.log(Dc_std**2 / (Dc**2) + 1))
+        Dcs = np.random.lognormal(Dc_m, Dc_s, len(conduits)) # diameters of conduits drawn from a lognormal distribution
+        diameters_per_conduit = get_sorted_conduit_diameters(conduits, Dcs)
+    else:
+        diameters_per_conduit = conduit_diameters
+        
+    conduit_areas = (conduits[:, 2] - 1) * Lce * np.pi * diameters_per_conduit # total surface (side) areas of conduits; conduits[:, 2] is the number of elements in a conduit so the conduit length is conduits[:, 2] - 1
+    
+    pore_diameters = np.zeros(np.shape(pore_coords)[0])
+    for i, conduit_index in enumerate(conduit_indices):
+        pore_diameters[i] = conduit_diameters[int(conduit_index) - 1] # diameters of the pores (= surfaces between conduit elements), defined as the diameters of the conduits the pores belong to
+        
+    # Generating an openpnm network for the simulations
+    
+    sim_net = op.network.Network(coords=pore_coords, conns=conns)
+    sim_net.regenerate_models()
+    sim_net['pore.diameter'] = pore_diameters
+    sim_net['pore.volume'] = 0 # here, pores are 2D horizontal surfaces with zero volumes
+    # throat diameters equal to the diameters of the adjacent pores
+    sim_net.add_model(propname='throat.max_size', model=op.models.misc.from_neighbor_pores, 
+                 mode='min', prop='pore.diameter') 
+    sim_net.add_model(propname='throat.diameter', model=op.misc.scaled, factor=1., prop='throat.max_size')
+    sim_net.add_model(propname='throat.length', model=op.models.geometry.throat_length.spheres_and_cylinders(),
+                      pore_diameter='pore.diameter', throat_diameter='throat.diameter')
+    
+    # changing the length of the ICC throats
+    throat_lengths = sim_net['throat.length'].copy() # TODO: is this necessary?
+    sim_net['throat.length'] = throat_lengths
+    sim_net['throat.length'][~cec_indicator] = 10e-12
+    
+    sim_net.add_model(propname='thorat.surface_area',
+                      model=op.models.geometry.throat_surface_area.cylinder(),
+                      throat_diameter='throat.diameter',
+                      throat_length='throat.length')
+    sim_net.add_model(propname='throat.volume', 
+                      model=op.models.geometry.throat_volume.cylinder(),
+                      throat_diameter='throat.diameter',
+                      throat_length='throat_length')
+    sim_net.add_model(propname='throat.area',
+                      model=op.models.geometry.throat_cross_sectional_area.cylinder(),
+                      throat_diameter='throat.diameter')
+    sim_net.add_model(propname='throat.diffusive_size_factors', 
+                      model=op.models.geometry.diffusive_size_factors.spheres_and_cylinders())
+    sim_net.add_model(propname='throat.hydraulic_size_factors', 
+                      model=op.models.geometry.hydraulic_size_factors.spheres_and_cylinders())
+    sim_net.add_model(propname='pore.effective_volume', model=get_effective_pore_volume())
+    sim_net['pore.effective_sidearea'] = 4 * sim_net['pore.effective_volume'] / sim_net['pore.diameter'] #The effective lateral surface area of the pore is calculated from the effective pore volume (A_l = dV/dr for a cylinder)
+    sim_net['throat.area_m'] = 0.5 * (sim_net['pore.effective_sidearea'][conns[:, 0]] + sim_net['pore.effective_sidearea'][conns[:, 1]]) * fc * fpf # membrane area calculated from OpenPNM pore geometry
+    sim_net['throat.area_m_mrad'] = 0.5 * (conduit_areas[conduit_indices[conns[:, 0]] - 1] / \
+        conduit_icc_count[conduit_indices[conns[:, 0]] - 1] + conduit_areas[conduit_indices[conns[:, 1]] - 1] / \
+        conduit_icc_count[conduit_indices[conns[:, 1]] - 1]) * fc * fpf # membrane area calculated from the Mrad geometry
+    pore_area = (Dp + tf)**2 # area of a single pore (m^2)
+    sim_net['throat.npore'] = np.floor(sim_net['throat.area_m_mrad'] / pore_area).astype(int)
+    
+    if visualize_sim_network: # TODO: consider the possibility of returning sim_net and visualizing outside of the function
+        visualize_pores(sim_net)
+        visualize_network_with_openpnm(sim_net, use_cylindrical_coords, Lce, 'pore.coords')
+    
+    
     
     
     
@@ -425,7 +490,7 @@ def mrad_to_openpnm(conduit_elements, conns):
         has one row for each connection and five columns, containing
         1) index of the first conduit element of the connection
         2) index of the second conduit element of the connection
-        3) constant indicating connection (throat) type (1000: between elements within a conduit, 100: ICC)
+        3) constant indicating connection (throat) type (in Mrad Matlab implementation, 1000: between elements within a conduit, 100: ICC)
         4) index of the first conduit of the connection
         5) index of the second conduit of the connection
 
@@ -579,7 +644,7 @@ def read_network(net_path, coord_key='coords_cleaned', conn_key='conns_cleaned',
     conns : np.array
         throats of the network
     conn_types : np.array
-        types of the throats # TODO: add explanation
+        types of the throats; contains int values corresponding to CEs and ICCs
     """
     net = np.load(net_path)
     coords = net[coord_key]
@@ -679,14 +744,96 @@ def mrad_to_cartesian(coords, conduit_element_length=params.Lce, heartwood_d=par
     
     return cartesian_coords
     
+def get_conduits(ces):
+    """
+    Given the start and end nodes of inter-conduit throats (= throats between elements of the same conduit, CEs),
+    constructs a list of conduits.
+
+    Parameters
+    ----------
+    ces : np.array
+        one row per throat, first element gives the index of the start node (conduit element) of the throat and 
+        second element the index of the end node
+
+    Returns
+    -------
+    conduits : np.array
+        one row per conduit, includes the indices of the first and last nodes (conduit elements) of the conduit
+        and the number of nodes in the conduit
+    """    
+    # TODO: check documentation
+    conduits = []
+    conduit_size = 0
+    start_node = ces[0, 0] # start node of the first CE
+    end_node = ces[0, 1] # end node of the first CE
+    for i in range(1, len(ces)):
+        conduit_size += 1
+        if ces[i, 0] - ces[i - 1, 1] > 0: # start node of the present CE is different from the end node of the previous one = conduit ended
+            conduits.append(np.array([start_node, end_node, conduit_size + 1]))
+            conduit_size = 0
+            start_node = ces[i, 0]
+        end_node = ces[i, 1]
+    conduits.append(np.array([start_node, end_node, conduit_size + 2])) # the last CE is not covered by the loop; its end node ends the last conduit
+    conduits = np.asarray(conduits)
+    return conduits
+
+def get_sorted_conduit_diameters(conduits, diameters):
+    """
+    Sorts the conduit diameters so that the largest diameters are assigned to the longest
+    conduits.
+
+    Parameters
+    ----------
+    conduits : np.array
+        one row per conduit, includes the indices of the first and last nodes (conduit elements) of the conduit
+        and the number of nodes in the conduit
+    diameters : np.array
+        n_conduit diameter values, e.g. drawn from a distribution
+
+    Returns
+    -------
+    diameters_per_conduit : np.array
+        the diameter values sorted in an order that corresponds to the order of the conduits
+        array; the longest conduits get the largest diameters.
+    """
+    sorted_conduits = conduits[conduits[:, 2].argsort(kind='stable')]
+    sorted_diameters = np.sort(diameters)
+    sorted_conduits = np.concatenate([sorted_conduits, sorted_diameters.reshape(len(sorted_diameters), 1)], axis=1)
+    sorted_conduits = sorted_conduits[sorted_conduits[:, 0].argsort(kind='stable')]
+    diameters_per_conduit = sorted_conduits[:, 3]
+    return diameters_per_conduit
+
+def get_effective_pore_volume(net, throat_volume_key='throat.volume', pore_volume_key='pore.volume', conn_key='throat.conns'):
+    """
+    Calculates the effective pore volume used in advection-diffusion simulations; effective volume
+    is defined as the pore volume + half of the volumes of the adjacent throats.
     
-    
-    
-    
-            
+
+    Parameters
+    ----------
+    net : openpnm.Network()
+    throat_volume_key : str, optional
+        key, under which the throat volume information is stored. The default is 'throat.volume'.
+    pore_volume_key : str, optional
+        key, under which the pore volume information is stored. The default is 'pore.volume'.
+    conn_key : str, optional
+        key, under which the connection information (= start and end pores of throats) is stored
+
+    Returns
+    -------
+    effective_pore_volumes : np.array # TODO: check type
+    """
+    effective_pore_volumes = net[pore_volume_key].copy()
+    throat_volumes = net[throat_volume_key].copy()
+    total_volume = effective_pore_volumes.sum() + throat_volumes.sum()
+    np.add.at(effective_pore_volumes, net[conn_key][:, 0], net[throat_volume_key]/2)
+    np.add.at(effective_pore_volumes, net[conn_key][:, 1], net[throat_volume_key]/2)
+    assert np.isclose(effective_pore_volumes.sum(), total_volume), 'total effective pore volume does not match the total volume of pores and throats, please check throat information'
+    return effective_pore_volumes
+
 # Visualization
 
-def visualize_network_with_openpnm(net):
+def visualize_network_with_openpnm(net, cylinder=False, Lce=params.Lce, pore_coordinate_key='pore.coords'):
     """
     Visualizes a conduit network using the OpenPNM visualization tools.
     
@@ -694,6 +841,12 @@ def visualize_network_with_openpnm(net):
     -----------
     net : openpnm.Network() object
         pores correspond to conduit elements, throats to connections between elements
+    cylinder : bln, optional
+        visualize the network in cylinder coordinate system instead of the Cartesian one
+    Lce : float, optional
+        lenght of the conduit element
+    pore_coordinate_key : str, optional
+        key, under which the pore coordinate information is stored in net
 
     Returns
     -------
@@ -704,4 +857,25 @@ def visualize_network_with_openpnm(net):
     
     ax = op.visualization.plot_coordinates(network=net, pores=net.pores('all'), c='r')
     ax = op.visualization.plot_connections(network=net, throats=ts, ax=ax, c='b')
-                                           
+    if cylinder:
+        ax._axes.set_zlim([-1*Lce, 1.1*np.max(net[pore_coordinate_key][:, 2])])
+    
+def visualize_pores(net, pore_coordinate_key='pore.coords'):
+    """
+    Visualizes the location of the nodes (pores) of an OpenPNM network as a scatter plot.
+
+    Parameters
+    ----------
+    net : openpnm.Network()
+        pores correspond to conduit elements, throats to connections between them
+    pore_coordinate_key : str, optional
+        key, under which the pore coordinate information is saved
+        
+    Returns
+    -------
+    None.
+    """
+    fig = plt.fgure()
+    ax = fig.add_subplot(projection='3d')
+    ax.scatter(net[pore_coordinate_key][:, 0], net[pore_coordinate_key][:, 1], net[pore_coordinate_key][:, 2],
+                      c='r', s=5e5*net['pore.diameter'])
