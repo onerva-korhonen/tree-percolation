@@ -356,31 +356,29 @@ def simulate_flow(net, cfg):
     # throat diameters equal to the diameters of the adjacent pores
     sim_net.add_model(propname='throat.max_size', model=op.models.misc.from_neighbor_pores, 
                  mode='min', prop='pore.diameter') 
-    sim_net.add_model(propname='throat.diameter', model=op.misc.scaled, factor=1., prop='throat.max_size')
-    sim_net.add_model(propname='throat.length', model=op.models.geometry.throat_length.spheres_and_cylinders(),
+    sim_net.add_model(propname='throat.diameter', model=op.models.misc.scaled, factor=1., prop='throat.max_size')
+    sim_net.add_model(propname='throat.length', model=op.models.geometry.throat_length.spheres_and_cylinders,
                       pore_diameter='pore.diameter', throat_diameter='throat.diameter')
     
     # changing the length of the ICC throats
-    throat_lengths = sim_net['throat.length'].copy() # TODO: is this necessary?
-    sim_net['throat.length'] = throat_lengths
-    sim_net['throat.length'][~cec_indicator] = 10e-12
+    sim_net['throat.length'][~cec_mask] = 10e-12
     
-    sim_net.add_model(propname='thorat.surface_area',
-                      model=op.models.geometry.throat_surface_area.cylinder(),
+    sim_net.add_model(propname='throat.surface_area',
+                      model=op.models.geometry.throat_surface_area.cylinder,
                       throat_diameter='throat.diameter',
                       throat_length='throat.length')
     sim_net.add_model(propname='throat.volume', 
-                      model=op.models.geometry.throat_volume.cylinder(),
+                      model=op.models.geometry.throat_volume.cylinder,
                       throat_diameter='throat.diameter',
-                      throat_length='throat_length')
+                      throat_length='throat.length')
     sim_net.add_model(propname='throat.area',
-                      model=op.models.geometry.throat_cross_sectional_area.cylinder(),
+                      model=op.models.geometry.throat_cross_sectional_area.cylinder,
                       throat_diameter='throat.diameter')
     sim_net.add_model(propname='throat.diffusive_size_factors', 
-                      model=op.models.geometry.diffusive_size_factors.spheres_and_cylinders())
+                      model=op.models.geometry.diffusive_size_factors.spheres_and_cylinders)
     sim_net.add_model(propname='throat.hydraulic_size_factors', 
-                      model=op.models.geometry.hydraulic_size_factors.spheres_and_cylinders())
-    sim_net.add_model(propname='pore.effective_volume', model=get_effective_pore_volume())
+                      model=op.models.geometry.hydraulic_size_factors.spheres_and_cylinders)
+    sim_net.add_model(propname='pore.effective_volume', model=get_effective_pore_volume)
     sim_net['pore.effective_sidearea'] = 4 * sim_net['pore.effective_volume'] / sim_net['pore.diameter'] #The effective lateral surface area of the pore is calculated from the effective pore volume (A_l = dV/dr for a cylinder)
     sim_net['throat.area_m'] = 0.5 * (sim_net['pore.effective_sidearea'][conns[:, 0]] + sim_net['pore.effective_sidearea'][conns[:, 1]]) * fc * fpf # membrane area calculated from OpenPNM pore geometry
     sim_net['throat.area_m_mrad'] = 0.5 * (conduit_areas[conduit_indices[conns[:, 0]] - 1] / \
@@ -734,7 +732,7 @@ def mrad_to_cartesian(coords, conduit_element_length=params.Lce, heartwood_d=par
     r = heartwood_d + coords[:, 1]
     theta_step = (2*np.pi)/(np.max(coords[:, 2]) + 1)
     theta_values = np.arange(0, 2*np.pi, theta_step)
-    theta = np.array([theta_values[coords[s, 2]] for s in range(len(theta_values))])
+    theta = np.array([theta_values[coords[s, 2]] for s in range(coords.shape[0])])
     
     x = r*np.cos(theta)
     y = r*np.sin(theta)
@@ -875,7 +873,7 @@ def visualize_pores(net, pore_coordinate_key='pore.coords'):
     -------
     None.
     """
-    fig = plt.fgure()
+    fig = plt.figure()
     ax = fig.add_subplot(projection='3d')
     ax.scatter(net[pore_coordinate_key][:, 0], net[pore_coordinate_key][:, 1], net[pore_coordinate_key][:, 2],
                       c='r', s=5e5*net['pore.diameter'])
