@@ -66,4 +66,11 @@ seed_ICC_tan = 73956
 icc_indicator = 100
 cec_indicator = 1000
 
+# water properties
+water_pore_viscosity = 1.002e-3
+water_throat_viscosity = 1.002e-3
+water_pore_diffusivity = 1.0e-9
 
+# simulation parameters
+inlet_pressure = 0.1 # Pa
+outlet_pressure = 0 # Pa

@@ -282,7 +282,11 @@ def simulate_flow(net, cfg):
             icc_indicator: int, value used to indicate that the type of a throat is ICC
             tf: float, microfibril strand thickness (m)
             visualize_sim_network : bln, should the network created for the simulation be visualized
-            
+            water_pore_viscosity: float, value of the water viscosity in pores
+            water_throat_viscosity: float, value of the water viscosity in throats
+            water_pore_diffusivity: float, value of the water diffusivity in pores
+            inlet_pressure: float, pressure at the inlet conduit elements (Pa)
+            outlet_pressure: float, pressure at the outlet conduit elements (Pa)
             
 
     Returns
@@ -290,6 +294,10 @@ def simulate_flow(net, cfg):
     None.
 
     """
+    #-----------------------------------------------------------------------------------------------------------------------------------------------
+    # Parameter reading and preparation
+    #-----------------------------------------------------------------------------------------------------------------------------------------------
+    
     use_cylindrical_coords = cfg.get('use_cylindrical_coordinates', True)
     Lce = cfg.get('Lce', params.Lce)
     Dc = cfg.get('Dc', params.Dc)
@@ -304,6 +312,11 @@ def simulate_flow(net, cfg):
     icc_indicator = cfg.get('icc_indicator', params.icc_indicator)
     tf = cfg.get('tf', params.tf)
     visualize_sim_network = cfg.get('visualize_sim_network', False)
+    water_pore_viscosity = cfg.get('water_pore_viscosity', params.water_pore_viscosity)
+    water_throat_viscosity = cfg.get('water_throat_viscosity', params.water_throat_viscosity)
+    water_pore_diffusivity = cfg.get('water_pore_diffusivity', params.water_pore_diffusivity)
+    inlet_pressure = cfg.get('inlet_pressure', params.inlet_pressure)
+    outlet_pressure = cfg.get('outlet_pressure', params.outlet_pressure)
     
     coords = net['pore.coords']
     conns = net['throat.conns']
@@ -346,9 +359,11 @@ def simulate_flow(net, cfg):
     pore_diameters = np.zeros(np.shape(pore_coords)[0])
     for i, conduit_index in enumerate(conduit_indices):
         pore_diameters[i] = conduit_diameters[int(conduit_index) - 1] # diameters of the pores (= surfaces between conduit elements), defined as the diameters of the conduits the pores belong to
-        
-    # Generating an openpnm network for the simulations
     
+    #----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    # Generating an openpnm network for the simulations
+    #----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    # TODO: consider making a separate function for simulation network generation
     sim_net = op.network.Network(coords=pore_coords, conns=conns)
     sim_net.regenerate_models()
     sim_net['pore.diameter'] = pore_diameters
@@ -391,6 +406,43 @@ def simulate_flow(net, cfg):
         visualize_pores(sim_net)
         visualize_network_with_openpnm(sim_net, use_cylindrical_coords, Lce, 'pore.coords')
     
+    #------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    # OpenPNM water flow and advection-diffusion simulations
+    #------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    
+    water = op.phase.Water(network=sim_net)
+    water['pore.viscosity'] = water_pore_viscosity
+    water['throat.viscosity'] = water_throat_viscosity
+    water['pore.diffusivity'] = water_pore_diffusivity
+    
+    water.add_model(propname='throat.diffusive_conductance',
+                    model=op.models.physics.diffusive_conductance.ordinary_diffusion)
+    water.add_model(propname='throat.hydraulic_conductance',
+                    model=op.models.physics.hydraulic_conductance.generic_hydraulic)
+    water.add_model(propname='throat.ad_dif_conductance',
+                    model=op.models.physics.ad_dif_conductance.ad_dif)
+    pit_conductance = (Dp**3 / (24 * water['throat.viscosity']) * (1 + 16 * Tm / (3 * np.pi * Dp))**(-1) * sim_net['throat.npore'])
+    water['throat.hydraylic_conductance'][~cec_mask] = pit_conductance[~cec_mask] #Set the separately calculated values for the hydraulic conductance of the ICCs
+    water.regenerate_models(propnames='throat.ad_dif_conductance') # redefining the diffusional conductance of the CECs
+    ref = water['throat.ad_dif_conductance'].copy() # TODO: is this needed for something?
+    
+    if use_cylindrical_coords:
+        axnum = 2 # row information is in the last (z) column
+    else:
+        axnum = 0 # row information is in the first column
+        
+    inlet = sim_net['pore.coords'][:, axnum] == np.min(sim_net['core.coords'][:, axnum])
+    outlet = sim_net['pore.coords'][:, axnum] == np.max(sim_net['pore.coords'][:, axnum])
+    
+    # Stokes flow simulation
+    
+    stokes_flow = op.algorithms.StokesFlow(network=sim_net, phase=water,)
+    stokes_flow.set_value_BC(pores=inlet, values=inlet_pressure)
+    stokes_flow.set_value_BC(pores=outlet, values=outlet_pressure)
+    stokes_flow.run()
+    
+    water['pore.pressure'] = stokes_flow['pore.pressure'] #The results calculated in the Stokes flow simulation are used in the determination of the advective-diffusive conductance in the advection-diffusion simulation
+    water.regenerate_models(propnames='throat.ad_dif_conductance')
     
     
     
@@ -877,3 +929,27 @@ def visualize_pores(net, pore_coordinate_key='pore.coords'):
     ax = fig.add_subplot(projection='3d')
     ax.scatter(net[pore_coordinate_key][:, 0], net[pore_coordinate_key][:, 1], net[pore_coordinate_key][:, 2],
                       c='r', s=5e5*net['pore.diameter'])
+    
+def visualize_pore_pressure(net, algorithm):
+    """
+    Visualizes the pore pressure distribution of an openpnm network object.
+    
+    Parameters
+    ----------
+    net : openpnm.Network()
+        pores correspond to conduit elements, throats to connections between them
+    algorithm : openpnm algorithm used to calculate the pore pressure
+    
+    Returns
+    -------
+    None.
+    """
+    fig = plt.figure() # TODO: if this looks bad, add param figsize=(7,7)
+    ax = fig.add_subplot(projection='3d')
+    p = ax.scatter(1000 * net['pore.coords'][:, 0],
+                   1000 * net['pore.coords'][:, 1],
+                   1000 * net['pore.coords'][:, 2],
+                   c=algorithm['pore.pressure'], s = 1e11 * net['pore.diameter']**2,
+                   cmap=plt.cm.jet) # TODO: give cmap as param
+    fig.colorbar(p, ax=ax)
+    plt.title('Pressure distribution')
