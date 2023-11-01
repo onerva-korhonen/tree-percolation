@@ -8,13 +8,10 @@ Created on Fri Sep 29 12:15:20 2023
 This is a pythonization, by Petri Kiuru & Onerva Korhonen, 
 of the xylem network model by Mrad et al.
 
-For details of the original model, see
-
-Mrad A, Domec J‐C, Huang C‐W, Lens F, Katul G. A network model links wood anatomy to xylem tissue hydraulic behaviour and vulnerability to cavitation. Plant Cell Environ. 2018;41:2718–2730. https://doi.org/10.1111/pce.13415
-
-Assaad Mrad, Daniel Johnson, David Love, Jean-Christophe Domec. The roles of conduit redundancy and connectivity in xylem hydraulic functions. New Phytologist, Wiley, 2021, pp.1-12. https://doi.org/10.1111/nph.17429
-
-https://github.com/mradassaad/Xylem_Network_Matlab
+For details of the original model, see:
+- Mrad A, Domec J‐C, Huang C‐W, Lens F, Katul G. A network model links wood anatomy to xylem tissue hydraulic behaviour and vulnerability to cavitation. Plant Cell Environ. 2018;41:2718–2730. https://doi.org/10.1111/pce.13415
+- Assaad Mrad, Daniel Johnson, David Love, Jean-Christophe Domec. The roles of conduit redundancy and connectivity in xylem hydraulic functions. New Phytologist, Wiley, 2021, pp.1-12. https://doi.org/10.1111/nph.17429
+- https://github.com/mradassaad/Xylem_Network_Matlab
 """
 
 import numpy as np
@@ -24,6 +21,7 @@ import matplotlib.pyplot as plt
 import scipy.sparse.csgraph as csg
 
 import mrad_params as params
+import visualization
 
 def create_mrad_network(cfg):
     """
@@ -35,7 +33,6 @@ def create_mrad_network(cfg):
         contains
         fixed_random: bln, if True, fixed random seeds are used to create the same network as Mrad's Matlab code
         net_size: np.array, size of the network to be created (n_rows x n_columns x n_depths)
-        Lce: float, length of the conduit element (in meters)
         NPc: np.array, propabilities of initiating a conduit at the location closest to the pith (first element)
             and fartest away from it (second element); probabilities for other locations are interpolated from
             these two values
@@ -69,7 +66,6 @@ def create_mrad_network(cfg):
     save_switch = cfg.get('save_switch',True)
     fixed_random = cfg.get('fixed_random',True)
     net_size = cfg.get('net_size',params.net_size)
-    Lce = cfg.get('Lce',params.Lce)
     Pc = cfg.get('Pc',params.Pc)
     NPc = cfg.get('NPc',params.NPc)
     Pe_rad = cfg.get('Pe_rad', params.Pe_rad)
@@ -462,7 +458,7 @@ def simulate_water_flow(sim_net, cfg, visualize=False):
     
     if visualize:
         # visualizing water pressure at pores
-        make_colored_pore_scatter(sim_net, water['pore.pressure'], title='Pressure distribution')
+        visualization.make_colored_pore_scatter(sim_net, water['pore.pressure'], title='Pressure distribution')
     
     # Steady-state advection-diffusion simulation with constant boundary values
     advection_diffusion = op.algorithms.AdvectionDiffusion(network=sim_net, phase=water)
@@ -475,7 +471,7 @@ def simulate_water_flow(sim_net, cfg, visualize=False):
     
     if visualize:
         # visualizing concentration at pores
-        make_colored_pore_scatter(sim_net, concentration, title='Concentration')
+        visualization.make_colored_pore_scatter(sim_net, concentration, title='Concentration')
     
     effective_conductance = stokes_flow.rate(pores=inlet)[0] / (inlet_pressure - outlet_pressure)
     
@@ -705,7 +701,7 @@ def save_network(net, save_path):
     """
     np.savez(save_path, coord_cleaned=net['pore.coords'], conns_cleaned=net['throat.conns'], conn_types=net['throat.type'])
     
-def read_network(net_path, coord_key='coords_cleaned', conn_key='conns_cleaned', type_key='conn_types'):
+def read_network(net_path, coord_key='pore.coords', conn_key='throat.conns', type_key='throat.type'):
     """
     Reads a network saved in npz format.
     
@@ -915,84 +911,3 @@ def get_effective_pore_volume(net, throat_volume_key='throat.volume', pore_volum
     np.add.at(effective_pore_volumes, net[conn_key][:, 1], net[throat_volume_key]/2)
     assert np.isclose(effective_pore_volumes.sum(), total_volume), 'total effective pore volume does not match the total volume of pores and throats, please check throat information'
     return effective_pore_volumes
-
-# Visualization
-
-def visualize_network_with_openpnm(net, cylinder=False, Lce=params.Lce, pore_coordinate_key='pore.coords'):
-    """
-    Visualizes a conduit network using the OpenPNM visualization tools.
-    
-    Parameters:
-    -----------
-    net : openpnm.Network() object
-        pores correspond to conduit elements, throats to connections between elements
-    cylinder : bln, optional
-        visualize the network in cylinder coordinate system instead of the Cartesian one
-    Lce : float, optional
-        lenght of the conduit element
-    pore_coordinate_key : str, optional
-        key, under which the pore coordinate information is stored in net
-
-    Returns
-    -------
-    None.
-
-    """
-    ts = net.find_neighbor_throats(pores=net.pores('all'))
-    
-    ax = op.visualization.plot_coordinates(network=net, pores=net.pores('all'), c='r')
-    ax = op.visualization.plot_connections(network=net, throats=ts, ax=ax, c='b')
-    if cylinder:
-        ax._axes.set_zlim([-1*Lce, 1.1*np.max(net[pore_coordinate_key][:, 2])])
-    
-def visualize_pores(net, pore_coordinate_key='pore.coords'):
-    """
-    Visualizes the location of the nodes (pores) of an OpenPNM network as a scatter plot.
-
-    Parameters
-    ----------
-    net : openpnm.Network()
-        pores correspond to conduit elements, throats to connections between them
-    pore_coordinate_key : str, optional
-        key, under which the pore coordinate information is saved
-        
-    Returns
-    -------
-    None.
-    """
-    fig = plt.figure()
-    ax = fig.add_subplot(projection='3d')
-    ax.scatter(net[pore_coordinate_key][:, 0], net[pore_coordinate_key][:, 1], net[pore_coordinate_key][:, 2],
-                      c='r', s=5e5*net['pore.diameter'])
-    
-def make_colored_pore_scatter(net, pore_values, title='', cmap=plt.cm.jet):
-    """
-    Plots a scatter where points correspond to network pores, their location is determined by the
-    network geometry, and they are colored by some pore property (e.g. pressure or concentration at
-    pores).
- 
-    
-    Parameters
-    ----------
-    net : openpnm.Network()
-        pores correspond to conduit elements, throats to connections between them
-    pore_values : iterable of floats
-        values that define pore colors: pore colors are set so that the minimum of the color map corresponds
-        to the minimum of pore_values and maximum of the color map corresponds to the maximum of pore_values
-    title : str, optional
-        figure title
-    cmap : matplotlib colormap, optional (default: jet)
-    
-    Returns
-    -------
-    None.
-    """
-    fig = plt.figure()
-    ax = fig.add_subplot(projection='3d')
-    p = ax.scatter(1000 * net['pore.coords'][:, 0],
-                   1000 * net['pore.coords'][:, 1],
-                   1000 * net['pore.coords'][:, 2],
-                   c=pore_values, s = 1e11 * net['pore.diameter']**2,
-                   cmap=plt.cm.jet)
-    fig.colorbar(p, ax=ax)
-    plt.title(title)

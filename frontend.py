@@ -10,6 +10,7 @@ A frontend script for investigating percolation using the Mrad et al. xylem netw
 import mrad_model
 import mrad_params
 import params
+import visualization
 
 import openpnm as op
 
@@ -20,12 +21,12 @@ conduit_elements, conns = mrad_model.create_mrad_network(cfg) # if no params are
 net = mrad_model.mrad_to_openpnm(conduit_elements, conns)
 mrad_model.visualize_network_with_openpnm(net)
 net_cleaned = mrad_model.clean_network(net, conduit_elements, cfg['net_size'][0] - 1)
-mrad_model.visualize_network_with_openpnm(net_cleaned)
+visualization.visualize_network_with_openpnm(net_cleaned)
 
 mrad_model.save_network(net_cleaned, params.network_save_file)
 
 sim_net = mrad_model.prepare_simulation_network(net_cleaned, cfg)
-mrad_model.visualize_pores(sim_net)
-mrad_model.visualize_network_with_openpnm(sim_net, params.use_cylindrical_coordinates, mrad_params.Lce, 'pore.coords')
+visualization.visualize_pores(sim_net)
+visualization.visualize_network_with_openpnm(sim_net, params.use_cylindrical_coordinates, mrad_params.Lce, 'pore.coords')
 effective_conductance = mrad_model.simulate_water_flow(sim_net, cfg, visualize=params.visualize_simulations)
 print(effective_conductance)
