@@ -281,7 +281,7 @@ def simulate_flow(net, cfg):
             cec_indicator: int, value used to indicate that the type of a throat is CE
             icc_indicator: int, value used to indicate that the type of a throat is ICC
             tf: float, microfibril strand thickness (m)
-            visualize_sim_network : bln, should the network created for the simulation be visualized
+            visualize : bln, should the network created for the simulation, pressure at pores and concentration be visualized
             water_pore_viscosity: float, value of the water viscosity in pores
             water_throat_viscosity: float, value of the water viscosity in throats
             water_pore_diffusivity: float, value of the water diffusivity in pores
@@ -311,7 +311,7 @@ def simulate_flow(net, cfg):
     cec_indicator = cfg.get('cec_indicator', params.cec_indicator)
     icc_indicator = cfg.get('icc_indicator', params.icc_indicator)
     tf = cfg.get('tf', params.tf)
-    visualize_sim_network = cfg.get('visualize_sim_network', False)
+    visualize = cfg.get('visualize', False)
     water_pore_viscosity = cfg.get('water_pore_viscosity', params.water_pore_viscosity)
     water_throat_viscosity = cfg.get('water_throat_viscosity', params.water_throat_viscosity)
     water_pore_diffusivity = cfg.get('water_pore_diffusivity', params.water_pore_diffusivity)
@@ -402,7 +402,7 @@ def simulate_flow(net, cfg):
     pore_area = (Dp + tf)**2 # area of a single pore (m^2)
     sim_net['throat.npore'] = np.floor(sim_net['throat.area_m_mrad'] / pore_area).astype(int)
     
-    if visualize_sim_network: # TODO: consider the possibility of returning sim_net and visualizing outside of the function
+    if visualize: # TODO: consider the possibility of returning sim_net and visualizing outside of the function
         visualize_pores(sim_net)
         visualize_network_with_openpnm(sim_net, use_cylindrical_coords, Lce, 'pore.coords')
     
@@ -422,7 +422,7 @@ def simulate_flow(net, cfg):
     water.add_model(propname='throat.ad_dif_conductance',
                     model=op.models.physics.ad_dif_conductance.ad_dif)
     pit_conductance = (Dp**3 / (24 * water['throat.viscosity']) * (1 + 16 * Tm / (3 * np.pi * Dp))**(-1) * sim_net['throat.npore'])
-    water['throat.hydraylic_conductance'][~cec_mask] = pit_conductance[~cec_mask] #Set the separately calculated values for the hydraulic conductance of the ICCs
+    water['throat.hydraulic_conductance'][~cec_mask] = pit_conductance[~cec_mask] #Set the separately calculated values for the hydraulic conductance of the ICCs
     water.regenerate_models(propnames='throat.ad_dif_conductance') # redefining the diffusional conductance of the CECs
     ref = water['throat.ad_dif_conductance'].copy() # TODO: is this needed for something?
     
@@ -431,7 +431,7 @@ def simulate_flow(net, cfg):
     else:
         axnum = 0 # row information is in the first column
         
-    inlet = sim_net['pore.coords'][:, axnum] == np.min(sim_net['core.coords'][:, axnum])
+    inlet = sim_net['pore.coords'][:, axnum] == np.min(sim_net['pore.coords'][:, axnum])
     outlet = sim_net['pore.coords'][:, axnum] == np.max(sim_net['pore.coords'][:, axnum])
     
     # Stokes flow simulation
@@ -444,6 +444,26 @@ def simulate_flow(net, cfg):
     water['pore.pressure'] = stokes_flow['pore.pressure'] #The results calculated in the Stokes flow simulation are used in the determination of the advective-diffusive conductance in the advection-diffusion simulation
     water.regenerate_models(propnames='throat.ad_dif_conductance')
     
+    if visualize:
+        # visualizing water pressure at pores
+        make_colored_pore_scatter(sim_net, water['pore.pressure'], title='Pressure distribution')
+    
+    # Steady-state advection-diffusion simulation with constant boundary values
+    advection_diffusion = op.algorithms.AdvectionDiffusion(network=sim_net, phase=water)
+    advection_diffusion.set_value_BC(pores=inlet, values=inlet_pressure)
+    advection_diffusion.set_value_BC(pores=outlet, values=outlet_pressure)
+    advection_diffusion.settings['pore_volume'] = 'pore.effective_volume'
+    
+    results = advection_diffusion.run()
+    concentration = advection_diffusion['pore.concentration']
+    
+    if visualize:
+        # visualizing concentration at pores
+        make_colored_pore_scatter(sim_net, concentration, title='Concentration')
+    
+    effective_conductance = stokes_flow.rate(pores=inlet)[0] / (inlet_pressure - outlet_pressure)
+    
+    return effective_conductance
     
     
     
@@ -930,15 +950,23 @@ def visualize_pores(net, pore_coordinate_key='pore.coords'):
     ax.scatter(net[pore_coordinate_key][:, 0], net[pore_coordinate_key][:, 1], net[pore_coordinate_key][:, 2],
                       c='r', s=5e5*net['pore.diameter'])
     
-def visualize_pore_pressure(net, algorithm):
+def make_colored_pore_scatter(net, pore_values, title='', cmap=plt.cm.jet):
     """
-    Visualizes the pore pressure distribution of an openpnm network object.
+    Plots a scatter where points correspond to network pores, their location is determined by the
+    network geometry, and they are colored by some pore property (e.g. pressure or concentration at
+    pores).
+ 
     
     Parameters
     ----------
     net : openpnm.Network()
         pores correspond to conduit elements, throats to connections between them
-    algorithm : openpnm algorithm used to calculate the pore pressure
+    pore_values : iterable of floats
+        values that define pore colors: pore colors are set so that the minimum of the color map corresponds
+        to the minimum of pore_values and maximum of the color map corresponds to the maximum of pore_values
+    title : str, optional
+        figure title
+    cmap : matplotlib colormap, optional (default: jet)
     
     Returns
     -------
@@ -949,7 +977,7 @@ def visualize_pore_pressure(net, algorithm):
     p = ax.scatter(1000 * net['pore.coords'][:, 0],
                    1000 * net['pore.coords'][:, 1],
                    1000 * net['pore.coords'][:, 2],
-                   c=algorithm['pore.pressure'], s = 1e11 * net['pore.diameter']**2,
+                   c=pore_values, s = 1e11 * net['pore.diameter']**2,
                    cmap=plt.cm.jet) # TODO: give cmap as param
     fig.colorbar(p, ax=ax)
-    plt.title('Pressure distribution')
+    plt.title(title)

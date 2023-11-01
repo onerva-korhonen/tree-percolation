@@ -9,3 +9,6 @@ Parameters not related to the Mrad et al. article
 """
 # paths for saving
 network_save_file = '/home/onerva/projects/hidrogat/output/netpoints'
+
+# visualization parameters
+visualize_simulations = True

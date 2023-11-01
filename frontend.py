@@ -24,5 +24,6 @@ mrad_model.visualize_network_with_openpnm(net_cleaned)
 
 mrad_model.save_network(net_cleaned, params.network_save_file)
 
-cfg['visualize_sim_network'] = True
-mrad_model.simulate_flow(net_cleaned, cfg)
+cfg['visualize'] = params.visualize_simulations
+effective_conductance = mrad_model.simulate_flow(net_cleaned, cfg)
+print(effective_conductance)
