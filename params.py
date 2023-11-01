@@ -12,3 +12,4 @@ network_save_file = '/home/onerva/projects/hidrogat/output/netpoints'
 
 # visualization parameters
 visualize_simulations = True
+use_cylindrical_coordinates = True

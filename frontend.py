@@ -24,6 +24,8 @@ mrad_model.visualize_network_with_openpnm(net_cleaned)
 
 mrad_model.save_network(net_cleaned, params.network_save_file)
 
-cfg['visualize'] = params.visualize_simulations
-effective_conductance = mrad_model.simulate_flow(net_cleaned, cfg)
+sim_net = mrad_model.prepare_simulation_network(net_cleaned, cfg)
+mrad_model.visualize_pores(sim_net)
+mrad_model.visualize_network_with_openpnm(sim_net, params.use_cylindrical_coordinates, mrad_params.Lce, 'pore.coords')
+effective_conductance = mrad_model.simulate_water_flow(sim_net, cfg, visualize=params.visualize_simulations)
 print(effective_conductance)

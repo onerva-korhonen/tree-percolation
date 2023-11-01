@@ -48,6 +48,7 @@ conduit_diameters = np.array([2.59695012020929e-05, 1.89719235427943e-05, 2.5044
 2.51083054817169e-05, 2.45249109338536e-05, 2.50905860934747e-05, 2.32785502665617e-05,
 2.22240413910612e-05 ])
 tf = 30e-9 # microfibril strand thickness (m)
+icc_length = 10e-12 # length of an ICC throat (m)
 
 # probabilities used for network construction
 Pc = np.array([0.75, 0.75])
