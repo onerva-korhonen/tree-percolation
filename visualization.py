@@ -91,3 +91,41 @@ def make_colored_pore_scatter(net, pore_values, title='', cmap=plt.cm.jet):
                    cmap=plt.cm.jet)
     fig.colorbar(p, ax=ax)
     plt.title(title)
+    
+def plot_percolation_curve(total_n_nodes, effective_conductance, lcc=[], color=[], label=[]):
+    """
+    Plots the percolation analysis outcomes (largest connected component size and effective conductance) as a function
+    of the fraction of nodes removed.
+    
+    #TODO: modify this function to plot both LCC and effective conductance and update documentation.
+
+    Parameters
+    ----------
+    total_n_nodes : int
+        number of nodes in the network subject to percolation analysis (used for constructing x axis)
+    effective conductance : np.array
+        effective conductance values in the full network and after each ode removal. 
+        if len(effective_conductance) < total_n_nodes + 1, the assumption is that only total_n_nodes + 1 - len(effective_conductance)
+        nodes have been removed
+    color : str
+        DESCRIPTION.
+    label : str
+        DESCRIPTION.
+
+    Returns
+    -------
+    None.
+
+    """
+    assert len(effective_conductance) > 1, 'only the effective conductance of the full network given for plotting percolation curves'
+    if len(effective_conductance) < total_n_nodes - 1:
+        print('Warning: number of effective conductance values from percolation analysis does not match the number of nodes')
+        x = np.arange(0, len(effective_conductance) / 100, (len(effective_conductance) / 100) / total_n_nodes)
+    else:
+        x = np.arange(0, 100, 100 / total_n_nodes)
+    
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    ax.plot(x, effective_conductance, color=color, label=label)
+    ax.set_xlabel('Fraction of nodes removed')
+    ax.set_ylabel('Effective conductance')

@@ -12,6 +12,7 @@ import networkx as nx
 import openpnm as op
 
 import mrad_model
+import mrad_params as params
 
 # TODO: write functions for removing network nodes in a given order (can be random). The idea would be to do this separately
 # (but in the same order) for the OpenPNM network (and calculate effective conductance after every removal) and a networkx
@@ -22,7 +23,7 @@ import mrad_model
 # nodes to the op pores to ensure that same pores get removed?
 # for op: op.topotools.trim to remove pores/throats (takes pore/throat indices as input)
 
-def run_op_percolation(net, cfg, removal_order='random'):
+def run_op_percolation(net, conduit_elements_rows, cfg, removal_order='random'):
     """
     Removes pores from an OpenPNM network object in a given (or random) order and calculates the effective conductance
     after each removal.
@@ -33,6 +34,7 @@ def run_op_percolation(net, cfg, removal_order='random'):
         pores correspond to conduit elements, throats to connections between the elements
     cfg : dict
         contains:
+        net_size: np.array, size of the network to be created (n_rows x n_columns x n_depths)
         use_cylindrical_coords: bln, should Mrad model coordinates be interpreted as cylindrical ones in visualizations?
         Lce: float, length of a conduit element
         Dc: float, average conduit diameter (m)
@@ -62,11 +64,25 @@ def run_op_percolation(net, cfg, removal_order='random'):
         effective conductance of the network after each removal
     """
     n_pores = net['pore.coords'].shape[0]
+    conduit_diameters = cfg.get('conduit_diameters', params.conduit_diameters)
+    cec_indicator = cfg.get('cec_indicator', params.cec_indicator)
+    
     effective_conductances = np.zeros(n_pores)
     if removal_order == 'random':
-        removal_order = np.random.shuffle(np.arange(0, n_pores))
-    for i, pore_to_remove in enumerate(removal_order):
-        op.topotools.trim(net, pores=[pore_to_remove])
-        sim_net = mrad_model.prepare_simulation_network(net, cfg)
-        effective_conductances[i] = mrad_model.simulate_water_flow(sim_net, cfg, visualize=False)
+        removal_order = np.arange(0, n_pores)
+        np.random.shuffle(removal_order)
+    for i, _ in enumerate(removal_order):
+        if not isinstance(conduit_diameters, str):
+            conduit_diameters_temp = np.copy(conduit_diameters)
+            np.delete(conduit_diameters_temp, removal_order[:i + 1])
+        sim_net = op.network.Network(conns=net['throat.conns'], coords=net['pore.coords'])
+        sim_net['throat.type'] = net['throat.type']
+        try:
+            op.topotools.trim(sim_net, pores=removal_order[:i + 1])
+            conduit_elements = mrad_model.get_conduit_elements(sim_net, cec_indicator=cec_indicator)
+            sim_net = mrad_model.clean_network(sim_net, conduit_elements, cfg['net_size'][0] - 1, remove_dead_ends=False)
+            sim_net = mrad_model.prepare_simulation_network(sim_net, cfg)
+            effective_conductances[i] = mrad_model.simulate_water_flow(sim_net, cfg, visualize=False)
+        except:
+            effective_conductances[i] = 0
     return effective_conductances

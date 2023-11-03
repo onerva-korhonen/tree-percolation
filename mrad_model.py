@@ -42,7 +42,7 @@ def create_mrad_network(cfg):
                 first and second element defined similarly as in NPc
         Pe_tan: np.array, probabilities for building an inter-conduit connection (ICC) in the tangential direction, 
                 first and second element defined similarly as in NPc
-        cec_indicator: int, value used to indicate that the type of a throat is CE
+        cec_indicator: int, value used to indicate that the type of a throat is CEC
         icc_indicator: int, value used to indicate that the type of a throat is ICC
         
     Returns
@@ -284,7 +284,7 @@ def prepare_simulation_network(net, cfg):
     # Parameter reading and preparation
     #-----------------------------------------------------------------------------------------------------------------------------------------------
     
-    use_cylindrical_coords = cfg.get('use_cylindrical_coordinates', True)
+    use_cylindrical_coords = cfg.get('use_cylindrical_coords', True)
     Lce = cfg.get('Lce', params.Lce)
     Dc = cfg.get('Dc', params.Dc)
     Dc_cv = cfg.get('Dc_cv', params.Dc_cv)
@@ -336,7 +336,7 @@ def prepare_simulation_network(net, cfg):
     
     pore_diameters = np.zeros(np.shape(pore_coords)[0])
     for i, conduit_index in enumerate(conduit_indices):
-        pore_diameters[i] = conduit_diameters[int(conduit_index) - 1] # diameters of the pores (= surfaces between conduit elements), defined as the diameters of the conduits the pores belong to
+        pore_diameters[i] = diameters_per_conduit[int(conduit_index) - 1] # diameters of the pores (= surfaces between conduit elements), defined as the diameters of the conduits the pores belong to
     
     #----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
     # Generating an openpnm network for the simulations
@@ -590,11 +590,13 @@ def mrad_to_openpnm(conduit_elements, conns):
     
     return pn
     
-def clean_network(net, conduit_elements, outlet_row_index):
+def clean_network(net, conduit_elements, outlet_row_index, remove_dead_ends=True):
     """
     Cleans an OpenPNM network object by removing
     conduits that don't have a connection to the inlet (first) or outlet (last) row through
-    the cluster to which they belong
+    the cluster to which they belong as well as optionally removing dead-end conduits that have degree 1 and no 
+    connection to inlet or outlet. Removal of dead ends is done iteratively: if removing of a dead end creates new
+    dead ends, they are removed too.
 
     Parameters
     ----------
@@ -609,6 +611,9 @@ def clean_network(net, conduit_elements, outlet_row_index):
         5) the index of the element (from 0 to n_conduit_elements)
     outlet_row_index : int
         index of the last row of the network (= n_rows - 1)
+    remove_dead_ends : bln, optional
+        should the conduits that have degree 1 and aren't connected to inlet or outlet
+        be removed? (default: True)
 
     Returns
     -------
@@ -616,71 +621,74 @@ def clean_network(net, conduit_elements, outlet_row_index):
         the network object after cleaning
     """    
     A = net.create_adjacency_matrix(fmt='coo', triu=True) # the rows/columns of A correspond to conduit elements and values indicate the presence/absence of connections
-    components = csg.connected_components(A, directed=False)[1]
+    component_labels = csg.connected_components(A, directed=False)[1]
     component_indices = []
     sorted_components = []
-    if np.unique(components).size > 1:
-        for component in np.unique(components):
-            component_indices.append(np.where(components == component)[0])
+    if np.unique(component_labels).size > 1:
+        for component_label in np.unique(component_labels):
+            component_indices.append(np.where(component_labels == component_label)[0])
         component_sizes = np.array([len(component_index) for component_index in component_indices])
         sorted_indices = np.argsort(component_sizes)[::-1]
         for sorted_index in sorted_indices:
             sorted_components.append(component_indices[sorted_index])
     
     # Remove components that don't extend through the domain in axial direction
-    components_to_remove = []
+    pores_to_remove = []
     for component in sorted_components:
         in_btm = np.sum(conduit_elements[component, 0] == 0) # number of conduit elements belonging to this component at the inlet row
         in_top = np.sum(conduit_elements[component, 0] == outlet_row_index) # number of conduit elements belonging to this component at the outlet row
         if (in_btm == 0) or (in_top == 0):
-            components_to_remove.append(component)
-    components_to_remove = np.concatenate(components_to_remove)
+            pores_to_remove.append(component)
+    if len(pores_to_remove) > 0:
+        pores_to_remove = np.concatenate(pores_to_remove)
     
-    conduit_elements = np.delete(conduit_elements, components_to_remove, 0)
-    op.topotools.trim(net, pores=components_to_remove)
-    
-    # Remoce any remaining conduits that are not connected to the inlet or outlet
-    # and are connected to only one other conduit
-    
-    throats_trimmed = net['throat.conns'] # each row of throats_trimmed contain the indices of the start and end conduit elements of a connection
-    
-    # Tabulate the indices of the conduits connected by each throat (based on the
-    # original number of conduits before removing the clusters not connected to the inlet or to the outlet)
-    
-    throat_type = np.zeros(len(throats_trimmed))
-    throat_conduits = np.zeros((len(throats_trimmed), 2)) # each row of throat_conduits will contain the indices of the start and end conduit of a connection
-    
-    for i, throat in enumerate(throats_trimmed):
-        if conduit_elements[throat[0], 3] == conduit_elements[throat[1], 3]:
-            throat_type = 1 # throat inside a conduit
-        else:
-            throat_type = 2 # ICC
-        throat_conduits[i, 0] = conduit_elements[throat[0], 3]
-        throat_conduits[i, 1] = conduit_elements[throat[1], 3]
+        conduit_elements = np.delete(conduit_elements, pores_to_remove, 0)
+        op.topotools.trim(net, pores=pores_to_remove)
         
-    conduit_indices = np.unique(throat_conduits)
-    conduit_degree_info = get_conduit_degree(conduit_elements, throat_conduits, outlet_row_index) 
+    if remove_dead_ends:
     
-    conduits_to_remove = conduit_indices[np.where(conduit_degree_info[:, 3] == 1)]
-    while (conduits_to_remove.shape[0] > 0):
-        conduit_elements_to_remove = []
-        throats_to_remove = []
-        for conduit_to_remove in conduits_to_remove:
-            conduit_elements_to_remove.append(np.where(conduit_elements[:, 3] == conduit_to_remove)[0])
-            throats_to_remove.append(np.where(throat_conduits[:, 0] == conduit_to_remove)[0])
-            throats_to_remove.append(np.where(throat_conduits[:, 1] == conduit_to_remove)[0])
-        conduit_elements_to_remove = np.concatenate(conduit_elements_to_remove)
-        throats_to_remove = np.unique(np.concatenate(throats_to_remove))
+        # Remoce any remaining conduits that are not connected to the inlet or outlet
+        # and are connected to only one other conduit
+    
+        throats_trimmed = net['throat.conns'] # each row of throats_trimmed contain the indices of the start and end conduit elements of a connection
+    
+        # Tabulate the indices of the conduits connected by each throat (based on the
+        # original number of conduits before removing the clusters not connected to the inlet or to the outlet)
+    
+        throat_type = np.zeros(len(throats_trimmed))
+        throat_conduits = np.zeros((len(throats_trimmed), 2)) # each row of throat_conduits will contain the indices of the start and end conduit of a connection
+    
+        for i, throat in enumerate(throats_trimmed):
+            if conduit_elements[throat[0], 3] == conduit_elements[throat[1], 3]:
+                throat_type = 1 # throat inside a conduit
+            else:
+                throat_type = 2 # ICC
+            throat_conduits[i, 0] = conduit_elements[throat[0], 3]
+            throat_conduits[i, 1] = conduit_elements[throat[1], 3]
         
-        for conduit_to_remove in conduits_to_remove:
-            conduit_indices = np.delete(conduit_indices, np.where(conduit_indices == conduit_to_remove))
-            
-        conduit_elements = np.delete(conduit_elements, conduit_elements_to_remove, 0)
-        throat_conduits = np.delete(throat_conduits, throats_to_remove, 0)
-        op.topotools.trim(network=net, pores=conduit_elements_to_remove)
-        
-        conduit_degree_info = get_conduit_degree(conduit_elements, throat_conduits, outlet_row_index)
+        conduit_indices = np.unique(throat_conduits)
+        conduit_degree_info = get_conduit_degree(conduit_elements, throat_conduits, outlet_row_index) 
+    
         conduits_to_remove = conduit_indices[np.where(conduit_degree_info[:, 3] == 1)]
+        while (conduits_to_remove.shape[0] > 0):
+            conduit_elements_to_remove = []
+            throats_to_remove = []
+            for conduit_to_remove in conduits_to_remove:
+                conduit_elements_to_remove.append(np.where(conduit_elements[:, 3] == conduit_to_remove)[0])
+                throats_to_remove.append(np.where(throat_conduits[:, 0] == conduit_to_remove)[0])
+                throats_to_remove.append(np.where(throat_conduits[:, 1] == conduit_to_remove)[0])
+            conduit_elements_to_remove = np.concatenate(conduit_elements_to_remove)
+            throats_to_remove = np.unique(np.concatenate(throats_to_remove))
+        
+            for conduit_to_remove in conduits_to_remove:
+                conduit_indices = np.delete(conduit_indices, np.where(conduit_indices == conduit_to_remove))
+            
+            conduit_elements = np.delete(conduit_elements, conduit_elements_to_remove, 0)
+            throat_conduits = np.delete(throat_conduits, throats_to_remove, 0)
+            op.topotools.trim(network=net, pores=conduit_elements_to_remove)
+        
+            conduit_degree_info = get_conduit_degree(conduit_elements, throat_conduits, outlet_row_index)
+            conduits_to_remove = conduit_indices[np.where(conduit_degree_info[:, 3] == 1)]
         
     return net
         
@@ -764,7 +772,7 @@ def get_conduit_degree(conduit_elements, throat_conduits, outlet_row_index):
             2) the smallest row index among the elements of the conduit
             3) the largest row index among the elements of the conduit
             4) 1 if the conduit does not touch either inlet or outlet and has
-               degree < 0, 0 otherwise
+               degree > 1, 0 otherwise
     """    
     conduit_indices = np.unique(throat_conduits)
     conduit_degree_info = np.zeros((len(conduit_indices), 4))
@@ -801,8 +809,11 @@ def mrad_to_cartesian(coords, conduit_element_length=params.Lce, heartwood_d=par
             row corresponds to cylindrical z
             column corresponds to cylindrical r
             depth (= index of radial plane) corresponds to cylindrical theta
-    conduit_element_length : float
+    conduit_element_length : float, optional
         length of a conduit element (default value from the Mrad et al. article)
+    heartwood_d : float, optional
+        diameter of the heartwood (= part of the tree not included in the xylem network) (in conduit elements)
+        (default value from the Mrad et al. article)
 
     Returns
     -------
@@ -823,10 +834,52 @@ def mrad_to_cartesian(coords, conduit_element_length=params.Lce, heartwood_d=par
     cartesian_coords = conduit_element_length * np.stack((y, x, z), axis=1)
     
     return cartesian_coords
-    
-def get_conduits(ces):
+
+def cartesian_to_mrad(coords, max_depth=params.net_size[2], conduit_element_length=params.Lce, heartwood_d=params.heartwood_d):
     """
-    Given the start and end nodes of inter-conduit throats (= throats between elements of the same conduit, CEs),
+    Inverts the transformation made by mrad_to_cartesian function above.
+    
+    Parameters:
+    -----------
+    coords : np.array
+        n_pores x 3, each column corresponding to one coordinate
+    max_depth : int
+        maximum value of the third dimension coordinate (depth)
+    conduit_element_length : float, optional
+        length of a single conduit element (m) (default from the Mrad et al. article)
+    heartwood_d : float, optional
+        diameter of the heartwood (= part of the tree not included in the xylem network) (in conduit elements)
+        (default value from the Mrad et al. article)
+        
+    Returns:
+    --------
+    mrad_coords : np.array
+        n_pores x 3
+    """
+    coords = coords / conduit_element_length
+    
+    mrad_row = coords[:, 2]
+    
+    r = np.sqrt(coords[:, 1]**2 + coords[:, 0]**2)
+    mrad_col = r - heartwood_d
+    
+    theta_step = (2 * np.pi) / max_depth
+    theta_values = np.arange(0, 2 * np.pi, theta_step)
+    theta = np.arctan(coords[:, 0] / coords[:, 1])
+    mask = np.zeros(len(theta))
+    mask[np.where(coords[:, 1] < 0)] = 1
+    mask[np.where((coords[:, 1] > 0) & (coords[:, 0] < 0))] = 2
+    theta = np.abs(theta + np.pi * mask)
+    mrad_depth = [np.argmin(np.abs(theta_values - theta_value)) for theta_value in theta]
+    
+    mrad_coords = np.stack((mrad_row, mrad_col, mrad_depth), axis=1)
+    mrad_coords = np.round(mrad_coords)
+    
+    return mrad_coords
+
+def get_conduits(cecs):
+    """
+    Given the start and end nodes of intra-conduit throats (= throats between elements of the same conduit, CECs),
     constructs a list of conduits.
 
     Parameters
@@ -844,18 +897,77 @@ def get_conduits(ces):
 
     conduits = []
     conduit_size = 0
-    start_node = ces[0, 0] # start node of the first CE
-    end_node = ces[0, 1] # end node of the first CE
-    for i in range(1, len(ces)):
+    start_node = cecs[0, 0] # start node of the first CE
+    end_node = cecs[0, 1] # end node of the first CE
+    for i in range(1, len(cecs)):
         conduit_size += 1
-        if ces[i, 0] - ces[i - 1, 1] > 0: # start node of the present CE is different from the end node of the previous one = conduit ended
+        if cecs[i, 0] - cecs[i - 1, 1] > 0: # start node of the present CE is different from the end node of the previous one = conduit ended
             conduits.append(np.array([start_node, end_node, conduit_size + 1]))
             conduit_size = 0
-            start_node = ces[i, 0]
-        end_node = ces[i, 1]
+            start_node = cecs[i, 0]
+        end_node = cecs[i, 1]
     conduits.append(np.array([start_node, end_node, conduit_size + 2])) # the last CE is not covered by the loop; its end node ends the last conduit
     conduits = np.asarray(conduits)
     return conduits
+
+def get_conduit_elements(net, use_cylindrical_coords=False, conduit_element_length=params.Lce, 
+                         heartwood_d=params.heartwood_d, cec_indicator=params.cec_indicator):
+    """
+    Constructs the conduit elements array describing a given network.
+
+    Parameters
+    ----------
+    net : openpnm.Network()
+        pores correspond to conduit elements, throats to connections between them
+    use_cylindrical_coords : bln, optional
+        have the net['pore.coords'] been defined by interpreting the Mrad model coordinates as cylindrical ones?
+    conduit_element_length : float, optional
+        length of a single conduit element (m), used only if use_cylindrical_coords == True (default from the Mrad et al. article)
+    heartwood_d : float, optional
+        diameter of the heartwood (= part of the tree not included in the xylem network) (in conduit elements)
+        used only if use_cylindrical_coords == True (default value from the Mrad et al. article)
+    cec_indicator : int, optional 
+        value used to indicate that the type of a throat is CEC
+
+    Returns
+    -------
+    conduit_elements : np.array
+        has one row for each element belonging to a conduit and 5 columns:
+        1) the row index of the element
+        2) the column index of the element
+        3) the radial (depth) index of the element
+        4) the index of the conduit the element belongs to (from 0 to n_conduits)
+        5) the index of the element (from 0 to n_conduit_elements)
+    """
+    pore_coords = net['pore.coords']
+    conns = net['throat.conns']
+    conn_types = net['throat.type']
+    
+    conduit_elements = np.zeros((len(net['pore.coords']), 5))
+    
+    if use_cylindrical_coords:
+        coords = cartesian_to_mrad(pore_coords, max_depth=np.amax(pore_coords[2]), conduit_element_length=conduit_element_length,
+                                   heartwood_d=heartwood_d)
+        conduit_elements[:, 0:3] = coords
+    else:
+        conduit_elements[:, 0:3] = pore_coords
+    
+    if len(conns > 0):
+        cec_mask = conn_types == cec_indicator # cec_mask == 1 if the corresponding throat is a connection between two elements in the same conduit
+        cecs = conns[cec_mask]
+        conduits = get_conduits(cecs) # contains the start and end elements and size of each conduit
+        conduit_indices = np.zeros(np.shape(pore_coords)[0])
+        for i, conduit in enumerate(conduits):
+            conduit_indices[conduit[0] : conduit[1] + 1] = i + 1
+        conduit_indices = conduit_indices.astype(int) # contains the index of the conduit to which each element belongs, indexing starts from 1
+        conduit_elements[:, 3] = conduit_indices
+    else:
+        conduit_elements[:, 3] = np.arange(conduit_elements.shape[0]) # there are no throats so each element is a conduit of its own
+    
+    conduit_elements[:, 4] = np.arange(conduit_elements.shape[0])
+    
+    return conduit_elements
+    
 
 def get_sorted_conduit_diameters(conduits, diameters):
     """

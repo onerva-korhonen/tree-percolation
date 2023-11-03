@@ -11,5 +11,5 @@ Parameters not related to the Mrad et al. article
 network_save_file = '/home/onerva/projects/hidrogat/output/netpoints'
 
 # visualization parameters
-visualize_simulations = True
+visualize_simulations = False
 use_cylindrical_coordinates = True
