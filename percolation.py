@@ -10,23 +10,20 @@ Functions for percolation analysis of the xylem network and related effective co
 import numpy as np
 import networkx as nx
 import openpnm as op
+import scipy.sparse.csgraph as csg
 
 import mrad_model
 import mrad_params as params
 
-# TODO: write functions for removing network nodes in a given order (can be random). The idea would be to do this separately
-# (but in the same order) for the OpenPNM network (and calculate effective conductance after every removal) and a networkx
-# graph (and calculate the largest connected componen size)
+# TODO: fix the handling of the pore diameters: each conduit element should retain the diameter of their original
+# conduit throughout the percolation
 
-# Question: what about pore order? in which order are the openpnm pores and how to refer to them? op.create_adjacency_matrix
-# creates an adjacency matrix that can be transformed into nx.Graph with nx.from_scipy_sparse_array, but how to link the
-# nodes to the op pores to ensure that same pores get removed?
-# for op: op.topotools.trim to remove pores/throats (takes pore/throat indices as input)
+# TODO: write a function for calculating susceptibility
 
 def run_op_percolation(net, conduit_elements_rows, cfg, removal_order='random'):
     """
     Removes pores from an OpenPNM network object in a given (or random) order and calculates the effective conductance
-    after each removal.
+    and largest connected component size after each removal.
 
     Parameters
     ----------
@@ -62,12 +59,15 @@ def run_op_percolation(net, conduit_elements_rows, cfg, removal_order='random'):
     -------
     effective_conductances : np.array
         effective conductance of the network after each removal
+    lcc_size : np.array
+        size of the largest connected component after each removal
     """
     n_pores = net['pore.coords'].shape[0]
     conduit_diameters = cfg.get('conduit_diameters', params.conduit_diameters)
     cec_indicator = cfg.get('cec_indicator', params.cec_indicator)
     
     effective_conductances = np.zeros(n_pores)
+    lcc_size = np.zeros(n_pores)
     if removal_order == 'random':
         removal_order = np.arange(0, n_pores)
         np.random.shuffle(removal_order)
@@ -83,6 +83,30 @@ def run_op_percolation(net, conduit_elements_rows, cfg, removal_order='random'):
             sim_net = mrad_model.clean_network(sim_net, conduit_elements, cfg['net_size'][0] - 1, remove_dead_ends=False)
             sim_net = mrad_model.prepare_simulation_network(sim_net, cfg)
             effective_conductances[i] = mrad_model.simulate_water_flow(sim_net, cfg, visualize=False)
+            lcc_size[i] = get_lcc_size(sim_net)
         except:
             effective_conductances[i] = 0
-    return effective_conductances
+            lcc_size[i] = 0
+        
+    return effective_conductances, lcc_size
+
+def get_lcc_size(net):
+    """
+    Calculates the size of the largest connected component of a network.
+
+    Parameters
+    ----------
+    net : openpnm.Network()
+        pores correspond to conduit elements, throats to connections between them
+
+    Returns
+    -------
+    lcc_size : int
+        size of the largest connected component
+    """
+    # TODO: check what this returns if there are no nodes in the network; should return 0
+    A = net.create_adjacency_matrix(fmt='coo', triu=True) # the rows/columns of A correspond to conduit elements and values indicate the presence/absence of connections
+    component_labels = csg.connected_components(A, directed=False)[1]
+    component_sizes = [len(np.where(component_labels == component_label)[0]) for component_label in np.unique(component_labels)]
+    lcc_size = np.amax(component_sizes)
+    return lcc_size

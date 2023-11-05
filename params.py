@@ -13,3 +13,7 @@ network_save_file = '/home/onerva/projects/hidrogat/output/netpoints'
 # visualization parameters
 visualize_simulations = False
 use_cylindrical_coordinates = True
+percolation_outcome_colors = ['r', 'b']
+percolation_outcome_alphas = [1, 0.5]
+percolation_outcome_labels = ['effective conductance', 'lcc size']
+percolation_outcome_ylabels = ['Effective conductance', 'Largest connected component size']

@@ -13,7 +13,6 @@ For details of the original model, see:
 - Assaad Mrad, Daniel Johnson, David Love, Jean-Christophe Domec. The roles of conduit redundancy and connectivity in xylem hydraulic functions. New Phytologist, Wiley, 2021, pp.1-12. https://doi.org/10.1111/nph.17429
 - https://github.com/mradassaad/Xylem_Network_Matlab
 """
-
 import numpy as np
 import pandas as pd
 import openpnm as op

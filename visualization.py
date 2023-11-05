@@ -92,7 +92,7 @@ def make_colored_pore_scatter(net, pore_values, title='', cmap=plt.cm.jet):
     fig.colorbar(p, ax=ax)
     plt.title(title)
     
-def plot_percolation_curve(total_n_nodes, effective_conductance, lcc=[], color=[], label=[]):
+def plot_percolation_curve(total_n_nodes, values, colors=[], labels=[], alphas=[], y_labels=[]):
     """
     Plots the percolation analysis outcomes (largest connected component size and effective conductance) as a function
     of the fraction of nodes removed.
@@ -103,29 +103,46 @@ def plot_percolation_curve(total_n_nodes, effective_conductance, lcc=[], color=[
     ----------
     total_n_nodes : int
         number of nodes in the network subject to percolation analysis (used for constructing x axis)
-    effective conductance : np.array
-        effective conductance values in the full network and after each ode removal. 
-        if len(effective_conductance) < total_n_nodes + 1, the assumption is that only total_n_nodes + 1 - len(effective_conductance)
+    values : np.array
+        each row corresponds to a set of percolation outcome values to be plotted against the fraction of
+        removed pores. if values.shape[1] < total_n_nodes + 1, the assumption is that only total_n_nodes + 1 - len(effective_conductance)
         nodes have been removed
-    color : str
-        DESCRIPTION.
-    label : str
-        DESCRIPTION.
+    colors : list of strs, optional
+        colors used for plotting. len(colors) should equal to values.shape[0]
+    labels : list of strs, optional
+        labels of the curves plotted. len(labels) should equal to values.shape[0]
+    alphas : iterable of floats
+        transparency values of the plotted lines. len(alphas) should equal to values.shape[0]
+    y_labels : list of strs, optional
+        labels of the first and secondary y axis. only used if values.shape[0] == 2, in which case len(y_labels) should be 2
 
     Returns
     -------
     None.
 
     """
-    assert len(effective_conductance) > 1, 'only the effective conductance of the full network given for plotting percolation curves'
-    if len(effective_conductance) < total_n_nodes - 1:
+    #import pdb; pdb.set_trace()
+    n_percolation_steps = values.shape[1]
+    assert n_percolation_steps > 1, 'only the values calculated for the full network given for plotting percolation curves'
+    if n_percolation_steps < total_n_nodes - 1:
         print('Warning: number of effective conductance values from percolation analysis does not match the number of nodes')
-        x = np.arange(0, len(effective_conductance) / 100, (len(effective_conductance) / 100) / total_n_nodes)
+        x = np.arange(0, n_percolation_steps / 100, (n_percolation_steps / 100) / total_n_nodes)
     else:
         x = np.arange(0, 100, 100 / total_n_nodes)
     
     fig = plt.figure()
     ax = fig.add_subplot(111)
-    ax.plot(x, effective_conductance, color=color, label=label)
+    if values.shape[0] == 2:
+        ax2 = ax.twinx()
+        ax.plot(x, values[0,:], color=colors[0], label=labels[0], alpha=alphas[0])
+        ax2.plot(x, values[1,:], color=colors[1], label=labels[1], alpha=alphas[1])
+        ax.set_ylabel(y_labels[0])
+        ax2.set_ylabel(y_labels[1])
+        ax2.legend()
+    else:    
+        for value, color, label, alpha in zip(values, colors, labels, alphas):
+            ax.plot(x, value, color=color, label=label, alpha=alpha)
+            ax.set_ylabel('Percolation outcome')
+    
     ax.set_xlabel('Fraction of nodes removed')
-    ax.set_ylabel('Effective conductance')
+    ax.legend()
