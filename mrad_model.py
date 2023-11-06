@@ -267,8 +267,9 @@ def prepare_simulation_network(net, cfg):
             Dc_cv: float, coefficient of variation of conduit diameter
             fc: float, average contact fraction between two conduits
             fpf: float, average pit field fraction between two conduits
-            conduit_diameters: np.array of floats, diameters of the conduits, or 'lognormal'
-            to draw diameters from a lognormal distribution defined by Dc and Dc_cv
+            conduit_diameters: np.array of floats, diameters of the conduits OR
+                               'lognormal' to draw diameters from a lognormal distribution defined by Dc and Dc_cv OR
+                               'inherit_from_net' to use pore diameters of the net object
             cec_indicator: int, value used to indicate that the type of a throat is CE
             tf: float, microfibril strand thickness (m)
             icc_length: float, length of an ICC throat (m)
@@ -321,21 +322,9 @@ def prepare_simulation_network(net, cfg):
     for i, conduit in enumerate(conduits):
         mask = (iccs[:, :] >= conduit[0]) & (iccs[:, :] < conduit[1] + 1)
         conduit_icc_count[i] = np.sum(mask)
-        
-    if conduit_diameters == 'lognormal':
-        Dc_std = Dc_cv*Dc
-        Dc_m = np.log(Dc**2 / np.sqrt(Dc_std**2 + Dc**2))
-        Dc_s = np.sqrt(np.log(Dc_std**2 / (Dc**2) + 1))
-        Dcs = np.random.lognormal(Dc_m, Dc_s, len(conduits)) # diameters of conduits drawn from a lognormal distribution
-        diameters_per_conduit = get_sorted_conduit_diameters(conduits, Dcs)
-    else:
-        diameters_per_conduit = conduit_diameters
-        
+
+    diameters_per_conduit, pore_diameters = get_conduit_diameters(net, conduit_diameters, conduits)     
     conduit_areas = (conduits[:, 2] - 1) * Lce * np.pi * diameters_per_conduit # total surface (side) areas of conduits; conduits[:, 2] is the number of elements in a conduit so the conduit length is conduits[:, 2] - 1
-    
-    pore_diameters = np.zeros(np.shape(pore_coords)[0])
-    for i, conduit_index in enumerate(conduit_indices):
-        pore_diameters[i] = diameters_per_conduit[int(conduit_index) - 1] # diameters of the pores (= surfaces between conduit elements), defined as the diameters of the conduits the pores belong to
     
     #----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
     # Generating an openpnm network for the simulations
@@ -967,6 +956,50 @@ def get_conduit_elements(net, use_cylindrical_coords=False, conduit_element_leng
     
     return conduit_elements
     
+def get_conduit_diameters(net, diameter_type, conduits, Dc_cv=params.Dc_cv, Dc=params.Dc,):
+    """
+    Returns a list of diameters per conduit and per conduit element (pore)
+
+    Parameters
+    ----------
+    net : openpnm.Network()
+        pores correspond to conduit elements and throats to connections between them
+    diameter_type : str or iterable
+        'lognormal' to draw diameters from a lognormal distribution defined by Dc_cv and Dc OR
+        'inherit_from_network' to use pore diameters read from net OR
+        an iterable of conduit diameter values (len(diameter_type) must equal to len(conduits))
+    conduits : np.array
+        contains one row per conduits, columns containing first and last elements and the size of the conduit
+    Dc_cv : float, optional
+        average conduit diameter (m), default value is the one used in the Mrad article 
+    Dc : float, optional
+        coefficient of variation of conduit diameter
+
+    Returns
+    -------
+    diameters_per_conduit : np.array
+        diameter of each conduit
+    pore_diameters : np.array
+        diameter of each pore; all pores of a conduit have the same diameter
+    """
+    if diameter_type == 'inherit_from_net': # pore diameters are read from the network
+        pore_diameters = net['pore.diameter']
+        diameters_per_conduit = [pore_diameters[conduit[0]] for conduit in conduits] # all pores of a conduit have same diameter; the diameter of first pore is used for defining conduit diameter
+    elif diameter_type == 'lognormal':
+        Dc_std = Dc_cv*Dc
+        Dc_m = np.log(Dc**2 / np.sqrt(Dc_std**2 + Dc**2))
+        Dc_s = np.sqrt(np.log(Dc_std**2 / (Dc**2) + 1))
+        Dcs = np.random.lognormal(Dc_m, Dc_s, len(conduits)) # diameters of conduits drawn from a lognormal distribution
+        diameters_per_conduit = get_sorted_conduit_diameters(conduits, Dcs)
+    else:
+        diameters_per_conduit = diameter_type
+    
+    if not diameter_type == 'inherit_from_net':
+        pore_diameters = np.zeros(np.shape(net['pore.coords'])[0])
+        for conduit, diameter in zip(conduits, diameters_per_conduit):
+            pore_diameters[conduit[0] : conduit[1] + 1] = diameter # diameters of the pores (= surfaces between conduit elements), defined as the diameters of the conduits the pores belong to
+    
+    return diameters_per_conduit, pore_diameters
 
 def get_sorted_conduit_diameters(conduits, diameters):
     """

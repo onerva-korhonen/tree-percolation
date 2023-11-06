@@ -18,7 +18,7 @@ import numpy as np
 
 cfg = {}
 cfg['net_size'] = mrad_params.net_size
-cfg['conduit_diameters'] = 'lognormal'
+cfg['conduit_diameters'] = 'lognormal'#mrad_params.conduit_diameters
 
 conduit_elements, conns = mrad_model.create_mrad_network(cfg) # if no params are given, the function uses the default params of the Mrad model
 net = mrad_model.mrad_to_openpnm(conduit_elements, conns)
@@ -35,6 +35,7 @@ effective_conductance = mrad_model.simulate_water_flow(sim_net, cfg, visualize=p
 lcc_size = percolation.get_lcc_size(sim_net)
 
 cfg['use_cylindrical_coords'] = False
+net_cleaned['pore.diameter'] = sim_net['pore.diameter']
 effective_conductances, lcc_sizes = percolation.run_op_percolation(net_cleaned, conduit_elements, cfg, removal_order='random')
 np.append(np.array([effective_conductance]), effective_conductances)
 np.append(np.array([lcc_size]), lcc_sizes)

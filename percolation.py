@@ -15,9 +15,6 @@ import scipy.sparse.csgraph as csg
 import mrad_model
 import mrad_params as params
 
-# TODO: fix the handling of the pore diameters: each conduit element should retain the diameter of their original
-# conduit throughout the percolation
-
 # TODO: write a function for calculating susceptibility
 
 def run_op_percolation(net, conduit_elements_rows, cfg, removal_order='random'):
@@ -62,21 +59,21 @@ def run_op_percolation(net, conduit_elements_rows, cfg, removal_order='random'):
     lcc_size : np.array
         size of the largest connected component after each removal
     """
+    #import pdb; pdb.set_trace()
     n_pores = net['pore.coords'].shape[0]
-    conduit_diameters = cfg.get('conduit_diameters', params.conduit_diameters)
     cec_indicator = cfg.get('cec_indicator', params.cec_indicator)
     
     effective_conductances = np.zeros(n_pores)
     lcc_size = np.zeros(n_pores)
+    cfg['conduit_diameters'] = 'inherit_from_net'
     if removal_order == 'random':
         removal_order = np.arange(0, n_pores)
         np.random.shuffle(removal_order)
     for i, _ in enumerate(removal_order):
-        if not isinstance(conduit_diameters, str):
-            conduit_diameters_temp = np.copy(conduit_diameters)
-            np.delete(conduit_diameters_temp, removal_order[:i + 1])
         sim_net = op.network.Network(conns=net['throat.conns'], coords=net['pore.coords'])
         sim_net['throat.type'] = net['throat.type']
+        if 'pore.diameter' in net.keys():
+            sim_net['pore.diameter'] = net['pore.diameter']
         try:
             op.topotools.trim(sim_net, pores=removal_order[:i + 1])
             conduit_elements = mrad_model.get_conduit_elements(sim_net, cec_indicator=cec_indicator)
