@@ -36,11 +36,15 @@ lcc_size = percolation.get_lcc_size(sim_net)
 
 cfg['use_cylindrical_coords'] = False
 net_cleaned['pore.diameter'] = sim_net['pore.diameter']
-effective_conductances, lcc_sizes = percolation.run_percolation(net_cleaned, cfg, percolation_type='bond', removal_order='random')
+effective_conductances, lcc_sizes, functional_lcc_sizes = percolation.run_percolation(net_cleaned, cfg, percolation_type='bond', removal_order='random')
 np.append(np.array([effective_conductance]), effective_conductances)
 np.append(np.array([lcc_size]), lcc_sizes)
-percolation_outcome_values = np.concatenate((np.expand_dims(effective_conductances, axis=0), np.expand_dims(lcc_sizes, axis=0)), axis=0)
+np.append(np.array([lcc_size]), functional_lcc_sizes)
+percolation_outcome_values = np.concatenate((np.expand_dims(effective_conductances, axis=0), 
+                                             np.expand_dims(lcc_sizes, axis=0), np.expand_dims(functional_lcc_sizes, axis=0)),
+                                             axis=0)
 visualization.plot_percolation_curve(net_cleaned['throat.conns'].shape[0], percolation_outcome_values,
                                      colors=params.percolation_outcome_colors, labels=params.percolation_outcome_labels, 
-                                     alphas=params.percolation_outcome_alphas, y_labels=params.percolation_outcome_ylabels)
+                                     alphas=params.percolation_outcome_alphas, y_labels=params.percolation_outcome_ylabels,
+                                     axindex=params.percolation_outcome_axindex, save_path=params.percolation_plot_save_path)
 

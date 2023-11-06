@@ -60,7 +60,10 @@ def run_percolation(net, cfg, percolation_type='bond', removal_order='random'):
         effective conductance of the network after each removal
     lcc_size : np.array
         size of the largest connected component after each removal
+    functional_lcc_size : np.array
+        the size of the largest functional component (i.e. component connected to both inlet and outlet) after each removal
     """
+    #import pdb; pdb.set_trace()
     assert percolation_type in ['bond', 'site'], 'percolation type must be bond (removal of throats) or site (removal of pores)'
     if percolation_type == 'bond':
         n_removals = net['throat.conns'].shape[0]
@@ -70,6 +73,7 @@ def run_percolation(net, cfg, percolation_type='bond', removal_order='random'):
     
     effective_conductances = np.zeros(n_removals)
     lcc_size = np.zeros(n_removals)
+    functional_lcc_size = np.zeros(n_removals)
     cfg['conduit_diameters'] = 'inherit_from_net'
     if removal_order == 'random':
         removal_order = np.arange(0, n_removals)
@@ -79,21 +83,27 @@ def run_percolation(net, cfg, percolation_type='bond', removal_order='random'):
         sim_net['throat.type'] = net['throat.type']
         if 'pore.diameter' in net.keys():
             sim_net['pore.diameter'] = net['pore.diameter']
-        try:
-            if percolation_type == 'bond':
-                op.topotools.trim(sim_net, throats=removal_order[:i + 1])
-            elif percolation_type == 'site':
+        if percolation_type == 'bond':
+            op.topotools.trim(sim_net, throats=removal_order[:i + 1])
+        elif percolation_type == 'site':
+            try:
                 op.topotools.trim(sim_net, pores=removal_order[:i + 1])
+            except Exception as e:
+                if str(e) == 'Cannot delete ALL pores':
+                    continue # this would remove the last node from the network; at this point, value of all outputs should be 0
+        lcc_size[i] = get_lcc_size(sim_net)
+        try:
             conduit_elements = mrad_model.get_conduit_elements(sim_net, cec_indicator=cec_indicator)
             sim_net = mrad_model.clean_network(sim_net, conduit_elements, cfg['net_size'][0] - 1, remove_dead_ends=False)
             sim_net = mrad_model.prepare_simulation_network(sim_net, cfg)
             effective_conductances[i] = mrad_model.simulate_water_flow(sim_net, cfg, visualize=False)
-            lcc_size[i] = get_lcc_size(sim_net)
-        except:
-            effective_conductances[i] = 0
-            lcc_size[i] = 0
+            functional_lcc_size[i] = get_lcc_size(sim_net)
+        except Exception as e:
+            if str(e) == 'Cannot delete ALL pores': # this is because all remaining nodes belong to non-functional components
+                effective_conductances[i] = 0  
+                functional_lcc_size[i] = 0
         
-    return effective_conductances, lcc_size
+    return effective_conductances, lcc_size, functional_lcc_size
 
 def get_lcc_size(net):
     """
@@ -110,7 +120,14 @@ def get_lcc_size(net):
         size of the largest connected component
     """
     # TODO: check what this returns if there are no nodes in the network; should return 0
-    A = net.create_adjacency_matrix(fmt='coo', triu=True) # the rows/columns of A correspond to conduit elements and values indicate the presence/absence of connections
+    try:
+        A = net.create_adjacency_matrix(fmt='coo', triu=True) # the rows/columns of A correspond to conduit elements and values indicate the presence/absence of connections
+    except KeyError as e:
+        if str(e) == "'throat.conns'":
+            if len(net['throat.all']) == 0:
+                A = np.zeros((len(net['pore.coords']), len(net['pore.coords'])))
+            else:
+                raise
     component_labels = csg.connected_components(A, directed=False)[1]
     component_sizes = [len(np.where(component_labels == component_label)[0]) for component_label in np.unique(component_labels)]
     lcc_size = np.amax(component_sizes)

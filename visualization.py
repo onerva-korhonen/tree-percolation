@@ -92,7 +92,7 @@ def make_colored_pore_scatter(net, pore_values, title='', cmap=plt.cm.jet):
     fig.colorbar(p, ax=ax)
     plt.title(title)
     
-def plot_percolation_curve(total_n_nodes, values, colors=[], labels=[], alphas=[], y_labels=[]):
+def plot_percolation_curve(total_n_nodes, values, colors=[], labels=[], alphas=[], axindex=[], y_labels=[], save_path=''):
     """
     Plots the percolation analysis outcomes (largest connected component size and effective conductance) as a function
     of the fraction of nodes removed.
@@ -111,10 +111,15 @@ def plot_percolation_curve(total_n_nodes, values, colors=[], labels=[], alphas=[
         colors used for plotting. len(colors) should equal to values.shape[0]
     labels : list of strs, optional
         labels of the curves plotted. len(labels) should equal to values.shape[0]
-    alphas : iterable of floats
+    alphas : iterable of floats, optional
         transparency values of the plotted lines. len(alphas) should equal to values.shape[0]
+    axindex : iterable of ints, optional
+        index of the y axis (first or secondary), on which the corresponding row of values should be drawn. len(axindex) should equal to values.shape[0]
     y_labels : list of strs, optional
-        labels of the first and secondary y axis. only used if values.shape[0] == 2, in which case len(y_labels) should be 2
+        labels of the first and secondary y axis. only used if the secondary y axis is used, in which case len(y_labels) should be 2
+    save_path : str, optional
+        if len(save_path) > 0, the figure will be saved as .pdf to the given path
+        
 
     Returns
     -------
@@ -132,17 +137,25 @@ def plot_percolation_curve(total_n_nodes, values, colors=[], labels=[], alphas=[
     
     fig = plt.figure()
     ax = fig.add_subplot(111)
-    if values.shape[0] == 2:
+    
+    if len(np.unique(axindex)) > 1: #secondary y axis will be used 
         ax2 = ax.twinx()
-        ax.plot(x, values[0,:], color=colors[0], label=labels[0], alpha=alphas[0])
-        ax2.plot(x, values[1,:], color=colors[1], label=labels[1], alpha=alphas[1])
+        axis = [ax, ax2]
+        for value, color, label, alpha, axind in zip(values, colors, labels, alphas, axindex):
+            axis[axind].plot(x, value, color=color, label=label, alpha=alpha)
         ax.set_ylabel(y_labels[0])
         ax2.set_ylabel(y_labels[1])
-        ax2.legend()
+        
+        lines, labels = ax.get_legend_handles_labels()
+        lines2, labels2 = ax2.get_legend_handles_labels()
+        ax2.legend(lines + lines2, labels + labels2, loc=0)
     else:    
         for value, color, label, alpha in zip(values, colors, labels, alphas):
             ax.plot(x, value, color=color, label=label, alpha=alpha)
             ax.set_ylabel('Percolation outcome')
+            ax.legend()
     
-    ax.set_xlabel('Fraction of nodes removed')
-    ax.legend()
+    ax.set_xlabel('Fraction of edges/nodes removed')
+
+    if len(save_path) > 0:
+        plt.savefig(save_path, format='pdf',bbox_inches='tight')
