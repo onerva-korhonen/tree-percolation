@@ -10,6 +10,7 @@ Parameters not related to the Mrad et al. article
 # paths for saving
 network_save_file = '/home/onerva/projects/hidrogat/output/netpoints'
 percolation_plot_save_path = '/home/onerva/projects/hidrogat/output/percolation_3D_site.pdf'
+nonfunctional_componen_size_save_path = '/home/onerva/projects/hidrogat/output/percolation_3D_site_nonfunc_size.pdf'
 
 # visualization parameters
 visualize_simulations = False
@@ -19,3 +20,4 @@ percolation_outcome_alphas = [1, 1, 0.5]
 percolation_outcome_labels = ['effective conductance', 'lcc size', 'func lcc size']
 percolation_outcome_axindex = [0, 1, 1]
 percolation_outcome_ylabels = ['Effective conductance', 'Component size']
+

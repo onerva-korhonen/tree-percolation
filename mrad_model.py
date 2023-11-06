@@ -607,6 +607,9 @@ def clean_network(net, conduit_elements, outlet_row_index, remove_dead_ends=True
     -------
     net : openpnm.Network()
         the network object after cleaning
+    removed_components : list of lists
+        components removed because they are not connected to the inlet or to the outlet; each element corresponds to a 
+        removed component and contains the indices of the pores in the removed component
     """    
     A = net.create_adjacency_matrix(fmt='coo', triu=True) # the rows/columns of A correspond to conduit elements and values indicate the presence/absence of connections
     component_labels = csg.connected_components(A, directed=False)[1]
@@ -628,6 +631,7 @@ def clean_network(net, conduit_elements, outlet_row_index, remove_dead_ends=True
         if (in_btm == 0) or (in_top == 0):
             pores_to_remove.append(component)
     if len(pores_to_remove) > 0:
+        removed_components = pores_to_remove
         pores_to_remove = np.concatenate(pores_to_remove)
     
         conduit_elements = np.delete(conduit_elements, pores_to_remove, 0)
@@ -678,7 +682,7 @@ def clean_network(net, conduit_elements, outlet_row_index, remove_dead_ends=True
             conduit_degree_info = get_conduit_degree(conduit_elements, throat_conduits, outlet_row_index)
             conduits_to_remove = conduit_indices[np.where(conduit_degree_info[:, 3] == 1)]
         
-    return net
+    return net, removed_components
         
 def save_network(net, save_path):
     """

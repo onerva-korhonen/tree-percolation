@@ -92,7 +92,7 @@ def make_colored_pore_scatter(net, pore_values, title='', cmap=plt.cm.jet):
     fig.colorbar(p, ax=ax)
     plt.title(title)
     
-def plot_percolation_curve(total_n_nodes, values, colors=[], labels=[], alphas=[], axindex=[], y_labels=[], save_path=''):
+def plot_percolation_curve(total_n_nodes, values, colors, labels, alphas, axindex=[], y_labels=[], save_path=''):
     """
     Plots the percolation analysis outcomes (largest connected component size and effective conductance) as a function
     of the fraction of nodes removed.
@@ -107,11 +107,11 @@ def plot_percolation_curve(total_n_nodes, values, colors=[], labels=[], alphas=[
         each row corresponds to a set of percolation outcome values to be plotted against the fraction of
         removed pores. if values.shape[1] < total_n_nodes + 1, the assumption is that only total_n_nodes + 1 - len(effective_conductance)
         nodes have been removed
-    colors : list of strs, optional
+    colors : list of strs
         colors used for plotting. len(colors) should equal to values.shape[0]
-    labels : list of strs, optional
+    labels : list of strs
         labels of the curves plotted. len(labels) should equal to values.shape[0]
-    alphas : iterable of floats, optional
+    alphas : iterable of floats
         transparency values of the plotted lines. len(alphas) should equal to values.shape[0]
     axindex : iterable of ints, optional
         index of the y axis (first or secondary), on which the corresponding row of values should be drawn. len(axindex) should equal to values.shape[0]
