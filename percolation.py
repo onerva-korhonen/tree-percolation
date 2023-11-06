@@ -17,9 +17,9 @@ import mrad_params as params
 
 # TODO: write a function for calculating susceptibility
 
-def run_op_percolation(net, conduit_elements_rows, cfg, removal_order='random'):
+def run_percolation(net, cfg, percolation_type='bond', removal_order='random'):
     """
-    Removes pores from an OpenPNM network object in a given (or random) order and calculates the effective conductance
+    Removes throats (bond percoltion) or pores (site percolation) from an OpenPNM network object in a given (or random) order and calculates the effective conductance
     and largest connected component size after each removal.
 
     Parameters
@@ -48,6 +48,8 @@ def run_op_percolation(net, conduit_elements_rows, cfg, removal_order='random'):
         Dp: float, average pit membrane pore diameter (m)
         Tm: float, average thickness of membranes (m)
         cec_indicator: int, value used to indicate that the type of a throat is CE
+    percolation type : str, optional
+        type of the percolation, 'bond' to remove throats or 'site' to remove pores (default: 'bond')
     removal_order : iterable or str, optional (default='random')
         indices of pores to be removed in the order of removal. for performing full percolation analysis, len(removal_order)
         should match the number of pores. string 'random' can be given to indicate removal in random order.
@@ -59,15 +61,18 @@ def run_op_percolation(net, conduit_elements_rows, cfg, removal_order='random'):
     lcc_size : np.array
         size of the largest connected component after each removal
     """
-    #import pdb; pdb.set_trace()
-    n_pores = net['pore.coords'].shape[0]
+    assert percolation_type in ['bond', 'site'], 'percolation type must be bond (removal of throats) or site (removal of pores)'
+    if percolation_type == 'bond':
+        n_removals = net['throat.conns'].shape[0]
+    elif percolation_type == 'site':
+        n_removals = net['pore.coords'].shape[0]
     cec_indicator = cfg.get('cec_indicator', params.cec_indicator)
     
-    effective_conductances = np.zeros(n_pores)
-    lcc_size = np.zeros(n_pores)
+    effective_conductances = np.zeros(n_removals)
+    lcc_size = np.zeros(n_removals)
     cfg['conduit_diameters'] = 'inherit_from_net'
     if removal_order == 'random':
-        removal_order = np.arange(0, n_pores)
+        removal_order = np.arange(0, n_removals)
         np.random.shuffle(removal_order)
     for i, _ in enumerate(removal_order):
         sim_net = op.network.Network(conns=net['throat.conns'], coords=net['pore.coords'])
@@ -75,7 +80,10 @@ def run_op_percolation(net, conduit_elements_rows, cfg, removal_order='random'):
         if 'pore.diameter' in net.keys():
             sim_net['pore.diameter'] = net['pore.diameter']
         try:
-            op.topotools.trim(sim_net, pores=removal_order[:i + 1])
+            if percolation_type == 'bond':
+                op.topotools.trim(sim_net, throats=removal_order[:i + 1])
+            elif percolation_type == 'site':
+                op.topotools.trim(sim_net, pores=removal_order[:i + 1])
             conduit_elements = mrad_model.get_conduit_elements(sim_net, cec_indicator=cec_indicator)
             sim_net = mrad_model.clean_network(sim_net, conduit_elements, cfg['net_size'][0] - 1, remove_dead_ends=False)
             sim_net = mrad_model.prepare_simulation_network(sim_net, cfg)
