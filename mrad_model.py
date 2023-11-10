@@ -630,6 +630,8 @@ def clean_network(net, conduit_elements, outlet_row_index, remove_dead_ends=True
     
         conduit_elements = np.delete(conduit_elements, pores_to_remove, 0)
         op.topotools.trim(net, pores=pores_to_remove)
+    else:
+        removed_components = []
         
     if remove_dead_ends:
     

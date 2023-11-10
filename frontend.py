@@ -37,7 +37,7 @@ n_inlet, n_outlet = percolation.get_n_inlets(sim_net, cfg['net_size'][0] - 1, us
 
 cfg['use_cylindrical_coords'] = False
 net_cleaned['pore.diameter'] = sim_net['pore.diameter']
-effective_conductances, lcc_sizes, functional_lcc_sizes, nonfunctional_component_size, susceptibilities, functional_susceptibilities, n_inlets, n_outlets = percolation.run_percolation(net_cleaned, cfg, percolation_type='bond', removal_order='random')
+effective_conductances, lcc_sizes, functional_lcc_sizes, nonfunctional_component_size, susceptibilities, functional_susceptibilities, n_inlets, n_outlets = percolation.run_percolation(net_cleaned, cfg, percolation_type='bond', removal_order='random', break_nonfunctional_components=False)
 np.append(np.array([effective_conductance]), effective_conductances)
 np.append(np.array([lcc_size]), lcc_sizes)
 np.append(np.array([lcc_size]), functional_lcc_sizes)

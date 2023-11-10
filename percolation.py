@@ -15,10 +15,81 @@ import scipy.sparse.csgraph as csg
 import mrad_model
 import mrad_params as params
 
-def run_percolation(net, cfg, percolation_type='bond', removal_order='random'):
+def run_percolation(net, cfg, percolation_type='bond', removal_order='random', break_nonfunctional_components=True):
     """
     Removes throats (bond percolation) or pores (site percolation) from an OpenPNM network object in a given (or random) order and calculates 
-    a number of measures, including effective conductance and largest component size, after removal (see below for details).
+    a number of measures, including effective conductance and largest component size, after removal (see below for details). If order is given,
+    percolation is "graph-theoretical", i.e. nonfunctional components (i.e. components not connected to inlet or outlet) can
+    be further broken. Percolation with random order can be also "physiological", i.e. nonfunctional components are not
+    broken further.
+
+    Parameters
+    ----------
+    net : openpnm.Network()
+        pores correspond to conduit elements, throats to connections between the elements
+    cfg : dict
+        contains:
+        net_size: np.array, size of the network to be created (n_rows x n_columns x n_depths)
+        use_cylindrical_coords: bln, should Mrad model coordinates be interpreted as cylindrical ones in visualizations?
+        Lce: float, length of a conduit element
+        Dc: float, average conduit diameter (m)
+        Dc_cv: float, coefficient of variation of conduit diameter
+        fc: float, average contact fraction between two conduits
+        fpf: float, average pit field fraction between two conduits
+        conduit_diameters: np.array of floats, diameters of the conduits, or 'lognormal'
+        to draw diameters from a lognormal distribution defined by Dc and Dc_cv
+        cec_indicator: int, value used to indicate that the type of a throat is CE
+        tf: float, microfibril strand thickness (m)
+        icc_length: float, length of an ICC throat (m)
+        water_pore_viscosity: float, value of the water viscosity in pores
+        water_throat_viscosity: float, value of the water viscosity in throats
+        water_pore_diffusivity: float, value of the water diffusivity in pores
+        inlet_pressure: float, pressure at the inlet conduit elements (Pa)
+        outlet_pressure: float, pressure at the outlet conduit elements (Pa) 
+        Dp: float, average pit membrane pore diameter (m)
+        Tm: float, average thickness of membranes (m)
+        cec_indicator: int, value used to indicate that the type of a throat is CE
+        conduit_element_length : float, length of a single conduit element (m), used only if use_cylindrical_coords == True (default from the Mrad et al. article)
+        heartwood_d : float, diameter of the heartwood (= part of the tree not included in the xylem network) (in conduit elements) used only if use_cylindrical_coords == True (default value from the Mrad et al. article)
+    percolation type : str, optional
+        type of the percolation, 'bond' to remove throats or 'site' to remove pores (default: 'bond')
+    removal_order : iterable or str, optional (default='random')
+        indices of pores to be removed in the order of removal. for performing full percolation analysis, len(removal_order)
+        should match the number of pores. string 'random' can be given to indicate removal in random order.
+    break_nonfunctional_components : bln, optional
+        can links/nodes in components that are nonfunctional (i.e. not connected to inlet or outlet) be removed (default: True)
+
+    Returns
+    -------
+    effective_conductances : np.array
+        effective conductance of the network after each removal
+    lcc_size : np.array
+        size of the largest connected component after each removal
+    functional_lcc_size : np.array
+        the size of the largest functional component (i.e. component connected to both inlet and outlet) after each removal
+    nonfunctional_component_size : np.array
+        total size (i.e. sum of sizes) of non-functional components (i.e. components not connected to either inlet, outlet, or both) after each removal
+    susceptibility : np.array
+        susceptibility (i.e. the second-largest component size) after each removal
+    functional_susceptibility : np.array
+        functional susceptibility (i.e. the size of the second-largest component connected to inlet and outlet) after each removal
+    n_inlets : np.array
+        the mean number of inlet elements per functional component
+    n_outlets : np.array
+        the mean number of outlet elements per functional component
+    """
+    assert percolation_type in ['bond', 'site'], 'percolation type must be bond (removal of throats) or site (removal of pores)'
+    if break_nonfunctional_components:
+        effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets = run_graph_theoretical_percolation(net, cfg, percolation_type, removal_order)
+    else:
+        effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets = run_physiological_percolation(net, cfg, percolation_type)
+    
+    return effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets
+
+def run_graph_theoretical_percolation(net, cfg, percolation_type='bond', removal_order='random'):
+    """
+    Removes links (bond percolation) or nodes (site percolation) from an openpnm network object in a given (or random)
+    order. 
 
     Parameters
     ----------
@@ -73,7 +144,6 @@ def run_percolation(net, cfg, percolation_type='bond', removal_order='random'):
     n_outlets : np.array
         the mean number of outlet elements per functional component
     """
-    assert percolation_type in ['bond', 'site'], 'percolation type must be bond (removal of throats) or site (removal of pores)'
     if percolation_type == 'bond':
         n_removals = net['throat.conns'].shape[0]
     elif percolation_type == 'site':
@@ -124,10 +194,135 @@ def run_percolation(net, cfg, percolation_type='bond', removal_order='random'):
         except Exception as e:
             if str(e) == 'Cannot delete ALL pores': # this is because all remaining nodes belong to non-functional components
                 nonfunctional_component_size[i] = len(net['pore.coords'])
-            if (str(e) == "'throat.conns'") and (len(sim_net['throat.all']) == 0): # this is because all links have been removed from the network by op.topotools.trim
+            elif (str(e) == "'throat.conns'") and (len(sim_net['throat.all']) == 0): # this is because all links have been removed from the network by op.topotools.trim
                 nonfunctional_component_size[i] = len(net['pore.coords'])
+            else:
+                raise
     
     return effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets
+
+def run_physiological_percolation(net, cfg, percolation_type):
+    """
+    Removes links (bond percolation) or nodes (site percolation) of an openpnm network object in random order till there
+    are no links (nodes) left. Components are removed from the network as soon as they become nonfunctional 
+    (i.e. are not connected to inlet or outlet) are removed
+    
+
+    Parameters
+    ----------
+    net : openpnm.Network()
+        pores correspond to conduit elements, throats to connections between the elements
+    cfg : dict
+        contains:
+        net_size: np.array, size of the network to be created (n_rows x n_columns x n_depths)
+        use_cylindrical_coords: bln, should Mrad model coordinates be interpreted as cylindrical ones in visualizations?
+        Lce: float, length of a conduit element
+        Dc: float, average conduit diameter (m)
+        Dc_cv: float, coefficient of variation of conduit diameter
+        fc: float, average contact fraction between two conduits
+        fpf: float, average pit field fraction between two conduits
+        conduit_diameters: np.array of floats, diameters of the conduits, or 'lognormal'
+        to draw diameters from a lognormal distribution defined by Dc and Dc_cv
+        cec_indicator: int, value used to indicate that the type of a throat is CE
+        tf: float, microfibril strand thickness (m)
+        icc_length: float, length of an ICC throat (m)
+        water_pore_viscosity: float, value of the water viscosity in pores
+        water_throat_viscosity: float, value of the water viscosity in throats
+        water_pore_diffusivity: float, value of the water diffusivity in pores
+        inlet_pressure: float, pressure at the inlet conduit elements (Pa)
+        outlet_pressure: float, pressure at the outlet conduit elements (Pa) 
+        Dp: float, average pit membrane pore diameter (m)
+        Tm: float, average thickness of membranes (m)
+        cec_indicator: int, value used to indicate that the type of a throat is CE
+        conduit_element_length : float, length of a single conduit element (m), used only if use_cylindrical_coords == True (default from the Mrad et al. article)
+        heartwood_d : float, diameter of the heartwood (= part of the tree not included in the xylem network) (in conduit elements) used only if use_cylindrical_coords == True (default value from the Mrad et al. article)
+    percolation type : str, optional
+        type of the percolation, 'bond' to remove throats or 'site' to remove pores (default: 'bond')
+
+    Returns
+    -------
+    effective_conductances : np.array
+        effective conductance of the network after each removal
+    lcc_size : np.array
+        size of the largest connected component after each removal
+    functional_lcc_size : np.array
+        the size of the largest functional component (i.e. component connected to both inlet and outlet) after each removal
+    nonfunctional_component_size : np.array
+        total size (i.e. sum of sizes) of non-functional components (i.e. components not connected to either inlet, outlet, or both) after each removal
+    susceptibility : np.array
+        susceptibility (i.e. the second-largest component size) after each removal
+    functional_susceptibility : np.array
+        functional susceptibility (i.e. the size of the second-largest component connected to inlet and outlet) after each removal
+    n_inlets : np.array
+        the mean number of inlet elements per functional component
+    n_outlets : np.array
+        the mean number of outlet elements per functional component
+    """
+    if percolation_type == 'bond':
+        n_removals = net['throat.conns'].shape[0]
+    elif percolation_type == 'site':
+        n_removals = net['pore.coords'].shape[0]
+    conduit_element_length = cfg.get('conduit_element_length', params.Lce)
+    heartwood_d = cfg.get('heartwood_d', params.heartwood_d)
+    cec_indicator = cfg.get('cec_indicator', params.cec_indicator)
+    use_cylindrical_coords = cfg.get('use_cylindrical_coords', False)
+    
+    effective_conductances = np.zeros(n_removals)
+    lcc_size = np.zeros(n_removals)
+    functional_lcc_size = np.zeros(n_removals)
+    nonfunctional_component_size = np.zeros(n_removals)
+    susceptibility = np.zeros(n_removals)
+    functional_susceptibility = np.zeros(n_removals)
+    n_inlets = np.zeros(n_removals)
+    n_outlets = np.zeros(n_removals)
+    cfg['conduit_diameters'] = 'inherit_from_net'
+    
+    perc_net = op.network.Network(conns=net['throat.conns'], coords=net['pore.coords'])
+    perc_net['throat.type'] = net['throat.type']
+    if 'pore.diameter' in net.keys():
+        perc_net['pore.diameter'] = net['pore.diameter']
+    
+    for i in range(n_removals):
+        if percolation_type == 'bond':
+            try:
+                if len(perc_net['throat.conns']) > 1:
+                    throat_to_remove = np.random.randint(perc_net['throat.conns'].shape[0] - 1)
+                    op.topotools.trim(perc_net, throats=throat_to_remove)
+                else:
+                    op.topotools.trim(perc_net, throats=0)
+            except KeyError as e:
+                if str(e) == "'throat.conns'" and (len(perc_net['throat.all']) == 0): # this is because all links have been removed from the network by op.topotools.trim
+                    nonfunctional_component_size[i] = len(net['pore.coords'])
+                    
+        elif percolation_type == 'site':
+            pore_to_remove = np.random.randint(perc_net['pore.coords'].shape[0] - 1)
+            try:
+                op.topotools.trim(perc_net, pores=pore_to_remove)
+            except Exception as e:
+                if str(e) == 'Cannot delete ALL pores':
+                    nonfunctional_component_size[i] = len(net['pore.coords'])
+                    continue # this would remove the last node from the network; at this point, value of all outputs should be 0
+        lcc_size[i], susceptibility[i] = get_lcc_size(perc_net)
+        try:
+            conduit_elements = mrad_model.get_conduit_elements(perc_net, cec_indicator=cec_indicator, 
+                                                               conduit_element_length=conduit_element_length, heartwood_d=heartwood_d, use_cylindrical_coords=use_cylindrical_coords)
+            perc_net, removed_components = mrad_model.clean_network(perc_net, conduit_elements, cfg['net_size'][0] - 1, remove_dead_ends=False)
+            nonfunctional_component_size[i] = nonfunctional_component_size[i - 1] + np.sum([len(removed_component) for removed_component in removed_components])
+            n_inlets[i], n_outlets[i] = get_n_inlets(perc_net, cfg['net_size'][0] - 1, cec_indicator=cec_indicator, 
+                                                     conduit_element_length=conduit_element_length, heartwood_d=heartwood_d,
+                                                     use_cylindrical_coords=use_cylindrical_coords)
+            sim_net = mrad_model.prepare_simulation_network(perc_net, cfg)
+            effective_conductances[i] = mrad_model.simulate_water_flow(sim_net, cfg, visualize=False)
+            functional_lcc_size[i], functional_susceptibility[i] = get_lcc_size(perc_net)
+        except Exception as e:
+            if str(e) == 'Cannot delete ALL pores': # this is because all remaining nodes belong to non-functional components
+                nonfunctional_component_size[i] = len(net['pore.coords'])
+            elif (str(e) == "'throat.conns'") and (len(perc_net['throat.all']) == 0): # this is because all links have been removed from the network by op.topotools.trim
+                nonfunctional_component_size[i] = len(net['pore.coords'])
+            else:
+                raise
+    return effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets
+    
 
 def get_lcc_size(net):
     """
