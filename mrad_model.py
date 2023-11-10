@@ -611,17 +611,11 @@ def clean_network(net, conduit_elements, outlet_row_index, remove_dead_ends=True
         components removed because they are not connected to the inlet or to the outlet; each element corresponds to a 
         removed component and contains the indices of the pores in the removed component
     """    
-    A = net.create_adjacency_matrix(fmt='coo', triu=True) # the rows/columns of A correspond to conduit elements and values indicate the presence/absence of connections
-    component_labels = csg.connected_components(A, directed=False)[1]
-    component_indices = []
+    _, component_indices, component_sizes = get_components(net)
     sorted_components = []
-    if np.unique(component_labels).size > 1:
-        for component_label in np.unique(component_labels):
-            component_indices.append(np.where(component_labels == component_label)[0])
-        component_sizes = np.array([len(component_index) for component_index in component_indices])
-        sorted_indices = np.argsort(component_sizes)[::-1]
-        for sorted_index in sorted_indices:
-            sorted_components.append(component_indices[sorted_index])
+    sorted_indices = np.argsort(component_sizes)[::-1]
+    for sorted_index in sorted_indices:
+        sorted_components.append(component_indices[sorted_index])
     
     # Remove components that don't extend through the domain in axial direction
     pores_to_remove = []
@@ -1059,3 +1053,39 @@ def get_effective_pore_volume(net, throat_volume_key='throat.volume', pore_volum
     np.add.at(effective_pore_volumes, net[conn_key][:, 1], net[throat_volume_key]/2)
     assert np.isclose(effective_pore_volumes.sum(), total_volume), 'total effective pore volume does not match the total volume of pores and throats, please check throat information'
     return effective_pore_volumes
+
+def get_components(net):
+    """
+    Finds the connected components of an openPNM network and calculates component sizes.
+
+    Parameters
+    ----------
+    net : openpnm.Network
+
+    Returns
+    -------
+    component_labels : np.array
+        for each pore (node), the index of the component to which the node belongs to
+    component_indices : list
+        for each component, the indices of nodes belonging to the component
+    component_sizes : np.array
+        sizes of the components
+    """
+    try:
+        A = net.create_adjacency_matrix(fmt='coo', triu=True) # the rows/columns of A correspond to conduit elements and values indicate the presence/absence of connections
+    except KeyError as e:
+        if str(e) == "'throat.conns'":
+            if len(net['throat.all']) == 0:
+                A = np.zeros((len(net['pore.coords']), len(net['pore.coords'])))
+            else:
+                raise
+    component_labels = csg.connected_components(A, directed=False)[1]
+    component_indices = []
+    if np.unique(component_labels).size > 1:
+        for component_label in np.unique(component_labels):
+            component_indices.append(np.where(component_labels == component_label)[0])
+        component_sizes = np.array([len(component_index) for component_index in component_indices])
+    else:
+        component_indices = np.array([np.arange(net['pore.coords'].shape[0])])
+        component_sizes = [net['pore.coords'].shape[0]]
+    return component_labels, component_indices, component_sizes

@@ -17,8 +17,8 @@ import mrad_params as params
 
 def run_percolation(net, cfg, percolation_type='bond', removal_order='random'):
     """
-    Removes throats (bond percoltion) or pores (site percolation) from an OpenPNM network object in a given (or random) order and calculates the effective conductance
-    and largest connected component size after each removal.
+    Removes throats (bond percolation) or pores (site percolation) from an OpenPNM network object in a given (or random) order and calculates 
+    a number of measures, including effective conductance and largest component size, after removal (see below for details).
 
     Parameters
     ----------
@@ -46,6 +46,8 @@ def run_percolation(net, cfg, percolation_type='bond', removal_order='random'):
         Dp: float, average pit membrane pore diameter (m)
         Tm: float, average thickness of membranes (m)
         cec_indicator: int, value used to indicate that the type of a throat is CE
+        conduit_element_length : float, length of a single conduit element (m), used only if use_cylindrical_coords == True (default from the Mrad et al. article)
+        heartwood_d : float, diameter of the heartwood (= part of the tree not included in the xylem network) (in conduit elements) used only if use_cylindrical_coords == True (default value from the Mrad et al. article)
     percolation type : str, optional
         type of the percolation, 'bond' to remove throats or 'site' to remove pores (default: 'bond')
     removal_order : iterable or str, optional (default='random')
@@ -66,13 +68,20 @@ def run_percolation(net, cfg, percolation_type='bond', removal_order='random'):
         susceptibility (i.e. the second-largest component size) after each removal
     functional_susceptibility : np.array
         functional susceptibility (i.e. the size of the second-largest component connected to inlet and outlet) after each removal
+    n_inlets : np.array
+        the mean number of inlet elements per functional component
+    n_outlets : np.array
+        the mean number of outlet elements per functional component
     """
     assert percolation_type in ['bond', 'site'], 'percolation type must be bond (removal of throats) or site (removal of pores)'
     if percolation_type == 'bond':
         n_removals = net['throat.conns'].shape[0]
     elif percolation_type == 'site':
         n_removals = net['pore.coords'].shape[0]
+    conduit_element_length = cfg.get('conduit_element_length', params.Lce)
+    heartwood_d = cfg.get('heartwood_d', params.heartwood_d)
     cec_indicator = cfg.get('cec_indicator', params.cec_indicator)
+    use_cylindrical_coords = cfg.get('use_cylindrical_coords', False)
     
     effective_conductances = np.zeros(n_removals)
     lcc_size = np.zeros(n_removals)
@@ -80,6 +89,8 @@ def run_percolation(net, cfg, percolation_type='bond', removal_order='random'):
     nonfunctional_component_size = np.zeros(n_removals)
     susceptibility = np.zeros(n_removals)
     functional_susceptibility = np.zeros(n_removals)
+    n_inlets = np.zeros(n_removals)
+    n_outlets = np.zeros(n_removals)
     cfg['conduit_diameters'] = 'inherit_from_net'
     if removal_order == 'random':
         removal_order = np.arange(0, n_removals)
@@ -100,23 +111,23 @@ def run_percolation(net, cfg, percolation_type='bond', removal_order='random'):
                     continue # this would remove the last node from the network; at this point, value of all outputs should be 0
         lcc_size[i], susceptibility[i] = get_lcc_size(sim_net)
         try:
-            conduit_elements = mrad_model.get_conduit_elements(sim_net, cec_indicator=cec_indicator)
+            conduit_elements = mrad_model.get_conduit_elements(sim_net, cec_indicator=cec_indicator, 
+                                                               conduit_element_length=conduit_element_length, heartwood_d=heartwood_d, use_cylindrical_coords=use_cylindrical_coords)
             sim_net, removed_components = mrad_model.clean_network(sim_net, conduit_elements, cfg['net_size'][0] - 1, remove_dead_ends=False)
             nonfunctional_component_size[i] = np.sum([len(removed_component) for removed_component in removed_components])
+            n_inlets[i], n_outlets[i] = get_n_inlets(sim_net, cfg['net_size'][0] - 1, cec_indicator=cec_indicator, 
+                                                     conduit_element_length=conduit_element_length, heartwood_d=heartwood_d,
+                                                     use_cylindrical_coords=use_cylindrical_coords)
             sim_net = mrad_model.prepare_simulation_network(sim_net, cfg)
             effective_conductances[i] = mrad_model.simulate_water_flow(sim_net, cfg, visualize=False)
             functional_lcc_size[i], functional_susceptibility[i] = get_lcc_size(sim_net)
         except Exception as e:
             if str(e) == 'Cannot delete ALL pores': # this is because all remaining nodes belong to non-functional components
-                effective_conductances[i] = 0  
-                functional_lcc_size[i] = 0
                 nonfunctional_component_size[i] = len(net['pore.coords'])
             if (str(e) == "'throat.conns'") and (len(sim_net['throat.all']) == 0): # this is because all links have been removed from the network by op.topotools.trim
-                effective_conductances[i] = 0
-                functional_lcc_size[i] = 0
                 nonfunctional_component_size[i] = len(net['pore.coords'])
     
-    return effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility
+    return effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets
 
 def get_lcc_size(net):
     """
@@ -134,19 +145,61 @@ def get_lcc_size(net):
     susceptibility : int
         size of the second-largest connected component
     """
-    try:
-        A = net.create_adjacency_matrix(fmt='coo', triu=True) # the rows/columns of A correspond to conduit elements and values indicate the presence/absence of connections
-    except KeyError as e:
-        if str(e) == "'throat.conns'":
-            if len(net['throat.all']) == 0:
-                A = np.zeros((len(net['pore.coords']), len(net['pore.coords'])))
-            else:
-                raise
-    component_labels = csg.connected_components(A, directed=False)[1]
-    component_sizes = np.sort(np.unique([len(np.where(component_labels == component_label)[0]) for component_label in np.unique(component_labels)]))
+    _, _, component_sizes = mrad_model.get_components(net)
+    component_sizes = np.sort(component_sizes)
     lcc_size = component_sizes[-1]
     if len(component_sizes) > 1:
         susceptibility = component_sizes[-2]
     else:
         susceptibility = 0
     return lcc_size, susceptibility
+
+def get_n_inlets(net, outlet_row_index, cec_indicator=params.cec_indicator, conduit_element_length=params.Lce, 
+                 heartwood_d=params.heartwood_d, use_cylindrical_coords=False):
+    """
+    Calculates the mean number of inlet and outlet elements per functional component (i.e. component with at least one
+    inlet and one outlet element).
+    
+    Parameters
+    ----------
+    net : openpnm.Network()
+        pores correspond to conduit elements, throats to connections between them
+    outlet_row_index : int
+        index of the last row of the network (= n_rows - 1)
+    cec_indicator : int, optional 
+        value used to indicate that the type of a throat is CEC (default value from the Mrad Matlab implementation)
+    conduit_element_length : float, optional
+        length of a single conduit element (m), used only if use_cylindrical_coords == True (default from the Mrad et al. article)
+    heartwood_d : float, optional
+        diameter of the heartwood (= part of the tree not included in the xylem network) (in conduit elements)
+        used only if use_cylindrical_coords == True (default value from the Mrad et al. article)
+    use_cylindrical_coords : bln, optional
+        should Mrad model coordinates be interpreted as cylindrical ones
+
+    Returns
+    -------
+    n_inlets : float
+        average number of inlets per functional component
+    n_outlets : float
+        average number of outlets per functional component
+    """
+    _, component_indices, _ = mrad_model.get_components(net)
+    conduit_elements = mrad_model.get_conduit_elements(net, use_cylindrical_coords)
+    n_inlets = 0
+    n_outlets = 0
+    n_functional = 0
+    for component in component_indices:
+        in_btm = np.sum(conduit_elements[component, 0] == 0)
+        in_top = np.sum(conduit_elements[component, 0] == outlet_row_index)
+        if (in_btm > 0) & (in_top > 0):
+            n_inlets += in_btm
+            n_outlets += in_top
+            n_functional += 1
+    n_inlets = n_inlets / n_functional
+    n_outlets = n_outlets / n_functional
+    return n_inlets, n_outlets
+        
+            
+    
+            
+    

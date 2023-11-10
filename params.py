@@ -9,8 +9,9 @@ Parameters not related to the Mrad et al. article
 """
 # paths for saving
 network_save_file = '/home/onerva/projects/hidrogat/output/netpoints'
-percolation_plot_save_path = '/home/onerva/projects/hidrogat/output/percolation_3D_site.pdf'
-nonfunctional_componen_size_save_path = '/home/onerva/projects/hidrogat/output/percolation_3D_site_nonfunc_size.pdf'
+percolation_plot_save_path = '/home/onerva/projects/hidrogat/output/percolation_3D_bond.pdf'
+nonfunctional_componen_size_save_path = '/home/onerva/projects/hidrogat/output/percolation_3D_bond_nonfunc_size.pdf'
+ninlet_save_path = '/home/onerva/projects/hidrogat/output/percolation_3D_bond_ninlet.pdf'
 
 # visualization parameters
 visualize_simulations = False
@@ -20,4 +21,12 @@ percolation_outcome_alphas = [1, 1, 0.5]
 percolation_outcome_labels = ['effective conductance', 'lcc size', 'func lcc size']
 percolation_outcome_axindex = [0, 1, 1]
 percolation_outcome_ylabels = ['Effective conductance', 'Component size']
-
+percolation_nonfunctional_component_size_color = 'b'
+percolation_nonfunctional_component_size_label = 'total nonfunctional component size'
+percolation_nonfunctional_component_size_alpha = 1
+percolation_ninlet_color = 'r'
+percolation_noutlet_color = 'b'
+percolation_ninlet_label = 'Average n inlets'
+percolation_noutlet_label = 'Average n outlets'
+percolation_ninlet_alpha = 1
+percolation_noutlet_alpha = 1
