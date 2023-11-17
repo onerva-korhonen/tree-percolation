@@ -78,6 +78,8 @@ def run_percolation(net, cfg, percolation_type='bond', removal_order='random', b
     n_outlets : np.array
         the mean number of outlet elements per functional component
     """
+    # TODO: calculate also the percentage of conductance lost to match Mrad's VC plots (although this is a pure scaling: current conductance divided by the original one)
+    # TODO: consider implementing percolation also to conduits instead of conduit elements. this can be done with networkX tools after the network has been constructed. to this end, network size must be notably larger.
     assert percolation_type in ['bond', 'site'], 'percolation type must be bond (removal of throats) or site (removal of pores)'
     if break_nonfunctional_components:
         effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets = run_graph_theoretical_percolation(net, cfg, percolation_type, removal_order)

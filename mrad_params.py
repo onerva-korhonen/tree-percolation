@@ -19,7 +19,7 @@ Lce = 0.00288 # length of a conduit element (m)
 Dc = 24.6e-6 # averege conduit diameter (same for all elements of the conduit) (m)
 Dc_cv = 0.12 # coefficient of variation of conduit diameter
 Dp = 32.0e-9 # average pit membrane pore diameter (m)
-Dm = 6.3e-6 # average membrane diameter (m)
+Dm = 6.3e-6 # average membrane diameter (m) [CURRENTLY NOT USED IN THE MODEL]
 fc = 0.31 # average contact fraction between two conduits
 fpf = 0.7 # average pit field fraction between two conduits
 Tm = 234e-9 # average membrane thickness ("Stretching") (m)
@@ -48,12 +48,15 @@ conduit_diameters = np.array([2.59695012020929e-05, 1.89719235427943e-05, 2.5044
 2.51083054817169e-05, 2.45249109338536e-05, 2.50905860934747e-05, 2.32785502665617e-05,
 2.22240413910612e-05 ])
 tf = 30e-9 # microfibril strand thickness (m)
-icc_length = 10e-12 # length of an ICC throat (m)
+icc_length = 1e-12 # length of an ICC throat (m)
+# The two following measures are in the Mrad et al. article used to tune the Pe_rad and Pe_tan connection probabilities
+GI = 0 # TODO: Fix GI (= grouping index) is the number of conduits in a cross-section divided by the number of conduit groups
+conduit_frequency = 0 # TODO: fix frequency of conduits per area in cross-section
 
 # probabilities used for network construction
 Pc = np.array([0.75, 0.75])
 NPc = np.array([0.75, 0.75])
-Pe_rad = np.array([0.9,0.9])
+Pe_rad = np.array([0.9,0.9]) # TODO: check how this and Pe_tan are defined in the Mrad code
 Pe_tan = np.array([0.02, 0.02])
 
 # the numbers used to seed the random number generation for initiating and

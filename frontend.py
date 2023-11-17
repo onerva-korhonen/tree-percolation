@@ -22,15 +22,15 @@ cfg['conduit_diameters'] = 'lognormal'#mrad_params.conduit_diameters
 
 conduit_elements, conns = mrad_model.create_mrad_network(cfg) # if no params are given, the function uses the default params of the Mrad model
 net = mrad_model.mrad_to_openpnm(conduit_elements, conns)
-#visualization.visualize_network_with_openpnm(net)
+visualization.visualize_network_with_openpnm(net)
 net_cleaned, _ = mrad_model.clean_network(net, conduit_elements, cfg['net_size'][0] - 1)
-#visualization.visualize_network_with_openpnm(net_cleaned)
+visualization.visualize_network_with_openpnm(net_cleaned)
 
 #mrad_model.save_network(net_cleaned, params.network_save_file)
 
 sim_net = mrad_model.prepare_simulation_network(net_cleaned, cfg)
-#visualization.visualize_pores(sim_net)
-#visualization.visualize_network_with_openpnm(sim_net, params.use_cylindrical_coordinates, mrad_params.Lce, 'pore.coords')
+visualization.visualize_pores(sim_net)
+visualization.visualize_network_with_openpnm(sim_net, params.use_cylindrical_coordinates, mrad_params.Lce, 'pore.coords')
 effective_conductance = mrad_model.simulate_water_flow(sim_net, cfg, visualize=params.visualize_simulations)
 lcc_size, susceptibility = percolation.get_lcc_size(sim_net)
 n_inlet, n_outlet = percolation.get_n_inlets(sim_net, cfg['net_size'][0] - 1, use_cylindrical_coords=True)
