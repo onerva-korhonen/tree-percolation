@@ -16,7 +16,6 @@ For details of the original model, see:
 import numpy as np
 import pandas as pd
 import openpnm as op
-import matplotlib.pyplot as plt
 import scipy.sparse.csgraph as csg
 
 import mrad_params as params
@@ -971,9 +970,9 @@ def get_conduit_diameters(net, diameter_type, conduits, Dc_cv=params.Dc_cv, Dc=p
     conduits : np.array
         contains one row per conduits, columns containing first and last elements and the size of the conduit
     Dc_cv : float, optional
-        average conduit diameter (m), default value is the one used in the Mrad article 
+        coefficient of variation of conduit diameter, default value is the one used in the Mrad article
     Dc : float, optional
-        coefficient of variation of conduit diameter
+        average conduit diameter (m), default value is the one used in the Mrad article 
 
     Returns
     -------

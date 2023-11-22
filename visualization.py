@@ -94,10 +94,8 @@ def make_colored_pore_scatter(net, pore_values, title='', cmap=plt.cm.jet):
     
 def plot_percolation_curve(total_n_nodes, values, colors, labels, alphas, axindex=[], y_labels=[], save_path=''):
     """
-    Plots the percolation analysis outcomes (largest connected component size and effective conductance) as a function
+    Plots the percolation analysis outcomes (e.g. largest connected component size and effective conductance) as a function
     of the fraction of nodes removed.
-    
-    #TODO: modify this function to plot both LCC and effective conductance and update documentation.
 
     Parameters
     ----------
@@ -126,12 +124,11 @@ def plot_percolation_curve(total_n_nodes, values, colors, labels, alphas, axinde
     None.
 
     """
-    #import pdb; pdb.set_trace()
     n_percolation_steps = values.shape[1]
     assert n_percolation_steps > 1, 'only the values calculated for the full network given for plotting percolation curves'
     if n_percolation_steps < total_n_nodes - 1:
         print('Warning: number of effective conductance values from percolation analysis does not match the number of nodes')
-        x = np.arange(0, n_percolation_steps / 100, (n_percolation_steps / 100) / total_n_nodes)
+        x = np.arange(0, 100 * (n_percolation_steps / total_n_nodes), 100 *(n_percolation_steps / total_n_nodes) / n_percolation_steps)
     else:
         x = np.arange(0, 100, 100 / total_n_nodes)
     

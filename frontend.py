@@ -32,31 +32,42 @@ sim_net = mrad_model.prepare_simulation_network(net_cleaned, cfg)
 visualization.visualize_pores(sim_net)
 visualization.visualize_network_with_openpnm(sim_net, params.use_cylindrical_coordinates, mrad_params.Lce, 'pore.coords')
 effective_conductance = mrad_model.simulate_water_flow(sim_net, cfg, visualize=params.visualize_simulations)
-lcc_size, susceptibility = percolation.get_lcc_size(sim_net)
+if params.percolation_type == 'conduit':
+    lcc_size, susceptibility = percolation.get_conduit_lcc_size(sim_net)
+else:
+    lcc_size, susceptibility = percolation.get_lcc_size(sim_net)
 n_inlet, n_outlet = percolation.get_n_inlets(sim_net, cfg['net_size'][0] - 1, use_cylindrical_coords=True)
 
 cfg['use_cylindrical_coords'] = False
 net_cleaned['pore.diameter'] = sim_net['pore.diameter']
-effective_conductances, lcc_sizes, functional_lcc_sizes, nonfunctional_component_size, susceptibilities, functional_susceptibilities, n_inlets, n_outlets = percolation.run_percolation(net_cleaned, cfg, percolation_type='bond', removal_order='random', break_nonfunctional_components=False)
-np.append(np.array([effective_conductance]), effective_conductances)
-np.append(np.array([lcc_size]), lcc_sizes)
-np.append(np.array([lcc_size]), functional_lcc_sizes)
-np.append(np.array([0]), nonfunctional_component_size)
-np.append(np.array([susceptibility]), susceptibilities)
-np.append(np.array([susceptibility]), functional_susceptibilities)
-np.append(np.array([n_inlet]), n_inlets)
-np.append(np.array([n_outlet]), n_outlets)
+effective_conductances, lcc_sizes, functional_lcc_sizes, nonfunctional_component_size, susceptibilities, functional_susceptibilities, n_inlets, n_outlets = percolation.run_percolation(net_cleaned, cfg, percolation_type=params.percolation_type, removal_order='random', break_nonfunctional_components=False)
+effective_conductances = np.append(np.array([effective_conductance]), effective_conductances)
+lcc_sizes = np.append(np.array([lcc_size]), lcc_sizes)
+functional_lcc_sizes = np.append(np.array([lcc_size]), functional_lcc_sizes)
+nonfunctional_component_size = np.append(np.array([0]), nonfunctional_component_size)
+susceptibilities = np.append(np.array([susceptibility]), susceptibilities)
+functional_susceptibilities = np.append(np.array([susceptibility]), functional_susceptibilities)
+n_inlets = np.append(np.array([n_inlet]), n_inlets)
+n_outlets = np.append(np.array([n_outlet]), n_outlets)
 percolation_outcome_values = np.concatenate((np.expand_dims(effective_conductances, axis=0), 
                                              np.expand_dims(lcc_sizes, axis=0), np.expand_dims(functional_lcc_sizes, axis=0)),
                                              axis=0)
-visualization.plot_percolation_curve(net_cleaned['throat.conns'].shape[0], percolation_outcome_values,
+if params.percolation_type == 'conduit':
+    total_n_nodes = len(effective_conductances)
+elif params.percolation_type == 'bond':
+    total_n_nodes = net_cleaned['throat.conns'].shape[0] + 1
+elif params.percolation_type == 'site':
+    total_n_nodes = net_cleaned['pore.coords'].shape[0] + 1
+else:
+    raise Exception('Unknown percolation type; percolation type must be bond, site, or conduit')
+visualization.plot_percolation_curve(total_n_nodes, percolation_outcome_values,
                                      colors=params.percolation_outcome_colors, labels=params.percolation_outcome_labels, 
                                      alphas=params.percolation_outcome_alphas, y_labels=params.percolation_outcome_ylabels,
                                      axindex=params.percolation_outcome_axindex, save_path=params.percolation_plot_save_path)
-visualization.plot_percolation_curve(net_cleaned['throat.conns'].shape[0], np.expand_dims(nonfunctional_component_size, axis=0),
+visualization.plot_percolation_curve(total_n_nodes, np.expand_dims(nonfunctional_component_size, axis=0),
                                      colors=[params.percolation_nonfunctional_component_size_color], labels=[params.percolation_nonfunctional_component_size_label], 
                                      alphas=[params.percolation_nonfunctional_component_size_alpha], save_path=params.nonfunctional_componen_size_save_path)
-visualization.plot_percolation_curve(net_cleaned['throat.conns'].shape[0], 
+visualization.plot_percolation_curve(total_n_nodes, 
                                      np.concatenate((np.expand_dims(n_inlets, axis=0), np.expand_dims(n_outlets, axis=0)), axis=0),
                                      colors=[params.percolation_ninlet_color, params.percolation_noutlet_color],
                                      labels=[params.percolation_ninlet_label, params.percolation_noutlet_label],
