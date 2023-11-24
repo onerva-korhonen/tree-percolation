@@ -11,7 +11,7 @@ Parameters not related to the Mrad et al. article
 network_save_file = '/home/onerva/projects/hidrogat/output/netpoints'
 percolation_plot_save_path = '/home/onerva/projects/hidrogat/output/percolation_3D_bond_phys.pdf'
 nonfunctional_componen_size_save_path = '/home/onerva/projects/hidrogat/output/percolation_3D_bond_nonfunc_size_phys.pdf'
-ninlet_save_path = '/home/onerva/projects/hidrogat/output/percolation_3D_bond_ninlet_phys.pdf'
+ninlet_save_path = '/home/onerva/projects/hidrogat/output/percolation_3D_conduit_bond_phys.pdf'
 
 # percolation parameters
 percolation_type = 'bond'
