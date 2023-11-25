@@ -7,6 +7,10 @@ Created on Wed Oct 18 14:12:44 2023
 
 Parameters not related to the Mrad et al. article
 """
+import numpy as np
+
+net_size = [np.array([110,100,140])]
+
 # paths for saving
 network_save_file = '/home/onerva/projects/hidrogat/output/netpoints'
 percolation_plot_save_path = '/home/onerva/projects/hidrogat/output/percolation_3D_bond_phys.pdf'

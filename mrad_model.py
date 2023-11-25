@@ -84,8 +84,7 @@ def create_mrad_network(cfg):
     for i in range(net_size[1]): # looping in the column direction
         if fixed_random:
             np.random.seed(seeds_NPc[i])
-        cond_start.append(np.random.rand(net_size[0] + 100, 1, net_size[2]) < (1 - NPc_rad[i]))
-        # TODO: is this a mistake? should it be > (1 - NPc_rad[i])?
+        cond_start.append(np.random.rand(net_size[0] + 100, 1, net_size[2]) > (1 - NPc_rad[i]))
     cond_start = np.concatenate(cond_start, axis=1)
     
     Pc_rad = (rad_dist*Pc[0] + (1 - rad_dist)*Pc[1])
@@ -93,7 +92,7 @@ def create_mrad_network(cfg):
     for i in range(net_size[1]):
         if fixed_random:
             np.random.seed(seeds_Pc[i])
-        cond_end.append(np.random.rand(net_size[0] + 100, 1, net_size[2]) < (1 - Pc_rad[i]))
+        cond_end.append(np.random.rand(net_size[0] + 100, 1, net_size[2]) > (1 - Pc_rad[i]))
         # TODO: same here, should < be >?
     cond_end = np.concatenate(cond_end, axis=1)
     
