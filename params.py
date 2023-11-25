@@ -9,12 +9,13 @@ Parameters not related to the Mrad et al. article
 """
 # paths for saving
 network_save_file = '/home/onerva/projects/hidrogat/output/netpoints'
-percolation_plot_save_path = '/home/onerva/projects/hidrogat/output/percolation_3D_bond_phys.pdf'
-nonfunctional_componen_size_save_path = '/home/onerva/projects/hidrogat/output/percolation_3D_bond_nonfunc_size_phys.pdf'
-ninlet_save_path = '/home/onerva/projects/hidrogat/output/percolation_3D_conduit_bond_phys.pdf'
+percolation_plot_save_path = '/home/onerva/projects/hidrogat/output/percolation_3D_conduit_phys.pdf'
+nonfunctional_componen_size_save_path = '/home/onerva/projects/hidrogat/output/percolation_3D_conduit_nonfunc_volume_phys.pdf'
+ninlet_save_path = '/home/onerva/projects/hidrogat/output/percolation_3D_conduit_ninlet_phys.pdf'
 
 # percolation parameters
-percolation_type = 'bond'
+percolation_type = 'conduit'
+break_nonfunctional_components = False
 
 # visualization parameters
 visualize_simulations = False
@@ -25,7 +26,7 @@ percolation_outcome_labels = ['effective conductance', 'lcc size', 'func lcc siz
 percolation_outcome_axindex = [0, 1, 1]
 percolation_outcome_ylabels = ['Effective conductance', 'Component size']
 percolation_nonfunctional_component_size_color = 'b'
-percolation_nonfunctional_component_size_label = 'total nonfunctional component size'
+percolation_nonfunctional_component_size_label = 'total nonfunctional component volume (m^3)'
 percolation_nonfunctional_component_size_alpha = 1
 percolation_ninlet_color = 'r'
 percolation_noutlet_color = 'b'

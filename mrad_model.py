@@ -50,8 +50,8 @@ def create_mrad_network(cfg):
               1) the row index of the element
               2) the column index of the element
               3) the radial (depth) index of the element
-              4) the index of the conduit the element belongs to (from 0 to n_conduits)
-              5) the index of the element (from 0 to n_conduit_elements)
+              4) the index of the conduit the element belongs to (from 1 to n_conduits)
+              5) the index of the element (from 0 to n_conduit_elements - 1)
     conns : np.array
               has one row for each connection between conduit elements and five columns, containing
               1) index of the first conduit element of the connection
@@ -551,8 +551,8 @@ def mrad_to_openpnm(conduit_elements, conns):
         1) the row index of the element
         2) the column index of the element
         3) the radial (depth) index of the element
-        4) the index of the conduit the element belongs to (from 0 to n_conduits)
-        5) the index of the element (from 0 to n_conduit_elements)
+        4) the index of the conduit the element belongs to (from 1 to n_conduits)
+        5) the index of the element (from 0 to n_conduit_elements - 1)
     conns : np.array
         has one row for each connection and five columns, containing
         1) index of the first conduit element of the connection
@@ -594,8 +594,8 @@ def clean_network(net, conduit_elements, outlet_row_index, remove_dead_ends=True
         1) the row index of the element
         2) the column index of the element
         3) the radial (depth) index of the element
-        4) the index of the conduit the element belongs to (from 0 to n_conduits)
-        5) the index of the element (from 0 to n_conduit_elements)
+        4) the index of the conduit the element belongs to (from 1 to n_conduits)
+        5) the index of the element (from 0 to n_conduit_elements - 1)
     outlet_row_index : int
         index of the last row of the network (= n_rows - 1)
     remove_dead_ends : bln, optional
@@ -642,16 +642,12 @@ def clean_network(net, conduit_elements, outlet_row_index, remove_dead_ends=True
         # Tabulate the indices of the conduits connected by each throat (based on the
         # original number of conduits before removing the clusters not connected to the inlet or to the outlet)
     
-        throat_type = np.zeros(len(throats_trimmed))
         throat_conduits = np.zeros((len(throats_trimmed), 2)) # each row of throat_conduits will contain the indices of the start and end conduit of a connection
     
         for i, throat in enumerate(throats_trimmed):
-            if conduit_elements[throat[0], 3] == conduit_elements[throat[1], 3]:
-                throat_type = 1 # throat inside a conduit
-            else:
-                throat_type = 2 # ICC
-            throat_conduits[i, 0] = conduit_elements[throat[0], 3]
-            throat_conduits[i, 1] = conduit_elements[throat[1], 3]
+            if not conduit_elements[throat[0], 3] == conduit_elements[throat[1], 3]: # NOTE: indexing of conduits starts from 1 instead of 0
+                throat_conduits[i, 0] = conduit_elements[throat[0], 3]
+                throat_conduits[i, 1] = conduit_elements[throat[1], 3]
         
         conduit_indices = np.unique(throat_conduits)
         conduit_degree_info = get_conduit_degree(conduit_elements, throat_conduits, outlet_row_index) 
@@ -745,8 +741,8 @@ def get_conduit_degree(conduit_elements, throat_conduits, outlet_row_index):
         1) the row index of the element
         2) the column index of the element
         3) the radial (depth) index of the element
-        4) the index of the conduit the element belongs to (from 0 to n_conduits)
-        5) the index of the element (from 0 to n_conduit_elements)
+        4) the index of the conduit the element belongs to (from 1 to n_conduits)
+        5) the index of the element (from 0 to n_conduit_elements - 1)
     throat_conduits : np.array
         each row contains the indices of the start and end conduits of a throat
     outlet_row_index : int
@@ -880,8 +876,7 @@ def get_conduits(cecs):
     conduits : np.array
         one row per conduit, includes of the first and last nodes (conduit elements) of the conduit
         and the number of nodes in the conduit
-    """    
-
+    """            
     conduits = []
     conduit_size = 0
     start_node = cecs[0, 0] # start node of the first CE
@@ -923,8 +918,8 @@ def get_conduit_elements(net, use_cylindrical_coords=False, conduit_element_leng
         1) the row index of the element
         2) the column index of the element
         3) the radial (depth) index of the element
-        4) the index of the conduit the element belongs to (from 0 to n_conduits)
-        5) the index of the element (from 0 to n_conduit_elements)
+        4) the index of the conduit the element belongs to (from 1 to n_conduits)
+        5) the index of the element (from 0 to n_conduit_elements - 1)
     """
     pore_coords = net['pore.coords']
     conns = net['throat.conns']

@@ -76,18 +76,19 @@ def run_percolation(net, cfg, percolation_type='bond', removal_order='random', b
         the mean number of inlet elements per functional component
     n_outlets : np.array
         the mean number of outlet elements per functional component
+    nonfunctional_component_volume : np.array
+        total volume of nonfunctional components
     """
     # TODO: calculate also the percentage of conductance lost to match Mrad's VC plots (although this is a pure scaling: current conductance divided by the original one)
-    # TODO: it might make sense to calculate non-functional component volume in addition to size
     assert percolation_type in ['bond', 'site', 'conduit'], 'percolation type must be bond (removal of throats), site (removal of pores), or conduit (removal of conduits'
     if percolation_type == 'conduit':
-        effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets = run_physiological_conduit_percolation(net, cfg)
+        effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume = run_physiological_conduit_percolation(net, cfg)
     elif break_nonfunctional_components:
-        effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets = run_graph_theoretical_element_percolation(net, cfg, percolation_type, removal_order)
+        effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume = run_graph_theoretical_element_percolation(net, cfg, percolation_type, removal_order)
     else:
-        effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets = run_physiological_element_percolation(net, cfg, percolation_type)
+        effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume = run_physiological_element_percolation(net, cfg, percolation_type)
     
-    return effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets
+    return effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume
 
 def run_graph_theoretical_element_percolation(net, cfg, percolation_type='bond', removal_order='random'):
     """
@@ -145,6 +146,8 @@ def run_graph_theoretical_element_percolation(net, cfg, percolation_type='bond',
         the mean number of inlet elements per functional component
     n_outlets : np.array
         the mean number of outlet elements per functional component
+    nonfunctional_component_volume : np.array
+        the total volume of non-functional components
     """
     if percolation_type == 'bond':
         n_removals = net['throat.conns'].shape[0]
@@ -163,7 +166,9 @@ def run_graph_theoretical_element_percolation(net, cfg, percolation_type='bond',
     functional_susceptibility = np.zeros(n_removals)
     n_inlets = np.zeros(n_removals)
     n_outlets = np.zeros(n_removals)
+    nonfunctional_component_volume = np.zeros(n_removals)
     cfg['conduit_diameters'] = 'inherit_from_net'
+    
     if removal_order == 'random':
         removal_order = np.arange(0, n_removals)
         np.random.shuffle(removal_order)
@@ -173,20 +178,28 @@ def run_graph_theoretical_element_percolation(net, cfg, percolation_type='bond',
         if 'pore.diameter' in net.keys():
             sim_net['pore.diameter'] = net['pore.diameter']
         if percolation_type == 'bond':
-            op.topotools.trim(sim_net, throats=removal_order[:i + 1])
+            try:
+                op.topotools.trim(sim_net, throats=removal_order[:i + 1])
+            except Exception as e:
+                if (str(e) == "'throat.conns'") and (len(net['throat.all']) == 0):
+                    nonfunctional_component_size[i::] = len(net['pore.coords'])
+                    break
         elif percolation_type == 'site':
             try:
                 op.topotools.trim(sim_net, pores=removal_order[:i + 1])
             except Exception as e:
                 if str(e) == 'Cannot delete ALL pores':
-                    nonfunctional_component_size[i] = len(net['pore.coords'])
-                    continue # this would remove the last node from the network; at this point, value of all outputs should be 0
+                    nonfunctional_component_size[i::] = len(net['pore.coords']) - i
+                    break # this would remove the last node from the network; at this point, value of all outputs should be 0
         lcc_size[i], susceptibility[i] = get_lcc_size(sim_net)
         try:
             conduit_elements = mrad_model.get_conduit_elements(sim_net, cec_indicator=cec_indicator, 
                                                                conduit_element_length=conduit_element_length, heartwood_d=heartwood_d, use_cylindrical_coords=use_cylindrical_coords)
+            pore_diameter = sim_net['pore.diameter']
             sim_net, removed_components = mrad_model.clean_network(sim_net, conduit_elements, cfg['net_size'][0] - 1, remove_dead_ends=False)
             nonfunctional_component_size[i] = np.sum([len(removed_component) for removed_component in removed_components])
+            removed_elements = list(itertools.chain.from_iterable(removed_components))
+            nonfunctional_component_volume[i] = np.sum(np.pi * 0.5 * pore_diameter[removed_elements]**2 * conduit_element_length)
             n_inlets[i], n_outlets[i] = get_n_inlets(sim_net, cfg['net_size'][0] - 1, cec_indicator=cec_indicator, 
                                                      conduit_element_length=conduit_element_length, heartwood_d=heartwood_d,
                                                      use_cylindrical_coords=use_cylindrical_coords)
@@ -196,12 +209,13 @@ def run_graph_theoretical_element_percolation(net, cfg, percolation_type='bond',
         except Exception as e:
             if str(e) == 'Cannot delete ALL pores': # this is because all remaining nodes belong to non-functional components
                 nonfunctional_component_size[i] = len(net['pore.coords'])
+                nonfunctional_component_volume[i] = np.sum(np.pi * 0.5 * pore_diameter**2 * conduit_element_length)
             elif (str(e) == "'throat.conns'") and (len(sim_net['throat.all']) == 0): # this is because all links have been removed from the network by op.topotools.trim
                 nonfunctional_component_size[i] = len(net['pore.coords'])
+                nonfunctional_component_volume[i] = np.sum(np.pi * 0.5 * pore_diameter**2 * conduit_element_length)
             else:
                 raise
-    
-    return effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets
+    return effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume
 
 def run_physiological_element_percolation(net, cfg, percolation_type):
     """
@@ -260,7 +274,6 @@ def run_physiological_element_percolation(net, cfg, percolation_type):
         the mean number of outlet elements per functional component
     """
     # TODO: add a case for removing pores/throats in a given order instead of the random one
-    # TODO: add also here the code for recording the largest removed component size
     if percolation_type == 'bond':
         n_removals = net['throat.conns'].shape[0]
     elif percolation_type == 'site':
@@ -278,14 +291,15 @@ def run_physiological_element_percolation(net, cfg, percolation_type):
     functional_susceptibility = np.zeros(n_removals)
     n_inlets = np.zeros(n_removals)
     n_outlets = np.zeros(n_removals)
+    nonfunctional_component_volume = np.zeros(n_removals)
     cfg['conduit_diameters'] = 'inherit_from_net'
     
     perc_net = op.network.Network(conns=net['throat.conns'], coords=net['pore.coords'])
     perc_net['throat.type'] = net['throat.type']
     if 'pore.diameter' in net.keys():
         perc_net['pore.diameter'] = net['pore.diameter']
-        
-    all_nonfunctional = False
+    
+    max_removed_lcc = 0
     
     for i in range(n_removals):
         if percolation_type == 'bond':
@@ -297,7 +311,9 @@ def run_physiological_element_percolation(net, cfg, percolation_type):
                     op.topotools.trim(perc_net, throats=0)
             except KeyError as e:
                 if str(e) == "'throat.conns'" and (len(perc_net['throat.all']) == 0): # this is because all links have been removed from the network by op.topotools.trim
-                    nonfunctional_component_size[i] = len(net['pore.coords'])
+                    nonfunctional_component_size[i::] = len(net['pore.coords'])
+                    lcc_size[i::] = max_removed_lcc
+                    break
                     
         elif percolation_type == 'site':
             pore_to_remove = np.random.randint(perc_net['pore.coords'].shape[0] - 1)
@@ -305,26 +321,21 @@ def run_physiological_element_percolation(net, cfg, percolation_type):
                 op.topotools.trim(perc_net, pores=pore_to_remove)
             except Exception as e:
                 if str(e) == 'Cannot delete ALL pores':
-                    if not all_nonfunctional:
-                        nonfunctional_component_size[i] = len(net['pore.coords']) - i
-                        all_nonfunctional = True
-                    else:
-                        nonfunctional_component_size[i] = nonfunctional_component_size[i - 1]
-                    continue # this would remove the last node from the network; at this point, value of all outputs should be 0
+                    nonfunctional_component_size[i::] = len(net['pore.coords']) - i
+                    lcc_size[i::] = max_removed_lcc
+                    break # this would remove the last node from the network; at this point, value of all outputs should be 0
         lcc_size[i], susceptibility[i] = get_lcc_size(perc_net)
         try:
+            pore_diameter = perc_net['pore.diameter']
             conduit_elements = mrad_model.get_conduit_elements(perc_net, cec_indicator=cec_indicator, 
                                                                conduit_element_length=conduit_element_length, heartwood_d=heartwood_d, use_cylindrical_coords=use_cylindrical_coords)
             perc_net, removed_components = mrad_model.clean_network(perc_net, conduit_elements, cfg['net_size'][0] - 1, remove_dead_ends=False)
+            removed_elements = list(itertools.chain.from_iterable(removed_components))
+            nonfunctional_component_volume[i] = nonfunctional_component_volume[i - 1] + np.sum(np.pi * 0.5 * pore_diameter[removed_elements]**2 * conduit_element_length)
             if len(removed_components) > 0:
                 removed_lcc = max([len(component) for component in removed_components])
-                if i == 0:
+                if removed_lcc > max_removed_lcc: # Percolation doesn't affect the sizes of removed components -> the largest removed component size changes only if a new, larger component gets removed
                     max_removed_lcc = removed_lcc
-                elif removed_lcc > max_removed_lcc: # Percolation doesn't affect the sizes of removed components -> the largest removed component size changes only if a new, larger component gets removed
-                    max_removed_lcc = removed_lcc
-            else:
-                if i == 0:
-                    max_removed_lcc = 0
             if lcc_size[i] < max_removed_lcc:
                 lcc_size[i] = max_removed_lcc
             nonfunctional_component_size[i] = nonfunctional_component_size[i - 1] + np.sum([len(removed_component) for removed_component in removed_components])
@@ -336,30 +347,28 @@ def run_physiological_element_percolation(net, cfg, percolation_type):
             functional_lcc_size[i], functional_susceptibility[i] = get_lcc_size(perc_net)
         except Exception as e:
             if str(e) == 'Cannot delete ALL pores': # this is because all remaining nodes belong to non-functional components
-                if not all_nonfunctional:
-                    if percolation_type == 'site':
-                        nonfunctional_component_size[i] = len(net['pore.coords']) - i # all but removed elements are nonfunctional
-                    elif percolation_type == 'bond':
-                        nonfunctional_component_size[i] = len(net['pore.coords']) # all links have been removed; all elements are nonfunctional
-                    all_nonfunctional = True
-                else:
-                    nonfunctional_component_size[i] = nonfunctional_component_size[i - 1]
+                if percolation_type == 'site':
+                    nonfunctional_component_size[i::] = len(net['pore.coords']) - i # all but removed elements are nonfunctional
+                    nonfunctional_component_volume[i::] = nonfunctional_component_volume[i - 1] + np.sum(np.pi * 0.5 * pore_diameter**2 * conduit_element_length)
+                elif percolation_type == 'bond':
+                    nonfunctional_component_size[i::] = len(net['pore.coords']) # all links have been removed; all elements are nonfunctional
+                    nonfunctional_component_volume[i::] = nonfunctional_component_volume[i - 1] + np.sum(np.pi * 0.5 * pore_diameter**2 * conduit_element_length)
                 lcc_size[i::] = max_removed_lcc
+                break
             elif (str(e) == "'throat.conns'") and (len(perc_net['throat.all']) == 0): # this is because all links have been removed from the network by op.topotools.trim
-                if not all_nonfunctional:
-                    if percolation_type == 'site':
-                        nonfunctional_component_size[i] = len(net['pore.coords']) - i # all but removed elements are nonfunctional
-                    elif percolation_type == 'bond':
-                        nonfunctional_component_size[i] = len(net['pore.coords']) # all links have been removed; all elements are nonfunctional
-                    all_nonfunctional = True
-                else:
-                    nonfunctional_component_size[i] = nonfunctional_component_size[i - 1]
+                if percolation_type == 'site':
+                    nonfunctional_component_size[i::] = len(net['pore.coords']) - i # all but removed elements are nonfunctional
+                    nonfunctional_component_volume[i::] = nonfunctional_component_volume[i - 1] + np.sum(np.pi * 0.5 * pore_diameter**2 * conduit_element_length)
+                elif percolation_type == 'bond':
+                    nonfunctional_component_size[i::] = len(net['pore.coords']) # all links have been removed; all elements are nonfunctional
+                    nonfunctional_component_volume[i::] = nonfunctional_component_volume[i - 1] + np.sum(np.pi * 0.5 * pore_diameter**2 * conduit_element_length)
                 lcc_size[i::] = max_removed_lcc
+                break
             else:
                 raise
-    return effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets
+    return effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume
 
-def run_physiological_conduit_percolation(net, cfg):
+def run_physiological_conduit_percolation(net, cfg, removal_order='random'):
     """
     Removes conduits (sets of consequtive conduit elements in row/z direction) with all their ICC throats from an OpenPNM
     network object till there are no conduits left. Components are removed from the network as soon as they become nonfunctional 
@@ -392,6 +401,9 @@ def run_physiological_conduit_percolation(net, cfg):
         Tm: float, average thickness of membranes (m)
         conduit_element_length : float, length of a single conduit element (m), used only if use_cylindrical_coords == True (default from the Mrad et al. article)
         heartwood_d : float, diameter of the heartwood (= part of the tree not included in the xylem network) (in conduit elements) used only if use_cylindrical_coords == True (default value from the Mrad et al. article)
+    removal_order : iterable or str, optional (default='random')
+        indices of pores to be removed in the order of removal. for performing full percolation analysis, len(removal_order)
+        should match the number of pores. string 'random' can be given to indicate removal in random order.
     Returns:
     --------
     effective_conductances : np.array
@@ -410,10 +422,13 @@ def run_physiological_conduit_percolation(net, cfg):
         the mean number of inlet elements per functional component
     n_outlets : np.array
         the mean number of outlet elements per functional component
+    nonfunctional_component_volume : np.array
+        the total volume of non-functional components
     """
     # TODO: add case for removing conduits in a given order instead of a random order
     # What would bond percolation mean at the level of conduits?
     # A spreading model could be a better model for the phenomenon than random percolation
+        
     conduit_element_length = cfg.get('conduit_element_length', params.Lce)
     heartwood_d = cfg.get('heartwood_d', params.heartwood_d)
     cec_indicator = cfg.get('cec_indicator', params.cec_indicator)
@@ -431,6 +446,7 @@ def run_physiological_conduit_percolation(net, cfg):
     lcc_size = np.zeros(n_removals)
     functional_lcc_size = np.zeros(n_removals)
     nonfunctional_component_size = np.zeros(n_removals)
+    nonfunctional_component_volume = np.zeros(n_removals)
     susceptibility = np.zeros(n_removals)
     functional_susceptibility = np.zeros(n_removals)
     n_inlets = np.zeros(n_removals)
@@ -442,7 +458,7 @@ def run_physiological_conduit_percolation(net, cfg):
     if 'pore.diameter' in net.keys():
         perc_net['pore.diameter'] = net['pore.diameter']
         
-    all_nonfunctional = False
+    max_removed_lcc = 0
     
     for i in range(n_removals):
         try:
@@ -452,24 +468,32 @@ def run_physiological_conduit_percolation(net, cfg):
                 cec_mask = conn_types == cec_indicator
                 cec = conns[cec_mask]
                 conduits = mrad_model.get_conduits(cec)
-            conduit_to_remove = conduits[np.random.randint(conduits.shape[0]), :]
+            if removal_order == 'random':
+                conduit_to_remove = conduits[np.random.randint(conduits.shape[0]), :]
+            else:
+                removal_order = np.array(removal_order)
+                for index in np.arange(i, n_removals):
+                    removal_index = removal_order[index]
+                    if removal_index >= 0:
+                        break
+                conduit_to_remove = conduits[removal_index]
+                removal_order[np.where(removal_order == removal_index)[0]] = -1
+                removal_order[np.where(removal_order > removal_index)[0]] -= 1 
             pores_to_remove = np.arange(conduit_to_remove[0], conduit_to_remove[1] + 1)
             op.topotools.trim(perc_net, pores=pores_to_remove)
         except Exception as e:
             if str(e) == 'Cannot delete ALL pores':
-                if not all_nonfunctional:
-                    nonfunctional_component_size[i] = n_removals - i
-                    all_nonfunctional = True
-                else:
-                    nonfunctional_component_size[i] = nonfunctional_component_size[i - 1]
-                continue # this would remove the last node from the network; at this point, value of all outputs should be 0
+                nonfunctional_component_size[i::] = n_removals - i
+                nonfunctional_component_volume[i::] = nonfunctional_component_volume[i - 1]
+                lcc_size[i::] = max_removed_lcc
+                break # this would remove the last node from the network; at this point, value of all outputs should be 0
             elif str(e) == "'throat.type'" and (len(perc_net['throat.all']) == 0): # this is because all links have been removed from the network by op.topotools.trim
-                if not all_nonfunctional:
-                    nonfunctional_component_size[i] = n_removals
-                    all_nonfunctional = True
-                else:
-                    nonfunctional_component_size[i] = nonfunctional_component_size[i - 1]
-                continue
+                nonfunctional_component_size[i::] = n_removals
+                nonfunctional_component_volume[i::] = nonfunctional_component_volume[i - 1]
+                lcc_size[i::] = max_removed_lcc
+                break
+            else:
+                raise
         try:
             lcc_size[i], susceptibility[i], _ = get_conduit_lcc_size(perc_net, use_cylindrical_coords=use_cylindrical_coords, 
                                                                   conduit_element_length=conduit_element_length, 
@@ -481,21 +505,20 @@ def run_physiological_conduit_percolation(net, cfg):
             orig_perc_net['pore.diameter'] = perc_net['pore.diameter']
             perc_net, removed_components = mrad_model.clean_network(perc_net, conduit_elements, cfg['net_size'][0] - 1, remove_dead_ends=False)
             removed_elements = list(itertools.chain.from_iterable(removed_components)) # calculating the size of the largest removed component in conduits
-            removed_volume = np.sum(np.pi * 0.5 * orig_perc_net['pore.diameter'][removed_elements] * conduit_element_length)
+            nonfunctional_component_volume[i] = nonfunctional_component_volume[i - 1] + np.sum(np.pi * 0.5 * orig_perc_net['pore.diameter'][removed_elements]**2 * conduit_element_length)
             if len(removed_elements) > 0:
                 removed_net = get_induced_subnet(orig_perc_net, removed_elements)
                 removed_lcc, _, n_nonfunctional_conduits = get_conduit_lcc_size(removed_net, use_cylindrical_coords=use_cylindrical_coords, 
                                                                        conduit_element_length=conduit_element_length, 
                                                                        heartwood_d=heartwood_d, cec_indicator=cec_indicator)
                 nonfunctional_component_size[i] = nonfunctional_component_size[i - 1] + n_nonfunctional_conduits
-                if i == 0:
+                if removed_lcc > max_removed_lcc: # Percolation doesn't affect the sizes of removed components -> the largest removed component size changes only if a new, larger component gets removed
                     max_removed_lcc = removed_lcc
-                elif removed_lcc > max_removed_lcc: # Percolation doesn't affect the sizes of removed components -> the largest removed component size changes only if a new, larger component gets removed
-                    max_removed_lcc = removed_lcc
-            else:
-                if i == 0:
-                    max_removed_lcc = 0
                 nonfunctional_component_size[i] =  nonfunctional_component_size[i - 1]
+                if not removal_order == 'random':
+                    removed_conduit_indices = np.unique(conduit_elements[removed_elements, 3])[::-1] - 1 # indexing of conduits in conduit_elements begins from 1
+                    removal_order[np.where(np.array([removal_index in removed_conduit_indices for removal_index in removal_order]))[0]] = -1
+                    removal_order = removal_order -  np.sum(np.array([removal_order > removed_conduit_index for removed_conduit_index in removed_conduit_indices]), axis=0)
             if max_removed_lcc > lcc_size[i]: # checking if the largest removed component is larger than the largest functional one
                 lcc_size[i] = max_removed_lcc
             n_inlets[i], n_outlets[i] = get_n_inlets(perc_net, cfg['net_size'][0] - 1, cec_indicator=cec_indicator, 
@@ -506,22 +529,18 @@ def run_physiological_conduit_percolation(net, cfg):
             functional_lcc_size[i], functional_susceptibility[i], _ = get_conduit_lcc_size(perc_net)
         except Exception as e:
             if str(e) == 'Cannot delete ALL pores': # this is because all remaining nodes belong to non-functional components
-                if not all_nonfunctional:
-                    nonfunctional_component_size[i] = n_removals - i
-                    all_nonfunctional = True
-                else:
-                    nonfunctional_component_size[i] = nonfunctional_component_size[i - 1]
+                nonfunctional_component_size[i::] = n_removals - i
+                nonfunctional_component_volume[i::] = nonfunctional_component_volume[i - 1] + np.sum(np.pi * 0.5 * orig_perc_net['pore.diameter']**2 * conduit_element_length)
                 lcc_size[i::] = max_removed_lcc
+                break
             elif (str(e) == "'throat.conns'") and (len(perc_net['throat.all']) == 0): # this is because all links have been removed from the network by op.topotools.trim
-                if not all_nonfunctional:
-                    nonfunctional_component_size[i] = n_removals - i
-                    all_nonfunctional = True
-                else:
-                    nonfunctional_component_size[i] = nonfunctional_component_size[i - 1]
+                nonfunctional_component_size[i::] = n_removals - i
+                nonfunctional_component_volume[i::] = nonfunctional_component_volume[i - 1] + np.sum(np.pi * 0.5 * orig_perc_net['pore.diameter'] * conduit_element_length)
                 lcc_size[i::] = max_removed_lcc
+                break
             else:
                 raise
-    return effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets
+    return effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume
 
 def get_lcc_size(net):
     """
@@ -575,7 +594,7 @@ def get_conduit_lcc_size(net, use_cylindrical_coords=False, conduit_element_leng
     susceptibility : int
         size of the second-largest connected component
     n_conduits : int
-        number of conduits in the network
+        number conduits of the network 
     """
     conduit_elements = mrad_model.get_conduit_elements(net, use_cylindrical_coords=use_cylindrical_coords, 
                                                        conduit_element_length=conduit_element_length, 
@@ -583,7 +602,7 @@ def get_conduit_lcc_size(net, use_cylindrical_coords=False, conduit_element_leng
     throat_conduits = []
     conduit_indices = []
     for i, throat in enumerate(net['throat.conns']):
-        start_conduit = conduit_elements[throat[0], 3]
+        start_conduit = conduit_elements[throat[0], 3] # NOTE: indexing of conduits start from 1 instead of 0
         end_conduit = conduit_elements[throat[1], 3]
         if not start_conduit in conduit_indices:
             conduit_indices.append(start_conduit)
@@ -622,6 +641,7 @@ def get_induced_subnet(net, elements):
     coords = net['pore.coords']
     conns = net['throat.conns']
     conn_types = net['throat.type']
+    elements = np.sort(elements)
     subcoords = coords[elements, :]
     subconns = []
     subtypes = []
