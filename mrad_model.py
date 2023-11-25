@@ -93,7 +93,6 @@ def create_mrad_network(cfg):
         if fixed_random:
             np.random.seed(seeds_Pc[i])
         cond_end.append(np.random.rand(net_size[0] + 100, 1, net_size[2]) > (1 - Pc_rad[i]))
-        # TODO: same here, should < be >?
     cond_end = np.concatenate(cond_end, axis=1)
     
     temp_start = np.zeros([1, net_size[1], net_size[2]])
@@ -632,7 +631,6 @@ def clean_network(net, conduit_elements, outlet_row_index, remove_dead_ends=True
         removed_components = []
         
     if remove_dead_ends:
-    
         # Remoce any remaining conduits that are not connected to the inlet or outlet
         # and are connected to only one other conduit
     
@@ -644,9 +642,8 @@ def clean_network(net, conduit_elements, outlet_row_index, remove_dead_ends=True
         throat_conduits = np.zeros((len(throats_trimmed), 2)) # each row of throat_conduits will contain the indices of the start and end conduit of a connection
     
         for i, throat in enumerate(throats_trimmed):
-            if not conduit_elements[throat[0], 3] == conduit_elements[throat[1], 3]: # NOTE: indexing of conduits starts from 1 instead of 0
-                throat_conduits[i, 0] = conduit_elements[throat[0], 3]
-                throat_conduits[i, 1] = conduit_elements[throat[1], 3]
+            throat_conduits[i, 0] = conduit_elements[throat[0], 3]
+            throat_conduits[i, 1] = conduit_elements[throat[1], 3]
         
         conduit_indices = np.unique(throat_conduits)
         conduit_degree_info = get_conduit_degree(conduit_elements, throat_conduits, outlet_row_index) 

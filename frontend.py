@@ -17,7 +17,7 @@ import openpnm as op
 import numpy as np
 
 cfg = {}
-cfg['net_size'] = params.net_size
+cfg['net_size'] = mrad_params.net_size
 cfg['conduit_diameters'] = 'lognormal'#mrad_params.conduit_diameters
 
 conduit_elements, conns = mrad_model.create_mrad_network(cfg) # if no params are given, the function uses the default params of the Mrad model
