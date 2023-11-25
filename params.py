@@ -13,12 +13,12 @@ net_size = [np.array([110,100,140])]
 
 # paths for saving
 network_save_file = '/home/onerva/projects/hidrogat/output/netpoints'
-percolation_plot_save_path = '/home/onerva/projects/hidrogat/output/percolation_3D_bond_phys.pdf'
-nonfunctional_componen_size_save_path = '/home/onerva/projects/hidrogat/output/percolation_3D_bond_nonfunc_volume_phys.pdf'
-ninlet_save_path = '/home/onerva/projects/hidrogat/output/percolation_3D_bond_ninlet_phys.pdf'
+percolation_plot_save_path = '/home/onerva/projects/hidrogat/output/percolation_3D_conduit_phys.pdf'
+nonfunctional_componen_size_save_path = '/home/onerva/projects/hidrogat/output/percolation_3D_conduit_nonfunc_volume_phys.pdf'
+ninlet_save_path = '/home/onerva/projects/hidrogat/output/percolation_3D_conduit_ninlet_phys.pdf'
 
 # percolation parameters
-percolation_type = 'bond'
+percolation_type = 'conduit'
 break_nonfunctional_components = False
 
 # visualization parameters

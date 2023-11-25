@@ -217,7 +217,7 @@ def run_graph_theoretical_element_percolation(net, cfg, percolation_type='bond',
                 raise
     return effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume
 
-def run_physiological_element_percolation(net, cfg, percolation_type='bond', removal_order='random'):
+def run_physiological_element_percolation(net, cfg, percolation_type):
     """
     Removes links (bond percolation) or nodes (site percolation) of an openpnm network object in random order till there
     are no links (nodes) left. Components are removed from the network as soon as they become nonfunctional 
@@ -253,9 +253,6 @@ def run_physiological_element_percolation(net, cfg, percolation_type='bond', rem
         heartwood_d : float, diameter of the heartwood (= part of the tree not included in the xylem network) (in conduit elements) used only if use_cylindrical_coords == True (default value from the Mrad et al. article)
     percolation type : str, optional
         type of the percolation, 'bond' to remove throats or 'site' to remove pores (default: 'bond')
-    removal_order : iterable or str, optional (default='random')
-        indices of pores to be removed in the order of removal. for performing full percolation analysis, len(removal_order)
-        should match the number of pores. string 'random' can be given to indicate removal in random order.
 
     Returns
     -------
@@ -276,6 +273,7 @@ def run_physiological_element_percolation(net, cfg, percolation_type='bond', rem
     n_outlets : np.array
         the mean number of outlet elements per functional component
     """
+    # TODO: add a case for removing pores/throats in a given order instead of the random one
     if percolation_type == 'bond':
         n_removals = net['throat.conns'].shape[0]
     elif percolation_type == 'site':
@@ -307,16 +305,7 @@ def run_physiological_element_percolation(net, cfg, percolation_type='bond', rem
         if percolation_type == 'bond':
             try:
                 if len(perc_net['throat.conns']) > 1:
-                    if removal_order == 'random':
-                        throat_to_remove = np.random.randint(perc_net['throat.conns'].shape[0] - 1)
-                    else:
-                        removal_order = np.array(removal_order)
-                        for index in np.arange(i, n_removals):
-                            throat_to_remove = removal_order[index]
-                            if throat_to_remove >= 0:
-                                break
-                        removal_order[np.where(removal_order == throat_to_remove)[0]] = -1
-                        removal_order[np.where(removal_order > throat_to_remove)[0]] -= 1 
+                    throat_to_remove = np.random.randint(perc_net['throat.conns'].shape[0] - 1)
                     op.topotools.trim(perc_net, throats=throat_to_remove)
                 else:
                     op.topotools.trim(perc_net, throats=0)
@@ -325,20 +314,9 @@ def run_physiological_element_percolation(net, cfg, percolation_type='bond', rem
                     nonfunctional_component_size[i::] = len(net['pore.coords'])
                     lcc_size[i::] = max_removed_lcc
                     break
-                else:
-                    raise
                     
         elif percolation_type == 'site':
-            if removal_order == 'random':
-                pore_to_remove = np.random.randint(perc_net['pore.coords'].shape[0] - 1)
-            else:
-                removal_order = np.array(removal_order)
-                for index in np.arange(i, n_removals):
-                    pore_to_remove = removal_order[index]
-                    if pore_to_remove >= 0:
-                        break
-                removal_order[np.where(removal_order == pore_to_remove)[0]] = -1
-                removal_order[np.where(removal_order > pore_to_remove)[0]] -= 1 
+            pore_to_remove = np.random.randint(perc_net['pore.coords'].shape[0] - 1)
             try:
                 op.topotools.trim(perc_net, pores=pore_to_remove)
             except Exception as e:
@@ -346,15 +324,11 @@ def run_physiological_element_percolation(net, cfg, percolation_type='bond', rem
                     nonfunctional_component_size[i::] = len(net['pore.coords']) - i
                     lcc_size[i::] = max_removed_lcc
                     break # this would remove the last node from the network; at this point, value of all outputs should be 0
-                else:
-                    raise
-                    
         lcc_size[i], susceptibility[i] = get_lcc_size(perc_net)
         try:
             pore_diameter = perc_net['pore.diameter']
             conduit_elements = mrad_model.get_conduit_elements(perc_net, cec_indicator=cec_indicator, 
                                                                conduit_element_length=conduit_element_length, heartwood_d=heartwood_d, use_cylindrical_coords=use_cylindrical_coords)
-            conns = perc_net['throat.conns']
             perc_net, removed_components = mrad_model.clean_network(perc_net, conduit_elements, cfg['net_size'][0] - 1, remove_dead_ends=False)
             removed_elements = list(itertools.chain.from_iterable(removed_components))
             nonfunctional_component_volume[i] = nonfunctional_component_volume[i - 1] + np.sum(np.pi * 0.5 * pore_diameter[removed_elements]**2 * conduit_element_length)
@@ -362,16 +336,6 @@ def run_physiological_element_percolation(net, cfg, percolation_type='bond', rem
                 removed_lcc = max([len(component) for component in removed_components])
                 if removed_lcc > max_removed_lcc: # Percolation doesn't affect the sizes of removed components -> the largest removed component size changes only if a new, larger component gets removed
                     max_removed_lcc = removed_lcc
-                if percolation_type == 'site':
-                    removal_order[np.where(np.array([removal_index in removed_elements for removal_index in removal_order]))[0]] = -1
-                    removal_order = removal_order -  np.sum(np.array([removal_order > removed_element for removed_element in removed_elements]), axis=0)
-                elif percolation_type == 'bond':
-                    removed_bonds = []
-                    for conn in conns:
-                        if (conn[0] in removed_elements) or (conn[1] in removed_elements):
-                            removed_bonds.append(np.where(np.all(conns==conn, axis=1))[0][0])
-                    removal_order[np.where(np.array([removal_index in removed_bonds for removal_index in removal_order]))[0]] = -1
-                    removal_order = removal_order -  np.sum(np.array([removal_order > removed_bond for removed_bond in removed_bonds]), axis=0)
             if lcc_size[i] < max_removed_lcc:
                 lcc_size[i] = max_removed_lcc
             nonfunctional_component_size[i] = nonfunctional_component_size[i - 1] + np.sum([len(removed_component) for removed_component in removed_components])
@@ -461,7 +425,7 @@ def run_physiological_conduit_percolation(net, cfg, removal_order='random'):
     nonfunctional_component_volume : np.array
         the total volume of non-functional components
     """
-    # TODO:
+    # TODO: add case for removing conduits in a given order instead of a random order
     # What would bond percolation mean at the level of conduits?
     # A spreading model could be a better model for the phenomenon than random percolation
         
