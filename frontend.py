@@ -17,8 +17,12 @@ import openpnm as op
 import numpy as np
 
 cfg = {}
-cfg['net_size'] = mrad_params.net_size
+cfg['net_size'] = params.net_size
 cfg['conduit_diameters'] = 'lognormal'#mrad_params.conduit_diameters
+cfg['seeds_NPc'] = params.seeds_NPc
+cfg['seeds_Pc'] = params.seeds_Pc
+cfg['seed_ICC_rad'] = params.seed_ICC_rad
+cfg['seed_ICC_tan'] = params.seed_ICC_tan
 
 conduit_elements, conns = mrad_model.create_mrad_network(cfg) # if no params are given, the function uses the default params of the Mrad model
 net = mrad_model.mrad_to_openpnm(conduit_elements, conns)

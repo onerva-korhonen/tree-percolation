@@ -128,9 +128,9 @@ def plot_percolation_curve(total_n_nodes, values, colors, labels, alphas, axinde
     assert n_percolation_steps > 1, 'only the values calculated for the full network given for plotting percolation curves'
     if n_percolation_steps < total_n_nodes - 1:
         print('Warning: number of effective conductance values from percolation analysis does not match the number of nodes')
-        x = np.arange(0, 100 * (n_percolation_steps / total_n_nodes), 100 *(n_percolation_steps / total_n_nodes) / n_percolation_steps)
+        x = np.linspace(0, 100 * (n_percolation_steps / total_n_nodes), n_percolation_steps)
     else:
-        x = np.arange(0, 100, 100 / total_n_nodes)
+        x = np.linspace(0, 100, total_n_nodes)
     
     fig = plt.figure()
     ax = fig.add_subplot(111)

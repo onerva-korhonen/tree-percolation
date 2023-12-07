@@ -42,6 +42,16 @@ def create_mrad_network(cfg):
                 first and second element defined similarly as in NPc
         cec_indicator: int, value used to indicate that the type of a throat is CEC
         icc_indicator: int, value used to indicate that the type of a throat is ICC
+        seeds_NPc : list of ints, random generator seeds used for defining start elements of conduits, 
+                    used only if fixed_random == True. len(seeds_NPc) must equal to net_size[1]. (default values
+                    produce the same results as the Mrad et al. Matlab code)
+        seeds_Pc : list of ints, random generator seeds used for defining end elements of conduits, 
+                    used only if fixed_random == True. len(seeds_Pc) must equal to net_size[1]. (default values
+                    produce the same results as the Mrad et al. Matlab code)
+        seed_ICC_rad : int, random generator seed used for creating radial ICCs, used only if fixed_random == True
+                       (default value produce the same results as the Mrad et al. Matlab code)
+        seed_ICC_tan : int, random generator seed used for creating tangential ICCs, used only if fixed_random == True
+                       (default values produce the same results as the Mrad et al. Matlab code)
         
     Returns
     -------
@@ -74,8 +84,10 @@ def create_mrad_network(cfg):
     rad_dist = np.ones(net_size[1])
     
     if fixed_random:
-        seeds_NPc = params.seeds_NPc
-        seeds_Pc = params.seeds_Pc
+        seeds_NPc = cfg.get('seeds_NPc', params.seeds_NPc)
+        seeds_Pc = cfg.get('seeds_Pc', params.seeds_Pc)
+        seed_ICC_rad = cfg.get('seed_ICC_rad', params.seed_ICC_rad)
+        seed_ICC_tan = cfg.get('seed_ICC_tan', params.seed_ICC_tan)
     
     # Obtaining random locations for conduit start and end points based on NPc and Pc
     NPc_rad = (rad_dist*NPc[0] + (1 - rad_dist)*NPc[1]) # obtaining NPc values at different radial distances by interpolation 
@@ -203,10 +215,10 @@ def create_mrad_network(cfg):
     Pe_tan_rad = (rad_dist*Pe_tan[0] + (1 - rad_dist)*Pe_tan[1])
     
     if fixed_random:
-        np.random.seed(params.seed_ICC_rad)
+        np.random.seed(seed_ICC_rad)
     prob_rad = np.random.rand(len(pot_conx_rad), 1)
     if fixed_random:
-        np.random.seed(params.seed_ICC_tan)
+        np.random.seed(seed_ICC_tan)
     prob_tan = np.random.rand(len(pot_conx_tan), 1)
     
     conx = []
