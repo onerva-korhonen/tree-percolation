@@ -17,12 +17,19 @@ import openpnm as op
 import numpy as np
 
 cfg = {}
-cfg['net_size'] = params.net_size
+cfg['net_size'] = mrad_params.net_size
 cfg['conduit_diameters'] = 'lognormal'#mrad_params.conduit_diameters
-cfg['seeds_NPc'] = params.seeds_NPc
-cfg['seeds_Pc'] = params.seeds_Pc
-cfg['seed_ICC_rad'] = params.seed_ICC_rad
-cfg['seed_ICC_tan'] = params.seed_ICC_tan
+cfg['Dc'] = mrad_params.Dc
+cfg['Dc_cv'] = mrad_params.Dc_cv
+cfg['seeds_NPc'] = mrad_params.seeds_NPc
+cfg['seeds_Pc'] = mrad_params.seeds_Pc
+cfg['seed_ICC_rad'] = mrad_params.seed_ICC_rad
+cfg['seed_ICC_tan'] = mrad_params.seed_ICC_tan
+cfg['si_type'] = params.si_type
+cfg['si_length'] = params.si_length
+cfg['start_conduit'] = params.start_conduit
+cfg['spreading_probability'] = params.spreading_probability
+cfg['spreading_threshold'] = params.spreading_threshold
 
 conduit_elements, conns = mrad_model.create_mrad_network(cfg) # if no params are given, the function uses the default params of the Mrad model
 net = mrad_model.mrad_to_openpnm(conduit_elements, conns)
@@ -36,7 +43,7 @@ sim_net = mrad_model.prepare_simulation_network(net_cleaned, cfg)
 visualization.visualize_pores(sim_net)
 visualization.visualize_network_with_openpnm(sim_net, params.use_cylindrical_coordinates, mrad_params.Lce, 'pore.coords')
 effective_conductance = mrad_model.simulate_water_flow(sim_net, cfg, visualize=params.visualize_simulations)
-if params.percolation_type == 'conduit':
+if params.percolation_type in ['conduit', 'si']:
     lcc_size, susceptibility, _ = percolation.get_conduit_lcc_size(sim_net)
 else:
     lcc_size, susceptibility = percolation.get_lcc_size(sim_net)
@@ -57,7 +64,7 @@ nonfunctional_component_volume = np.append(np.array([0]), nonfunctional_componen
 percolation_outcome_values = np.concatenate((np.expand_dims(effective_conductances, axis=0), 
                                              np.expand_dims(lcc_sizes, axis=0), np.expand_dims(functional_lcc_sizes, axis=0)),
                                              axis=0)
-if params.percolation_type == 'conduit':
+if params.percolation_type in ['conduit', 'si']:
     total_n_nodes = len(effective_conductances)
 elif params.percolation_type == 'bond':
     total_n_nodes = net_cleaned['throat.conns'].shape[0] + 1

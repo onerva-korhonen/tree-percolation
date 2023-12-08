@@ -8,6 +8,7 @@ Created on Wed Oct 18 14:12:44 2023
 Parameters not related to the Mrad et al. article
 """
 import numpy as np
+from scipy.stats import norm
 
 # params for network creation
 net_size = np.array([11,10,14])
@@ -38,16 +39,27 @@ if fixed_random:
     seed_ICC_rad = 63083
     seed_ICC_tan = 73956
     
+# dimensions of conduit elements
+Dc = 15.7299411941746 # diameter of a conduit element
+Dc_ci = [13.3995938309482, 18.4374185582225] # confidence interval of Dc
+Dc_alpha = 0.05 # alpha value of Dc_ci
+Dc_z = norm.ppf(1 - (1 - Dc_alpha) / 2)
+    
 
 # paths for saving
 network_save_file = '/home/onerva/projects/hidrogat/output/netpoints'
-percolation_plot_save_path = '/home/onerva/projects/hidrogat/output/percolation_3D_conduit_phys.pdf'
-nonfunctional_componen_size_save_path = '/home/onerva/projects/hidrogat/output/percolation_3D_conduit_nonfunc_volume_phys.pdf'
-ninlet_save_path = '/home/onerva/projects/hidrogat/output/percolation_3D_conduit_ninlet_phys.pdf'
+percolation_plot_save_path = '/home/onerva/projects/hidrogat/output/percolation_3D_si_stoch.pdf'
+nonfunctional_componen_size_save_path = '/home/onerva/projects/hidrogat/output/percolation_3D_si_nonfunc_volume_stoch.pdf'
+ninlet_save_path = '/home/onerva/projects/hidrogat/output/percolation_3D_si_ninlet_stoch.pdf'
 
 # percolation parameters
-percolation_type = 'conduit'
+percolation_type = 'si'
 break_nonfunctional_components = False
+si_type = 'stochastic'
+si_length = 1000
+spreading_probability = 0.1
+spreading_threshold = 100 # TODO: set a reasonable value
+start_conduit = 'random'
 
 # visualization parameters
 visualize_simulations = False
