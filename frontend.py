@@ -31,6 +31,8 @@ cfg['start_conduit'] = params.start_conduit
 cfg['spreading_probability'] = params.spreading_probability
 cfg['spreading_threshold'] = params.spreading_threshold
 
+cfg['fixed_random'] = True
+
 conduit_elements, conns = mrad_model.create_mrad_network(cfg) # if no params are given, the function uses the default params of the Mrad model
 net = mrad_model.mrad_to_openpnm(conduit_elements, conns)
 visualization.visualize_network_with_openpnm(net)

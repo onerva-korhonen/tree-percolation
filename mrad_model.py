@@ -930,8 +930,8 @@ def get_conduit_elements(net, use_cylindrical_coords=False, conduit_element_leng
         5) the index of the element (from 0 to n_conduit_elements - 1)
     """
     pore_coords = net['pore.coords']
-    conns = net['throat.conns']
-    conn_types = net['throat.type']
+    conns = net.get('throat.conns', [])
+    conn_types = net.get('throat.type', [])
     
     conduit_elements = np.zeros((len(net['pore.coords']), 5))
     
@@ -942,7 +942,7 @@ def get_conduit_elements(net, use_cylindrical_coords=False, conduit_element_leng
     else:
         conduit_elements[:, 0:3] = pore_coords
     
-    if len(conns > 0):
+    if len(conns) > 0:
         cec_mask = conn_types == cec_indicator # cec_mask == 1 if the corresponding throat is a connection between two elements in the same conduit
         cecs = conns[cec_mask]
         conduits = get_conduits(cecs) # contains the start and end elements and size of each conduit

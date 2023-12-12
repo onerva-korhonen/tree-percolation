@@ -283,7 +283,7 @@ def run_physiological_element_percolation(net, cfg, percolation_type):
     n_outlets : np.array
         the mean number of outlet elements per functional component
     """
-    # TODO: add a case for removing pores/throats in a given order instead of the random one
+    # TODO: add a case for removing elements in given order instead of at random; however, this is not a high priority thing
     if percolation_type == 'bond':
         n_removals = net['throat.conns'].shape[0]
     elif percolation_type == 'site':
@@ -437,7 +437,6 @@ def run_physiological_conduit_percolation(net, cfg, removal_order='random'):
         the total volume of non-functional components
     """
     # TODO: What would bond percolation mean at the level of conduits?
-    # A spreading model could be a better model for the phenomenon than random percolation
         
     conduit_element_length = cfg.get('conduit_element_length', params.Lce)
     heartwood_d = cfg.get('heartwood_d', params.heartwood_d)
@@ -524,11 +523,12 @@ def run_physiological_conduit_percolation(net, cfg, removal_order='random'):
                 nonfunctional_component_size[i] = nonfunctional_component_size[i - 1] + n_nonfunctional_conduits
                 if removed_lcc > max_removed_lcc: # Percolation doesn't affect the sizes of removed components -> the largest removed component size changes only if a new, larger component gets removed
                     max_removed_lcc = removed_lcc
-                nonfunctional_component_size[i] =  nonfunctional_component_size[i - 1]
                 if not removal_order == 'random':
                     removed_conduit_indices = np.unique(conduit_elements[removed_elements, 3])[::-1] - 1 # indexing of conduits in conduit_elements begins from 1
                     removal_order[np.where(np.array([removal_index in removed_conduit_indices for removal_index in removal_order]))[0]] = -1
                     removal_order = removal_order -  np.sum(np.array([removal_order > removed_conduit_index for removed_conduit_index in removed_conduit_indices]), axis=0)
+            else:
+                nonfunctional_component_size[i] = nonfunctional_component_size[i - 1]
             if max_removed_lcc > lcc_size[i]: # checking if the largest removed component is larger than the largest functional one
                 lcc_size[i] = max_removed_lcc
             n_inlets[i], n_outlets[i] = get_n_inlets(perc_net, cfg['net_size'][0] - 1, cec_indicator=cec_indicator, 
@@ -625,15 +625,7 @@ def run_conduit_si(net, cfg, start_conduit, si_length=1000, si_type='stochastic'
     """
     # TODO: pick a reasonable default value for si_length, spreading_probability, and spreading_threshold
     assert si_type in ['stochastic', 'physiological'], "Unknown si_type; select 'stochastic' or 'physiological'"
-    # TODO: 
-        # 1) initialize the infection time of the first infected conduit to first simulation step and infection times of all conduits to Inf 
-        # 2) for each conduit that has infection time > current step, check if there are any infected neighbours
-        #       3) if, infect the conduit at probability spreading_probability OR 
-        #          check the air pressure at the neighbour and infect if the pressure > spreading_threshold
-        # 4) calculate output values + prevalence
-        # Repeat 2-4 for all infection steps, return
-    # TODO: debug!!!
-    # TODO: implement prevalence calculation
+    # TODO: implement physiological SI where embolization spreads depending on air pressure in conduits
     conduit_element_length = cfg.get('conduit_element_length', params.Lce)
     heartwood_d = cfg.get('heartwood_d', params.heartwood_d)
     cec_indicator = cfg.get('cec_indicator', params.cec_indicator)
@@ -647,6 +639,7 @@ def run_conduit_si(net, cfg, start_conduit, si_length=1000, si_type='stochastic'
     cec_mask = conn_types == cec_indicator
     cec = conns[cec_mask]
     conduits = mrad_model.get_conduits(cec)
+    orig_conduits = conduits.copy()
         
     effective_conductances = np.zeros(si_length)
     lcc_size = np.zeros(si_length)
@@ -664,9 +657,10 @@ def run_conduit_si(net, cfg, start_conduit, si_length=1000, si_type='stochastic'
         start_conduit = np.random.randint(conduits.shape[0]) + 1 # indexing of conduits starts from 1, not from 0
     
     time = np.arange(si_length)
-    embolization_times = np.zeros(conduits.shape[0])
-    embolization_times[::] = np.inf
-    embolization_times[start_conduit - 1] = 0
+    embolization_times = np.zeros((conduits.shape[0], 2))
+    embolization_times[:, 0] = np.inf
+    embolization_times[start_conduit - 1, 0] = 0
+    embolization_times[:, 1] = 1 # the second column indicates if the conduit is functional
     conduit_neighbours = get_conduit_neighbors(net, use_cylindrical_coords, conduit_element_length, heartwood_d, cec_indicator)
     
     perc_net = op.network.Network(conns=net['throat.conns'], coords=net['pore.coords'])
@@ -677,26 +671,40 @@ def run_conduit_si(net, cfg, start_conduit, si_length=1000, si_type='stochastic'
     max_removed_lcc = 0
         
     for time_step in time:
-        
+            
         pores_to_remove = []
+        removed_conduit_indices = []
         
         if time_step == 0:
             pores_to_remove.extend(list(np.arange(conduits[start_conduit - 1][0], conduits[start_conduit - 1][1] + 1)))
+            conduits[start_conduit - 1, :] = -1
+            conduits[start_conduit::, 0:2] = conduits[start_conduit::, 0:2] - len(pores_to_remove)
         else:
             for conduit in conduit_neighbours.keys():
-                if embolization_times[conduit - 1] < time_step:
+                if embolization_times[conduit - 1, 0] < time_step:
                     continue # conduit is already embolized
                 else:
-                    neighbour_embolization_times = embolization_times[np.array(conduit_neighbours[conduit]) - 1]
+                    if len(conduit_neighbours[conduit]) > 0:
+                        neighbour_embolization_times = embolization_times[np.array(conduit_neighbours[conduit]) - 1, 0]
+                    else:
+                        neighbour_embolization_times = []
                     if np.any(neighbour_embolization_times < time_step): # there are embolized neighbours
                         if np.random.rand() > 1 - spreading_probability:
-                            embolization_times[conduit - 1] = time_step
-                            pores_to_remove.extend(list(np.arange(conduits[conduit - 1][0], conduits[conduit - 1][1] + 1)))
-                            # TODO: does this require else statements?
-        for pore_to_remove in np.sort(pores_to_remove)[::-1]:
-            conduits[np.where(conduits[:, 0] > pore_to_remove), 0:2] -= 1
+                            embolization_times[conduit - 1, 0] = time_step
+                            if embolization_times[conduit - 1, 1] > 0: # if conduit is functional, it will be removed from the simulation network
+                                embolization_times[conduit - 1, 1] = 0
+                                conduit_pores = np.arange(conduits[conduit - 1, 0], conduits[conduit - 1, 1] + 1)
+                                removed_conduit_indices.append(conduit - 1)
+                                pores_to_remove.extend(list(conduit_pores))
+                            else: # if a nonfunctional conduit is embolized, nonfunctional component size and volume decrease
+                                nonfunctional_component_size[time_step] -= 1
+                                nonfunctional_component_volume[time_step] -= np.sum(np.pi * 0.5 * net['pore.diameter'][np.arange(orig_conduits[conduit - 1, 0], orig_conduits[conduit - 1, 1] + 1)]**2 * conduit_element_length)
+            for removed_conduit_index in np.sort(removed_conduit_indices)[::-1]:
+                conduits[removed_conduit_index + 1::, 0:2] = conduits[removed_conduit_index + 1::, 0:2] - conduits[removed_conduit_index, 2]
+            conduits[removed_conduit_indices, :] = -1
         op.topotools.trim(perc_net, pores=pores_to_remove)
-        
+        prevalence[time_step] = np.sum(embolization_times[:, 0] <= time_step) / conduits.shape[0]
+
         try:
             lcc_size[time_step], susceptibility[time_step], _ = get_conduit_lcc_size(perc_net, use_cylindrical_coords=use_cylindrical_coords, 
                                                                   conduit_element_length=conduit_element_length, 
@@ -708,21 +716,22 @@ def run_conduit_si(net, cfg, start_conduit, si_length=1000, si_type='stochastic'
             orig_perc_net['pore.diameter'] = perc_net['pore.diameter']
             perc_net, removed_components = mrad_model.clean_network(perc_net, conduit_elements, cfg['net_size'][0] - 1, remove_dead_ends=False)
             removed_elements = list(itertools.chain.from_iterable(removed_components)) # calculating the size of the largest removed component in conduits
-            nonfunctional_component_volume[time_step] = nonfunctional_component_volume[time_step - 1] + np.sum(np.pi * 0.5 * orig_perc_net['pore.diameter'][removed_elements]**2 * conduit_element_length)
+            nonfunctional_component_volume[time_step] += nonfunctional_component_volume[time_step - 1] + np.sum(np.pi * 0.5 * orig_perc_net['pore.diameter'][removed_elements]**2 * conduit_element_length)
             if len(removed_elements) > 0:
-                #import pdb; pdb.set_trace()
-                # TODO: at some point, the following line raises IndexError: too many indices for array: array is 1-dimensional, but 2 were indexed
-                # => need to find out what causes this
                 removed_net = get_induced_subnet(orig_perc_net, removed_elements)
                 removed_lcc, _, n_nonfunctional_conduits = get_conduit_lcc_size(removed_net, use_cylindrical_coords=use_cylindrical_coords, 
                                                                        conduit_element_length=conduit_element_length, 
                                                                        heartwood_d=heartwood_d, cec_indicator=cec_indicator)
-                nonfunctional_component_size[time_step] = nonfunctional_component_size[time_step - 1] + n_nonfunctional_conduits
+                nonfunctional_component_size[time_step] = nonfunctional_component_size[time_step] + nonfunctional_component_size[time_step - 1] + n_nonfunctional_conduits
                 if removed_lcc > max_removed_lcc: # Percolation doesn't affect the sizes of removed components -> the largest removed component size changes only if a new, larger component gets removed
                     max_removed_lcc = removed_lcc
-                nonfunctional_component_size[time_step] =  nonfunctional_component_size[time_step - 1]
-                for removed_element in np.sort(removed_elements)[::-1]: # TODO: check if the sorting is necessary
-                    conduits[np.where(conduits[:, 0] > removed_element), 0:2] -= 1
+                removed_conduit_indices = get_conduit_indices(conduits, removed_elements)
+                for removed_conduit_index in removed_conduit_indices[::-1]:
+                    conduits[removed_conduit_index + 1::, 0:2] = conduits[removed_conduit_index + 1::, 0:2] - conduits[removed_conduit_index, 2]
+                    conduits[removed_conduit_index, :] = -1
+                embolization_times[removed_conduit_indices, 1] = 0
+            else:
+                nonfunctional_component_size[time_step] = nonfunctional_component_size[time_step] + nonfunctional_component_size[time_step - 1]
             if max_removed_lcc > lcc_size[time_step]: # checking if the largest removed component is larger than the largest functional one
                 lcc_size[time_step] = max_removed_lcc
             n_inlets[time_step], n_outlets[time_step] = get_n_inlets(perc_net, cfg['net_size'][0] - 1, cec_indicator=cec_indicator, 
@@ -744,13 +753,8 @@ def run_conduit_si(net, cfg, start_conduit, si_length=1000, si_type='stochastic'
                 break
             else:
                 raise
-    import pdb; pdb.set_trace()
+    # TODO: return prevalence and use it as x axis for plotting
     return effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume
-    
-                        
-                
-            
-    
     
 
 def get_lcc_size(net):
@@ -812,25 +816,31 @@ def get_conduit_lcc_size(net, use_cylindrical_coords=False, conduit_element_leng
                                                        heartwood_d=heartwood_d, cec_indicator=cec_indicator)
     throat_conduits = []
     conduit_indices = []
-    for i, throat in enumerate(net['throat.conns']):
-        start_conduit = conduit_elements[throat[0], 3] # NOTE: indexing of conduits start from 1 instead of 0
-        end_conduit = conduit_elements[throat[1], 3]
-        if not start_conduit in conduit_indices:
-            conduit_indices.append(start_conduit)
-        if not end_conduit in conduit_indices:
-            conduit_indices.append(end_conduit)
-        if not start_conduit == end_conduit:
-            throat_conduits.append((start_conduit, end_conduit))
-    n_conduits = len(conduit_indices)
-    G = nx.Graph()
-    G.add_nodes_from(conduit_indices)
-    G.add_edges_from(throat_conduits)
-    component_sizes = [len(component) for component in sorted(nx.connected_components(G), key=len, reverse=True)]
-    lcc_size = component_sizes[0]
-    if len(component_sizes) > 1:
-        susceptibility = component_sizes[1]
-    else:
+    throats = net.get('throat.conns', [])
+    if len(throats) > 0:
+        for i, throat in enumerate(throats):
+            start_conduit = conduit_elements[throat[0], 3] # NOTE: indexing of conduits start from 1 instead of 0
+            end_conduit = conduit_elements[throat[1], 3]
+            if not start_conduit in conduit_indices:
+                conduit_indices.append(start_conduit)
+            if not end_conduit in conduit_indices:
+                conduit_indices.append(end_conduit)
+            if not start_conduit == end_conduit:
+                throat_conduits.append((start_conduit, end_conduit))
+        n_conduits = len(conduit_indices)
+        G = nx.Graph()
+        G.add_nodes_from(conduit_indices)
+        G.add_edges_from(throat_conduits)
+        component_sizes = [len(component) for component in sorted(nx.connected_components(G), key=len, reverse=True)]
+        lcc_size = component_sizes[0]
+        if len(component_sizes) > 1:
+            susceptibility = component_sizes[1]
+        else:
+            susceptibility = 0
+    else: # each conduit element forms a conduit of its own
+        lcc_size = 1
         susceptibility = 0
+        n_conduits = net['pore.coords'].shape[0]
     return lcc_size, susceptibility, n_conduits
 
 def get_conduit_neighbors(net, use_cylindrical_coords=False, conduit_element_length=params.Lce, 
@@ -860,7 +870,7 @@ def get_conduit_neighbors(net, use_cylindrical_coords=False, conduit_element_len
     conduit_elements = mrad_model.get_conduit_elements(net, use_cylindrical_coords=use_cylindrical_coords, 
                                                        conduit_element_length=conduit_element_length, 
                                                        heartwood_d=heartwood_d, cec_indicator=cec_indicator)
-    throat_conduits = []
+    
     conduit_neighbours = {int(i):[] for i in np.unique(conduit_elements[:, 3])}
     
     for i, throat in enumerate(net['throat.conns']):
@@ -902,8 +912,11 @@ def get_induced_subnet(net, elements):
             subtypes.append(conn_type)
     subconns = np.array(subconns)
     subtypes = np.array(subtypes)
-    subnet = op.network.Network(conns=subconns, coords=subcoords)
-    subnet['throat.type'] = subtypes
+    if subconns.shape[0] > 0:
+        subnet = op.network.Network(conns=subconns, coords=subcoords)
+        subnet['throat.type'] = subtypes
+    else:
+        subnet = op.network.Network(coords=subcoords)
     return subnet
 
 def get_n_inlets(net, outlet_row_index, cec_indicator=params.cec_indicator, conduit_element_length=params.Lce, 
@@ -953,6 +966,28 @@ def get_n_inlets(net, outlet_row_index, cec_indicator=params.cec_indicator, cond
     n_outlets = n_outlets / n_functional
     return n_inlets, n_outlets
         
+def get_conduit_indices(conduits, elements):
+    """
+    Finds the indices of the conduits (sets of consecutive elements in the row/z direction) to which given elements belong to.
+
+    Parameters
+    ----------
+    conduits : np.array
+        three columns: 1) the first element of the conduit, 2) the second element of the conduit, 3) size of the conduit
+    elements : iterable of ints
+        list of elements; each element should belong to one of the conduits 
+
+    Returns
+    -------
+    conduit_indices : np.array
+        for each element, the index of the conduit to which the element belongs to
+    """
+    conduit_indices = []
+    for element in elements:
+        conduit_index = np.where((conduits[:, 0] <= element) & (conduits[:, 1] >= element))[0][0]
+        conduit_indices.append(conduit_index)
+    conduit_indices = np.unique(conduit_indices)
+    return conduit_indices
             
     
             
