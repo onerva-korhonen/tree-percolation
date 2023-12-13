@@ -92,7 +92,7 @@ def make_colored_pore_scatter(net, pore_values, title='', cmap=plt.cm.jet):
     fig.colorbar(p, ax=ax)
     plt.title(title)
     
-def plot_percolation_curve(total_n_nodes, values, colors, labels, alphas, axindex=[], y_labels=[], save_path=''):
+def plot_percolation_curve(total_n_nodes, values, colors, labels, alphas, axindex=[], y_labels=[], save_path='', x=[]):
     """
     Plots the percolation analysis outcomes (e.g. largest connected component size and effective conductance) as a function
     of the fraction of nodes removed.
@@ -117,6 +117,9 @@ def plot_percolation_curve(total_n_nodes, values, colors, labels, alphas, axinde
         labels of the first and secondary y axis. only used if the secondary y axis is used, in which case len(y_labels) should be 2
     save_path : str, optional
         if len(save_path) > 0, the figure will be saved as .pdf to the given path
+    x : np.array, optional
+        the x axis, against which to plot the percolation outcomes; if x is not given, the x axis is constructed as linspace
+        assuming that one node/edge is removed at each step
         
 
     Returns
@@ -126,11 +129,14 @@ def plot_percolation_curve(total_n_nodes, values, colors, labels, alphas, axinde
     """
     n_percolation_steps = values.shape[1]
     assert n_percolation_steps > 1, 'only the values calculated for the full network given for plotting percolation curves'
-    if n_percolation_steps < total_n_nodes - 1:
-        print('Warning: number of effective conductance values from percolation analysis does not match the number of nodes')
-        x = np.linspace(0, 100 * (n_percolation_steps / total_n_nodes), n_percolation_steps)
+    if len(x) > 0:
+        assert len(x) == n_percolation_steps, "length of the given x axis does not match the number of percolation outcomes"
     else:
-        x = np.linspace(0, 100, total_n_nodes)
+        if n_percolation_steps < total_n_nodes - 1:
+            print('Warning: number of effective conductance values from percolation analysis does not match the number of nodes')
+            x = np.linspace(0, 100 * (n_percolation_steps / total_n_nodes), n_percolation_steps)
+        else:
+            x = np.linspace(0, 100, total_n_nodes)
     
     fig = plt.figure()
     ax = fig.add_subplot(111)

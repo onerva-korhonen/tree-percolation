@@ -53,7 +53,7 @@ n_inlet, n_outlet = percolation.get_n_inlets(sim_net, cfg['net_size'][0] - 1, us
 
 cfg['use_cylindrical_coords'] = False
 net_cleaned['pore.diameter'] = sim_net['pore.diameter']
-effective_conductances, lcc_sizes, functional_lcc_sizes, nonfunctional_component_size, susceptibilities, functional_susceptibilities, n_inlets, n_outlets, nonfunctional_component_volume = percolation.run_percolation(net_cleaned, cfg, percolation_type=params.percolation_type, removal_order='random', break_nonfunctional_components=params.break_nonfunctional_components)
+effective_conductances, lcc_sizes, functional_lcc_sizes, nonfunctional_component_size, susceptibilities, functional_susceptibilities, n_inlets, n_outlets, nonfunctional_component_volume, prevalence = percolation.run_percolation(net_cleaned, cfg, percolation_type=params.percolation_type, removal_order='random', break_nonfunctional_components=params.break_nonfunctional_components)
 effective_conductances = np.append(np.array([effective_conductance]), effective_conductances)
 lcc_sizes = np.append(np.array([lcc_size]), lcc_sizes)
 functional_lcc_sizes = np.append(np.array([lcc_size]), functional_lcc_sizes)
@@ -74,16 +74,20 @@ elif params.percolation_type == 'site':
     total_n_nodes = net_cleaned['pore.coords'].shape[0] + 1
 else:
     raise Exception('Unknown percolation type; percolation type must be bond, site, or conduit')
+if params.percolation_type == 'si':
+    x = np.append(np.array([0]), prevalence)
+else:
+    x = []
 visualization.plot_percolation_curve(total_n_nodes, percolation_outcome_values,
                                      colors=params.percolation_outcome_colors, labels=params.percolation_outcome_labels, 
                                      alphas=params.percolation_outcome_alphas, y_labels=params.percolation_outcome_ylabels,
-                                     axindex=params.percolation_outcome_axindex, save_path=params.percolation_plot_save_path)
+                                     axindex=params.percolation_outcome_axindex, save_path=params.percolation_plot_save_path, x=x)
 visualization.plot_percolation_curve(total_n_nodes, np.expand_dims(nonfunctional_component_volume, axis=0),
                                      colors=[params.percolation_nonfunctional_component_size_color], labels=[params.percolation_nonfunctional_component_size_label], 
-                                     alphas=[params.percolation_nonfunctional_component_size_alpha], save_path=params.nonfunctional_componen_size_save_path)
+                                     alphas=[params.percolation_nonfunctional_component_size_alpha], save_path=params.nonfunctional_componen_size_save_path, x=x)
 visualization.plot_percolation_curve(total_n_nodes, 
                                      np.concatenate((np.expand_dims(n_inlets, axis=0), np.expand_dims(n_outlets, axis=0)), axis=0),
                                      colors=[params.percolation_ninlet_color, params.percolation_noutlet_color],
                                      labels=[params.percolation_ninlet_label, params.percolation_noutlet_label],
                                      alphas=[params.percolation_ninlet_alpha, params.percolation_noutlet_alpha],
-                                     save_path=params.ninlet_save_path)
+                                     save_path=params.ninlet_save_path, x=x)

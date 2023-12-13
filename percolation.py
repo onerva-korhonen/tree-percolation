@@ -86,19 +86,23 @@ def run_percolation(net, cfg, percolation_type='bond', removal_order='random', b
         the mean number of outlet elements per functional component
     nonfunctional_component_volume : np.array
         total volume of nonfunctional components
+    prevalence : np.array
+        the fraction of embolized conduits in the network (only calculated if percolation_type == 'si')
     """
     # TODO: calculate also the percentage of conductance lost to match Mrad's VC plots (although this is a pure scaling: current conductance divided by the original one)
     assert percolation_type in ['bond', 'site', 'conduit', 'si'], 'percolation type must be bond (removal of throats), site (removal of pores), conduit (removal of conduits), or si (removal of conduits as SI spreading process)'
     if percolation_type == 'conduit':
         effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume = run_physiological_conduit_percolation(net, cfg)
     elif percolation_type == 'si':
-        effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume = run_conduit_si(net, cfg, si_length=cfg['si_length'], start_conduit=cfg['start_conduit'], si_type=cfg['si_type'])
+        effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence = run_conduit_si(net, cfg, si_length=cfg['si_length'], start_conduit=cfg['start_conduit'], si_type=cfg['si_type'])
     elif break_nonfunctional_components:
         effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume = run_graph_theoretical_element_percolation(net, cfg, percolation_type, removal_order)
     else:
         effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume = run_physiological_element_percolation(net, cfg, percolation_type)
+    if not percolation_type == 'si':
+        prevalence = np.zeros(len(effective_conductances))
     
-    return effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume
+    return effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence
 
 def run_graph_theoretical_element_percolation(net, cfg, percolation_type='bond', removal_order='random'):
     """
@@ -753,8 +757,8 @@ def run_conduit_si(net, cfg, start_conduit, si_length=1000, si_type='stochastic'
                 break
             else:
                 raise
-    # TODO: return prevalence and use it as x axis for plotting
-    return effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume
+    cut_index = np.where(prevalence == prevalence[-1])[0][0] + 1
+    return effective_conductances[0:cut_index], lcc_size[0:cut_index], functional_lcc_size[0:cut_index], nonfunctional_component_size[0:cut_index], susceptibility[0:cut_index], functional_susceptibility[0:cut_index], n_inlets[0:cut_index], n_outlets[0:cut_index], nonfunctional_component_volume[0:cut_index], prevalence[0:cut_index]
     
 
 def get_lcc_size(net):
