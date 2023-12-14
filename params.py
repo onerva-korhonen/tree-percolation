@@ -40,8 +40,10 @@ if fixed_random:
     seed_ICC_tan = 73956
     
 # dimensions of conduit elements
-Dc = 15.7299411941746 # diameter of a conduit element
-Dc_ci = [13.3995938309482, 18.4374185582225] # confidence interval of Dc
+Dc = 18.18232653752158e-9 # diameter of a conduit element
+#Dc_ci = [13.3995938309482, 18.4374185582225] # confidence interval of Dc
+Dc_std = 10.76131985221804
+Dc_cv = Dc_std / Dc
 Dc_alpha = 0.05 # alpha value of Dc_ci
 Dc_z = norm.ppf(1 - (1 - Dc_alpha) / 2)
     

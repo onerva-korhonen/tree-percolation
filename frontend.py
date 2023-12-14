@@ -19,8 +19,8 @@ import numpy as np
 cfg = {}
 cfg['net_size'] = mrad_params.net_size
 cfg['conduit_diameters'] = 'lognormal'#mrad_params.conduit_diameters
-cfg['Dc'] = mrad_params.Dc
-cfg['Dc_cv'] = mrad_params.Dc_cv
+cfg['Dc'] = params.Dc
+cfg['Dc_cv'] = params.Dc_cv
 cfg['seeds_NPc'] = mrad_params.seeds_NPc
 cfg['seeds_Pc'] = mrad_params.seeds_Pc
 cfg['seed_ICC_rad'] = mrad_params.seed_ICC_rad

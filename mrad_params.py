@@ -16,7 +16,8 @@ heartwood_d = 10 # diameter of the heartwood (in columns)
 
 # dimensions of conduit elements
 Lce = 0.00288 # length of a conduit element (m)
-Dc = 24.6e-6 # averege conduit diameter (same for all elements of the conduit) (m)
+Dc = 24.6e-9 # averege conduit diameter (same for all elements of the conduit) (m)
+# NOTE: in the Mrad et al. Matlab code, Dc is 24.6e-6 but the Mrad et al. 2018 article uses 24.6e-9
 Dc_cv = 0.12 # coefficient of variation of conduit diameter
 Dp = 32.0e-9 # average pit membrane pore diameter (m)
 Dm = 6.3e-6 # average membrane diameter (m) [CURRENTLY NOT USED IN THE MODEL]
