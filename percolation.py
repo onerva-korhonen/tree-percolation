@@ -628,6 +628,8 @@ def run_conduit_si(net, cfg, start_conduit, si_length=1000, si_type='stochastic'
 
     """
     # TODO: pick a reasonable default value for si_length, spreading_probability, and spreading_threshold
+    # TODO: figure out a way to automatically define SI length: this would require replacing the for time_step loop
+    # with a while loop and introducing a tolerance parameter to define when the simulation should end
     assert si_type in ['stochastic', 'physiological'], "Unknown si_type; select 'stochastic' or 'physiological'"
     # TODO: implement physiological SI where embolization spreads depending on air pressure in conduits
     conduit_element_length = cfg.get('conduit_element_length', params.Lce)
@@ -684,6 +686,16 @@ def run_conduit_si(net, cfg, start_conduit, si_length=1000, si_type='stochastic'
             conduits[start_conduit - 1, :] = -1
             conduits[start_conduit::, 0:2] = conduits[start_conduit::, 0:2] - len(pores_to_remove)
         else:
+            embolized_conduits = np.where(embolization_times[:, 0] < time_step)[0]
+            possible_embolizations = False
+            for embolized_conduit in embolized_conduits:
+                neighbour_embolization_times = embolization_times[np.array(conduit_neighbours[embolized_conduit + 1]) - 1, 0]
+                if np.any(neighbour_embolization_times > time_step):
+                    possible_embolizations = True
+                    break
+            if not possible_embolizations:
+                break # no further embolizations are possible and the simulation stops
+            
             for conduit in conduit_neighbours.keys():
                 if embolization_times[conduit - 1, 0] < time_step:
                     continue # conduit is already embolized
@@ -757,7 +769,10 @@ def run_conduit_si(net, cfg, start_conduit, si_length=1000, si_type='stochastic'
                 break
             else:
                 raise
-    cut_index = np.where(prevalence == prevalence[-1])[0][0] + 1
+    if not possible_embolizations:
+        cut_index = time_step
+    else:
+        cut_index = np.where(prevalence == prevalence[-1])[0][0] + 1
     return effective_conductances[0:cut_index], lcc_size[0:cut_index], functional_lcc_size[0:cut_index], nonfunctional_component_size[0:cut_index], susceptibility[0:cut_index], functional_susceptibility[0:cut_index], n_inlets[0:cut_index], n_outlets[0:cut_index], nonfunctional_component_volume[0:cut_index], prevalence[0:cut_index]
     
 
