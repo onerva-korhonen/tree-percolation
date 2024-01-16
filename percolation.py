@@ -761,11 +761,13 @@ def run_conduit_si(net, cfg, start_conduit, si_length=1000, si_type='stochastic'
                 nonfunctional_component_size[time_step::] = net['pore.coords'].shape[0] - time_step
                 nonfunctional_component_volume[time_step::] = nonfunctional_component_volume[time_step - 1] + np.sum(np.pi * 0.5 * orig_perc_net['pore.diameter']**2 * conduit_element_length)
                 lcc_size[time_step::] = max_removed_lcc
+                prevalence[time_step::] = 1
                 break
             elif (str(e) == "'throat.conns'") and (len(perc_net['throat.all']) == 0): # this is because all links have been removed from the network by op.topotools.trim
                 nonfunctional_component_size[time_step::] = net['pore.coords'].shape[0] - time_step
                 nonfunctional_component_volume[time_step::] = nonfunctional_component_volume[time_step - 1] + np.sum(np.pi * 0.5 * orig_perc_net['pore.diameter'] * conduit_element_length)
                 lcc_size[time_step::] = max_removed_lcc
+                prevalence[time_step::] = 1
                 break
             else:
                 raise
