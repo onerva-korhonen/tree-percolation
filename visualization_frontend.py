@@ -5,6 +5,7 @@ import visualization
 
 import pickle
 import numpy as np
+import matplotlib.pylab as plt
 
 f = open(params.percolation_data_save_path, 'rb')
 data = pickle.load(f)
@@ -18,7 +19,7 @@ susceptibilities = data['susceptibilities']
 functional_susceptibilities = data['functional_susceptibilities']
 n_inlets = data['n_inlets']
 n_outlets = data['n_outlets']
-nonfunctional_component_volume = data['nonfunctional_componennt_volume'] # TODO: fix the typo
+nonfunctional_component_volume = data['nonfunctional_component_volume'] # TODO: fix the typo
 total_n_nodes = data['total_n_nodes']
 x = data['x']
 
@@ -39,4 +40,9 @@ visualization.plot_percolation_curve(total_n_nodes,
                                      labels=[params.percolation_ninlet_label, params.percolation_noutlet_label],
                                      alphas=[params.percolation_ninlet_alpha, params.percolation_noutlet_alpha],
                                      save_path=params.ninlet_save_path, x=x)
-
+fig = plt.figure()
+ax = fig.add_subplot(111)
+plt.plot(x)
+ax.set_xlabel('time')
+ax.set_ylabel('prevalence (fraction of embolized conduits)')
+plt.savefig(params.prevalence_save_path, format='pdf',bbox_inches='tight')
