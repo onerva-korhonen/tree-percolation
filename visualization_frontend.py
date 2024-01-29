@@ -18,7 +18,7 @@ susceptibilities = data['susceptibilities']
 functional_susceptibilities = data['functional_susceptibilities']
 n_inlets = data['n_inlets']
 n_outlets = data['n_outlets']
-nonfunctional_component_volume = data['nonfunctional_componennt_volume'] # TODO: fix the typo
+nonfunctional_component_volume = data['nonfunctional_component_volume']
 total_n_nodes = data['total_n_nodes']
 x = data['x']
 

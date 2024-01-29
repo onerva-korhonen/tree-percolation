@@ -11,7 +11,7 @@ import numpy as np
 from scipy.stats import norm
 
 # params for network creation
-net_size = np.array([110,100,28])
+net_size = np.array([110,100,56])
 fixed_random = True
 if fixed_random:
     #seeds_NPc = [205, 9699, 8324, 2123, 1818, 1834, 3042, 5247, 4319, 2912]
