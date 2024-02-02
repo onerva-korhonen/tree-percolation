@@ -30,7 +30,8 @@ def create_mrad_network(cfg):
     cfg : dict
         contains
         fixed_random: bln, if True, fixed random seeds are used to create the same network as Mrad's Matlab code
-        net_size: np.array, size of the network to be created (n_rows x n_columns x n_depths)
+        net_size: np.array, size of the network to be created (n_rows x n_columns x n_depths). Note the directions:
+            rows: vertical, columns: radial, depth: tangential
         NPc: np.array, propabilities of initiating a conduit at the location closest to the pith (first element)
             and fartest away from it (second element); probabilities for other locations are interpolated from
             these two values
@@ -186,9 +187,9 @@ def create_mrad_network(cfg):
         if ((row == 0) or (row == outlet_row_index)):
             continue # no pit connections in the first and last rows
         
-        # check if there is a horizontally (= in column direction) adjacent
-        # element that is part of another conduit. The maximal number of 
-        # potential connections in a 3D networks is 8 for each element.
+        # check if there is an adjacent element in radial (= column) or tangential (= depth) direction
+        # that belongs to another conduit (adjacent elements in the vertical (=row) direction belong to the same conduit by default). 
+        # The maximal number of potential connections in a 3D networks is 8 for each element (sides and corners).
         for conduit_element_2 in conduit_elements[i + 1:]:
             row2 = conduit_element_2[0]
             column2 = conduit_element_2[1]
@@ -197,7 +198,7 @@ def create_mrad_network(cfg):
             node2_index = conduit_element_2[4]
             
             if ((abs(column2 - column) > 1) and (abs(depth2 - depth) > 1) and (depth2 != max_depth) and (depth != 0)):
-                break # the conduit elements in next rows are further away than this one, so let's break the loop
+                break # there are no potential connections between the current conduit_element_2 and the following instances of conduit_element_2 are even further away (the array is sorted), so let's break the loop
             
             if (row2 == row):
                 if (column2 - column == 1) and (depth2 == depth):
