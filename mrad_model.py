@@ -109,7 +109,7 @@ def create_mrad_network(cfg):
     cond_end = np.concatenate(cond_end, axis=1)
     
     temp_start = np.zeros([1, net_size[1], net_size[2]])
-    for j in range(net_size[2]): # looping in the radial (depth) direction
+    for j in range(net_size[2]): # looping in the tangential (depth) direction
         for i in range(net_size[1]): # looping in the column direction
             # construct a conduit at the first row of this column if there is
             # a 1 among the first 50 entires of the cond_start matrix at this column
@@ -470,7 +470,7 @@ def simulate_water_flow(sim_net, cfg, visualize=False):
     if visualize:
         # visualizing concentration at pores
         visualization.make_colored_pore_scatter(sim_net, concentration, title='Concentration')
-    
+    # TODO: shouldn't this be the flow through the outlet, not the inlet?    
     effective_conductance = stokes_flow.rate(pores=inlet)[0] / (inlet_pressure - outlet_pressure)
     
     return effective_conductance
