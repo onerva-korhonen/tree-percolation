@@ -470,8 +470,7 @@ def simulate_water_flow(sim_net, cfg, visualize=False):
     if visualize:
         # visualizing concentration at pores
         visualization.make_colored_pore_scatter(sim_net, concentration, title='Concentration')
-    # TODO: shouldn't this be the flow through the outlet, not the inlet?    
-    effective_conductance = stokes_flow.rate(pores=inlet)[0] / (inlet_pressure - outlet_pressure)
+    effective_conductance = stokes_flow.rate(pores=outlet)[0] / (inlet_pressure - outlet_pressure)
     
     return effective_conductance
     
