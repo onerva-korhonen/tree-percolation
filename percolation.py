@@ -14,6 +14,7 @@ import itertools
 
 import mrad_model
 import mrad_params as params
+import simulations
 
 def run_percolation(net, cfg, percolation_type='bond', removal_order='random', break_nonfunctional_components=True):
     """
@@ -50,16 +51,12 @@ def run_percolation(net, cfg, percolation_type='bond', removal_order='random', b
         Tm: float, average thickness of membranes (m)
         conduit_element_length : float, length of a single conduit element (m), used only if use_cylindrical_coords == True (default from the Mrad et al. article)
         heartwood_d : float, diameter of the heartwood (= part of the tree not included in the xylem network) (in conduit elements) used only if use_cylindrical_coords == True (default value from the Mrad et al. article)
-        si_type : str, defines how the decision on spreading (= removal of a conduit) is made: if 'stochastic', embolism spreads to 
-        neighbouring conduits with a given probabability, while if 'physiological', embolism spreads if the air pressure
-        at one side of a pit exceeds the threshold
         spreading_probability : double, probability at which embolism spreads to neighbouring conduits if si_type == 'stochastic'
-        spreading_threshold : double, mimimum air pressure at one side of a pit required for spreading of the embolism if si_type == 'physiological'
         start_conduit : int or 'random', index of the first conduit to be removed (i.e. the first infected node of the simulation), if 'random', the start
         conduit is selected at random
     percolation type : str, optional
-        type of the percolation, 'bond' to remove throats, 'site' to remove pores, 'conduit' to remove conduits, or
-        'si' to simulate the spreading of embolism between conduits using the SI model(default: 'bond')
+        type of the percolation, 'bond' to remove throats, 'site' to remove pores, 'conduit' to remove conduits,
+        'si' to simulate the spreading of embolism between conduits using the SI model or 'drainage' to simulate the spreading of embolism with the openpnm drainage algorithm (default: 'bond')
     removal_order : iterable or str, optional (default='random')
         indices of pores to be removed in the order of removal. for performing full percolation analysis, len(removal_order)
         should match the number of pores. string 'random' can be given to indicate removal in random order.
@@ -90,11 +87,13 @@ def run_percolation(net, cfg, percolation_type='bond', removal_order='random', b
         the fraction of embolized conduits in the network (only calculated if percolation_type == 'si')
     """
     # TODO: calculate also the percentage of conductance lost to match Mrad's VC plots (although this is a pure scaling: current conductance divided by the original one)
-    assert percolation_type in ['bond', 'site', 'conduit', 'si'], 'percolation type must be bond (removal of throats), site (removal of pores), conduit (removal of conduits), or si (removal of conduits as SI spreading process)'
+    assert percolation_type in ['bond', 'site', 'conduit', 'si', 'drainage'], 'percolation type must be bond (removal of throats), site (removal of pores), conduit (removal of conduits), si (removal of conduits as SI spreading process), or drainage (removal of conduits using the openpnm drainage algorithm)'
     if percolation_type == 'conduit':
         effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume = run_physiological_conduit_percolation(net, cfg)
     elif percolation_type == 'si':
-        effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence = run_conduit_si(net, cfg, si_length=cfg['si_length'], start_conduit=cfg['start_conduit'], si_type=cfg['si_type'])
+        effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence = run_conduit_si(net, cfg, si_length=cfg['si_length'], start_conduit=cfg['start_conduit'])
+    elif percolation_type == 'drainage':
+        effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence = run_physiological_conduit_drainage(net, cfg, start_conduit=cfg['start_conduit'])
     elif break_nonfunctional_components:
         effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume = run_graph_theoretical_element_percolation(net, cfg, percolation_type, removal_order)
     else:
@@ -218,7 +217,7 @@ def run_graph_theoretical_element_percolation(net, cfg, percolation_type='bond',
                                                      conduit_element_length=conduit_element_length, heartwood_d=heartwood_d,
                                                      use_cylindrical_coords=use_cylindrical_coords)
             sim_net = mrad_model.prepare_simulation_network(sim_net, cfg)
-            effective_conductances[i] = mrad_model.simulate_water_flow(sim_net, cfg, visualize=False)
+            effective_conductances[i] = simulations.simulate_water_flow(sim_net, cfg, visualize=False)
             functional_lcc_size[i], functional_susceptibility[i] = get_lcc_size(sim_net)
         except Exception as e:
             if str(e) == 'Cannot delete ALL pores': # this is because all remaining nodes belong to non-functional components
@@ -357,7 +356,7 @@ def run_physiological_element_percolation(net, cfg, percolation_type):
                                                      conduit_element_length=conduit_element_length, heartwood_d=heartwood_d,
                                                      use_cylindrical_coords=use_cylindrical_coords)
             sim_net = mrad_model.prepare_simulation_network(perc_net, cfg)
-            effective_conductances[i] = mrad_model.simulate_water_flow(sim_net, cfg, visualize=False)
+            effective_conductances[i] = simulations.simulate_water_flow(sim_net, cfg, visualize=False)
             functional_lcc_size[i], functional_susceptibility[i] = get_lcc_size(perc_net)
         except Exception as e:
             if str(e) == 'Cannot delete ALL pores': # this is because all remaining nodes belong to non-functional components
@@ -386,7 +385,7 @@ def run_physiological_conduit_percolation(net, cfg, removal_order='random'):
     """
     Removes conduits (sets of consequtive conduit elements in row/z direction) with all their ICC throats from an OpenPNM
     network object till there are no conduits left. Components are removed from the network as soon as they become nonfunctional 
-    (i.e. are not connected to inlet or outlet) are removed.
+    (i.e. are not connected to inlet or outlet).
     
     Parameters:
     -----------
@@ -513,7 +512,7 @@ def run_physiological_conduit_percolation(net, cfg, removal_order='random'):
                                                                   heartwood_d=heartwood_d, cec_indicator=cec_indicator)
             conduit_elements = mrad_model.get_conduit_elements(perc_net, cec_indicator=cec_indicator, 
                                                                conduit_element_length=conduit_element_length, heartwood_d=heartwood_d, use_cylindrical_coords=use_cylindrical_coords)
-            orig_perc_net = op.network.Network(coords=perc_net['pore.coords'], conns=perc_net['throat.conns'])
+            orig_perc_net = op.network.Network(coords=perc_net['pore.coords'], conns=perc_net['throat.conns']) # orig_perc_net is needed for calculating measures related to non-functional components (these are removed from perc_net before the simulations)
             orig_perc_net['throat.type'] = perc_net['throat.type']
             orig_perc_net['pore.diameter'] = perc_net['pore.diameter']
             perc_net, removed_components = mrad_model.clean_network(perc_net, conduit_elements, cfg['net_size'][0] - 1, remove_dead_ends=False)
@@ -539,7 +538,7 @@ def run_physiological_conduit_percolation(net, cfg, removal_order='random'):
                                                      conduit_element_length=conduit_element_length, heartwood_d=heartwood_d,
                                                      use_cylindrical_coords=use_cylindrical_coords)
             sim_net = mrad_model.prepare_simulation_network(perc_net, cfg)
-            effective_conductances[i] = mrad_model.simulate_water_flow(sim_net, cfg, visualize=False)
+            effective_conductances[i] = simulations.simulate_water_flow(sim_net, cfg, visualize=False)
             functional_lcc_size[i], functional_susceptibility[i], _ = get_conduit_lcc_size(perc_net)
         except Exception as e:
             if str(e) == 'Cannot delete ALL pores': # this is because all remaining nodes belong to non-functional components
@@ -556,11 +555,10 @@ def run_physiological_conduit_percolation(net, cfg, removal_order='random'):
                 raise
     return effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume
 
-def run_conduit_si(net, cfg, start_conduit, si_length=1000, si_type='stochastic', spreading_probability=0.1, spreading_threshold=0):
+def run_conduit_si(net, cfg, start_conduit, si_length=1000, spreading_probability=0.1):
     """
     Starting from a given conduit, simulates an SI (embolism) spreading process on the conduit network: at each step, each conduit is
-    removed from the network at a certain possibility that depends on if their neighbours have been removed. The removal
-    decision can be made either stochastically or based on simulated pressure at neighbouring conduits.
+    removed from the network at a certain possibility that depends on if their neighbours have been removed. 
 
     Parameters
     ----------
@@ -589,20 +587,13 @@ def run_conduit_si(net, cfg, start_conduit, si_length=1000, si_type='stochastic'
         Tm: float, average thickness of membranes (m)
         conduit_element_length : float, length of a single conduit element (m), used only if use_cylindrical_coords == True (default from the Mrad et al. article)
         heartwood_d : float, diameter of the heartwood (= part of the tree not included in the xylem network) (in conduit elements) used only if use_cylindrical_coords == True (default value from the Mrad et al. article)
-        spreading_probability : double, probability at which embolism spreads to neighbouring conduits if si_type == 'stochastic' (default: 0.1)
-        spreading_threshold : double, mimimum air pressure at one side of a pit required for spreading of the embolism if si_type == 'physiological' (default: ???)
+        spreading_probability : double, probability at which embolism spreads to neighbouring conduits (default: 0.1)
     start_conduit : int or 'random'
         index of the first conduit to be removed (i.e. the first infected node of the simulation), if 'random', the start
         conduit is selected at random
     si_length : int, optional
         number of time steps used for the simulation (default: 1000)
-    si_type : str, optional
-        defines how the decision on spreading (= removal of a conduit) is made: if 'stochastic', embolism spreads to 
-        neighbouring conduits with a given probabability, while if 'physiological', embolism spreads if the air pressure
-        at one side of a pit exceeds the threshold
     
-    Returns
-    -------
     Returns:
     --------
     effective_conductances : np.array
@@ -627,17 +618,14 @@ def run_conduit_si(net, cfg, start_conduit, si_length=1000, si_type='stochastic'
         fraction of embolized conduits at each infection step
 
     """
-    # TODO: pick a reasonable default value for si_length, spreading_probability, and spreading_threshold
+    # TODO: pick a reasonable default value for si_length and spreading_probability
     # TODO: figure out a way to automatically define SI length: this would require replacing the for time_step loop
     # with a while loop and introducing a tolerance parameter to define when the simulation should end
-    assert si_type in ['stochastic', 'physiological'], "Unknown si_type; select 'stochastic' or 'physiological'"
-    # TODO: implement physiological SI where embolization spreads depending on air pressure in conduits
     conduit_element_length = cfg.get('conduit_element_length', params.Lce)
     heartwood_d = cfg.get('heartwood_d', params.heartwood_d)
     cec_indicator = cfg.get('cec_indicator', params.cec_indicator)
     use_cylindrical_coords = cfg.get('use_cylindrical_coords', False)
     spreading_probability = cfg.get('spreading_probability', 0.1)
-    spreading_threshold = cfg.get('spreading_threshold', 100)
     
     conns = net['throat.conns']
     assert len(conns) > 0, 'Network has no throats; cannot run percolation analysis'
@@ -727,7 +715,7 @@ def run_conduit_si(net, cfg, start_conduit, si_length=1000, si_type='stochastic'
                                                                   heartwood_d=heartwood_d, cec_indicator=cec_indicator)
             conduit_elements = mrad_model.get_conduit_elements(perc_net, cec_indicator=cec_indicator, 
                                                                conduit_element_length=conduit_element_length, heartwood_d=heartwood_d, use_cylindrical_coords=use_cylindrical_coords)
-            orig_perc_net = op.network.Network(coords=perc_net['pore.coords'], conns=perc_net['throat.conns'])
+            orig_perc_net = op.network.Network(coords=perc_net['pore.coords'], conns=perc_net['throat.conns']) # orig_perc_net is needed for calculating measures related to non-functional components (these are removed from perc_net before the simulations)
             orig_perc_net['throat.type'] = perc_net['throat.type']
             orig_perc_net['pore.diameter'] = perc_net['pore.diameter']
             perc_net, removed_components = mrad_model.clean_network(perc_net, conduit_elements, cfg['net_size'][0] - 1, remove_dead_ends=False)
@@ -754,7 +742,7 @@ def run_conduit_si(net, cfg, start_conduit, si_length=1000, si_type='stochastic'
                                                      conduit_element_length=conduit_element_length, heartwood_d=heartwood_d,
                                                      use_cylindrical_coords=use_cylindrical_coords)
             sim_net = mrad_model.prepare_simulation_network(perc_net, cfg)
-            effective_conductances[time_step] = mrad_model.simulate_water_flow(sim_net, cfg, visualize=False)
+            effective_conductances[time_step] = simulations.simulate_water_flow(sim_net, cfg, visualize=False)
             functional_lcc_size[time_step], functional_susceptibility[time_step], _ = get_conduit_lcc_size(perc_net)
         except Exception as e:
             if str(e) == 'Cannot delete ALL pores': # this is because all remaining nodes belong to non-functional components
@@ -776,7 +764,207 @@ def run_conduit_si(net, cfg, start_conduit, si_length=1000, si_type='stochastic'
     else:
         cut_index = np.where(prevalence == prevalence[-1])[0][0] + 1
     return effective_conductances[0:cut_index], lcc_size[0:cut_index], functional_lcc_size[0:cut_index], nonfunctional_component_size[0:cut_index], susceptibility[0:cut_index], functional_susceptibility[0:cut_index], n_inlets[0:cut_index], n_outlets[0:cut_index], nonfunctional_component_volume[0:cut_index], prevalence[0:cut_index]
+
+def run_physiological_conduit_drainage(net, cfg, start_conduit):
+    """
+    Starting from a given conduit, simulates the spreading of an air bubble (embolism) in the conduit network. The spreading of the embolism is simulated across a range of threshold
+    pressures using the openPNM drainage algorithm, and the effective conductance and a set of network measures is calculated at each pressure threshold.
     
+    Parameters:
+    -----------
+    net : op.Network
+        pores correspond to conduit elements, throats to connections between them
+    cfg : dict
+        contains:
+        net_size: np.array, size of the network to be created (n_rows x n_columns x n_depths)
+        use_cylindrical_coords: bln, should Mrad model coordinates be interpreted as cylindrical ones in visualizations?
+        Lce: float, length of a conduit element
+        Dc: float, average conduit diameter (m)
+        Dc_cv: float, coefficient of variation of conduit diameter
+        fc: float, average contact fraction between two conduits
+        fpf: float, average pit field fraction between two conduits
+        conduit_diameters: np.array of floats, diameters of the conduits, or 'lognormal'
+        to draw diameters from a lognormal distribution defined by Dc and Dc_cv
+        cec_indicator: int, value used to indicate that the type of a throat is CE
+        tf: float, microfibril strand thickness (m)
+        icc_length: float, length of an ICC throat (m)
+        air_contact_angle: float, the contact angle between the water and air phases (degrees)
+        surface_tension: float, the surface tension betweent he water and air phases (Newtons/meter)
+        inlet_pressure: float, pressure at the inlet conduit elements (Pa)
+        outlet_pressure: float, pressure at the outlet conduit elements (Pa) 
+        Dp: float, average pit membrane pore diameter (m)
+        Tm: float, average thickness of membranes (m)
+        conduit_element_length : float, length of a single conduit element (m), used only if use_cylindrical_coords == True (default from the Mrad et al. article)
+        heartwood_d : float, diameter of the heartwood (= part of the tree not included in the xylem network) (in conduit elements) used only if use_cylindrical_coords == True (default value from the Mrad et al. article)
+        spreading_probability : double, probability at which embolism spreads to neighbouring conduits if si_type == 'stochastic' (default: 0.1)
+    start_conduit : int or 'random'
+        index of the first conduit to be removed (i.e. the first infected node of the simulation), if 'random', the start
+        conduit is selected at random
+
+    Returns
+    -------
+    Returns:
+    --------
+    effective_conductances : np.array
+        effective conductance of the network after each removal
+    lcc_size : np.array
+        size of the largest connected component after each removal
+    functional_lcc_size : np.array
+        the size of the largest functional component (i.e. component connected to both inlet and outlet) after each removal
+    nonfunctional_component_size : np.array
+        total size (i.e. sum of sizes) of non-functional components (i.e. components not connected to either inlet, outlet, or both) after each removal
+    susceptibility : np.array
+        susceptibility (i.e. the second-largest component size) after each removal
+    functional_susceptibility : np.array
+        functional susceptibility (i.e. the size of the second-largest component connected to inlet and outlet) after each removal
+    n_inlets : np.array
+        the mean number of inlet elements per functional component
+    n_outlets : np.array
+        the mean number of outlet elements per functional component
+    nonfunctional_component_volume : np.array
+        the total volume of non-functional components
+    prevalence : np.array
+        fraction of embolized conduits at each infection step
+
+    """
+    import pdb; pdb.set_trace()
+    
+    conduit_element_length = cfg.get('conduit_element_length', params.Lce)
+    heartwood_d = cfg.get('heartwood_d', params.heartwood_d)
+    cec_indicator = cfg.get('cec_indicator', params.cec_indicator)
+    use_cylindrical_coords = cfg.get('use_cylindrical_coords', False)
+    
+    conns = net['throat.conns']
+    assert len(conns) > 0, 'Network has no throats; cannot run percolation analysis'
+    conn_types = net['throat.type']
+    cec_mask = conn_types == cec_indicator
+    cec = conns[cec_mask]
+    conduits = mrad_model.get_conduits(cec)
+    orig_conduits = conduits.copy()
+    
+    if start_conduit == 'random':
+        start_conduit = np.random.randint(conduits.shape[0]) + 1 # indexing of conduits starts from 1, not from 0
+    start_pores = np.arange(conduits[start_conduit - 1, 0], conduits[start_conduit - 1, 1] + 1)
+    
+    # obtaining the invasion pressure of each pore (i.e. the pressure at which each pore gets embolized) and constructing a pressure range
+    net['throat.diameter'] = net['pore.diameter'] # the drainage algorithm requires throat.diameter
+    # TODO: search values for throat diameters (need to be an array with length matching the number of throats). For CECs, the diameter of corresponding pores can be used. What about ICCs?
+    invasion_pressure = simulations.simulate_drainage(net, start_pores, cfg) # TODO: is it ok to give start_pores as indices?
+    pressure_difference = np.diff(np.sort(invasion_pressure))
+    pressure_step = pressure_difference[pressure_difference > 0].min()
+    pressure_range = np.arange(np.amin(invasion_pressure), np.amax(invasion_pressure), pressure_step)
+    pressure_range_length = pressure_range.shape[0]
+        
+    effective_conductances = np.zeros(pressure_range_length)
+    lcc_size = np.zeros(pressure_range_length)
+    functional_lcc_size = np.zeros(pressure_range_length)
+    nonfunctional_component_size = np.zeros(pressure_range_length)
+    nonfunctional_component_volume = np.zeros(pressure_range_length)
+    susceptibility = np.zeros(pressure_range_length)
+    functional_susceptibility = np.zeros(pressure_range_length)
+    n_inlets = np.zeros(pressure_range_length)
+    n_outlets = np.zeros(pressure_range_length)
+    prevalence = np.zeros(pressure_range_length)
+    cfg['conduit_diameters'] = 'inherit_from_net'
+    
+    perc_net = op.network.Network(conns=net['throat.conns'], coords=net['pore.coords'])
+    perc_net['throat.type'] = net['throat.type']
+    perc_net['pore.diameter'] = net['pore.diameter']
+        
+    max_removed_lcc = 0
+    embolized_conduits = []
+        
+    # TODO: add handling of non-functional components. in particular, can non-functional conduits get embolized? how do we know if a conduit is functional when it gets embolized?
+    
+    for i, pressure in enumerate(pressure_range):
+        if i == 0: # TODO: what is the invasion_pressure of the start pores?
+            embolized_pores = np.where(invasion_pressure <= pressure)
+        else:
+            embolized_pores = np.where((invasion_pressure <= pressure) & (invasion_pressure > pressure_range[i - 1])) # pores embolized at this pressure but not at the previous pressure
+        op.topotools.trim(perc_net, pores=embolized_pores)
+        embolized_conduits = get_conduit_indices(conduits, embolized_pores)
+        for embolized_conduit in np.sort(embolized_conduits)[::-1]:
+            conduits[embolized_conduit + 1::, 0:2] = conduits[embolized_conduit + 1::, 0:2] - conduits[embolized_conduit, 2]
+            conduits[embolized_conduit, :] = -1
+        prevalence[i] = embolized_conduits.shape[0] / conduits.shape[0]
+    
+        try:
+            lcc_size[i], susceptibility[i], _ = get_conduit_lcc_size(perc_net, use_cylindrical_coords=use_cylindrical_coords, 
+                                                                  conduit_element_length=conduit_element_length, 
+                                                                  heartwood_d=heartwood_d, cec_indicator=cec_indicator)
+            conduit_elements = mrad_model.get_conduit_elements(perc_net, cec_indicator=cec_indicator, 
+                                                               conduit_element_length=conduit_element_length, heartwood_d=heartwood_d, use_cylindrical_coords=use_cylindrical_coords)
+            orig_perc_net = op.network.Network(coords=perc_net['pore.coords'], conns=perc_net['throat.conns']) # orig_perc_net is needed for calculating measures related to non-functional components (these are removed from perc_net before the simulations)
+            orig_perc_net['throat.type'] = perc_net['throat.type']
+            orig_perc_net['pore.diameter'] = perc_net['pore.diameter']
+            perc_net, removed_components = mrad_model.clean_network(perc_net, conduit_elements, cfg['net_size'][0] - 1, remove_dead_ends=False) # removes non-functional components from perc_net
+            removed_elements = list(itertools.chain.from_iterable(removed_components)) # calculating the size of the largest removed component in conduits
+            nonfunctional_component_volume[i] += nonfunctional_component_volume[i - 1] + np.sum(np.pi * 0.5 * orig_perc_net['pore.diameter'][removed_elements]**2 * conduit_element_length)
+            if len(removed_elements) > 0:
+                removed_net = get_induced_subnet(orig_perc_net, removed_elements)
+                removed_lcc, _, n_nonfunctional_conduits = get_conduit_lcc_size(removed_net, use_cylindrical_coords=use_cylindrical_coords, 
+                                                                       conduit_element_length=conduit_element_length, 
+                                                                       heartwood_d=heartwood_d, cec_indicator=cec_indicator)
+                nonfunctional_component_size[i] = nonfunctional_component_size[i] + nonfunctional_component_size[i - 1] + n_nonfunctional_conduits
+                if removed_lcc > max_removed_lcc: # Percolation doesn't affect the sizes of removed components -> the largest removed component size changes only if a new, larger component gets removed
+                    max_removed_lcc = removed_lcc
+                removed_conduit_indices = get_conduit_indices(conduits, removed_elements)
+                for removed_conduit_index in removed_conduit_indices[::-1]: # indexing of conduits starts from 1, not 0
+                    conduits[removed_conduit_index + 1::, 0:2] = conduits[removed_conduit_index + 1::, 0:2] - conduits[removed_conduit_index, 2]
+                    conduits[removed_conduit_index, :] = -1
+                #embolization_times[removed_conduit_indices, 1] = 0
+            else:
+                nonfunctional_component_size[i] = nonfunctional_component_size[i] + nonfunctional_component_size[i - 1]
+            if max_removed_lcc > lcc_size[i]: # checking if the largest removed component is larger than the largest functional one
+                lcc_size[i] = max_removed_lcc
+            n_inlets[i], n_outlets[i] = get_n_inlets(perc_net, cfg['net_size'][0] - 1, cec_indicator=cec_indicator, 
+                                                     conduit_element_length=conduit_element_length, heartwood_d=heartwood_d,
+                                                     use_cylindrical_coords=use_cylindrical_coords)
+            sim_net = mrad_model.prepare_simulation_network(perc_net, cfg)
+            effective_conductances[i] = simulations.simulate_water_flow(sim_net, cfg, visualize=False)
+            functional_lcc_size[i], functional_susceptibility[i], _ = get_conduit_lcc_size(perc_net)
+        except Exception as e:
+            if str(e) == 'Cannot delete ALL pores': # this is because all remaining nodes belong to non-functional components
+                nonfunctional_component_size[i::] = net['pore.coords'].shape[0] - embolized_conduits.shape[0]
+                nonfunctional_component_volume[i::] = nonfunctional_component_volume[i - 1] + np.sum(np.pi * 0.5 * orig_perc_net['pore.diameter']**2 * conduit_element_length)
+                lcc_size[i::] = max_removed_lcc
+                prevalence[i::] = 1
+                break
+            elif (str(e) == "'throat.conns'") and (len(perc_net['throat.all']) == 0): # this is because all links have been removed from the network by op.topotools.trim
+                nonfunctional_component_size[i::] = net['pore.coords'].shape[0] - embolized_conduits.shape[0]
+                nonfunctional_component_volume[i::] = nonfunctional_component_volume[i - 1] + np.sum(np.pi * 0.5 * orig_perc_net['pore.diameter'] * conduit_element_length)
+                lcc_size[i::] = max_removed_lcc
+                prevalence[i::] = 1
+                break
+            else:
+                raise
+    
+    
+    
+    
+    # code for finding throats between a given conduit and its neighbours
+    #conduit_pores = np.arange(conduits[conduit - 1, 0], conduits[conduit - 1, 1] + 1)
+    #pore_pressure = []
+    #for neighbour in conduit_neighbours[conduit]:
+    #    neighbour_pores = np.arange(conduits[neighbour - 1, 0], conduits[neighbour - 1, 1] + 1)
+    #    neighbour_throats = conns[np.where(((np.isin(conns[:, 0], conduit_pores)) & (np.isin(conns[:, 1], neighbour_pores))) | (np.isin(conns[:, 0], neighbour_pores) & (np.isin(conns[:, 1], conduit_pores))))]
+            
+        # TODO: implement physiological SI where embolization spreads depending on air pressure in conduits
+        # 1) find pores of this conduit
+        # 2) find pores of the embolized neighbouring conduits
+        # 3) identify the throats between these from sim_net['throat.conns']
+        # 4) use StokesFlow.get_conduit_data('pore.pressure') to calculate the pressure difference for each throat
+        # 5) if any of these differences is larger than threshold, the conduit will be removed
+        
+        # NEW TODO:
+        # 1) create the drainage algorithm with water as wetting and air as non-wetting phase for the full network
+        # 2) run the algorithm to obtain the embolization pressure for each pore
+        # 3) define a pressure range to identify the pores (and corresponding conduits) embolized at each pressure
+        # 4) at each pressure, construct a simulation network by removing the embolized conduits and run simulate_water_flow to calculate effective conductance
+        # 5) calculate network metrics at each pressure threshold
+        # 6) open question: how is the pressure range related to the simulation steps of run_conduit_si? could the simulation step correspond to the smallest difference in embolization pressures of two conduits?
+
+    return effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence
 
 def get_lcc_size(net):
     """
@@ -994,7 +1182,7 @@ def get_conduit_indices(conduits, elements):
     Parameters
     ----------
     conduits : np.array
-        three columns: 1) the first element of the conduit, 2) the second element of the conduit, 3) size of the conduit
+        three columns: 1) the first element of the conduit, 2) the last element of the conduit, 3) size of the conduit
     elements : iterable of ints
         list of elements; each element should belong to one of the conduits 
 
