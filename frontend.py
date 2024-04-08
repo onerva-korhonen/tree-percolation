@@ -34,6 +34,7 @@ cfg['spreading_probability'] = params.spreading_probability
 cfg['spreading_threshold'] = params.spreading_threshold
 cfg['air_contact_angle'] = params.air_contact_angle
 cfg['surface_tension'] = params.surface_tension
+cfg['pressure'] = params.pressure
 
 cfg['fixed_random'] = True
 

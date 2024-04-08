@@ -65,6 +65,7 @@ spreading_threshold = 100 # TODO: set a reasonable value
 start_conduit = 'random'
 air_contact_angle = 120 # degrees
 surface_tension = 0.072 # Newtons/meter
+pressure = 100 # number of pressure steps used by the drainage algorithm
 
 # visualization parameters
 visualize_simulations = False

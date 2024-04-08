@@ -110,7 +110,10 @@ def simulate_water_flow(sim_net, cfg, visualize=False):
 
 def simulate_drainage(sim_net, start_pores, cfg):
     """
-    Simulates the invasion of air in a water-filled pore network using the openpnm Drainage algorithm.
+    Simulates the invasion of air in a water-filled pore network using the openpnm Drainage algorithm. The invasion
+    pressure is defined as a) inf for pores and throats not connected to start_pores, b) as the smallest 
+    frequence of the given frequency range that is larger than the pore's or throut's entry pressure for
+    pores and throats connected to start pores.
     
     Parameters:
     -----------
@@ -120,29 +123,34 @@ def simulate_drainage(sim_net, start_pores, cfg):
         pores from which the drainage starts
     cfg : dic
         contains:
-        air_contact_angle: float, the contact angle between the water and air phases (degrees)
-        surface_tension: float, the surface tension betweent he water and air phases (Newtons/meter)
+        air_contact_angle : float, the contact angle between the water and air phases (degrees)
+        surface_tension : float, the surface tension betweent he water and air phases (Newtons/meter)
+        pressure : int or array-like, the frequency steps to investigate (if an int is given, a log-range with the corresponding number of steps is used)
         
     Returns:
     -------
     invasion_pressure : np.array of floats
-        the pressure at which each conduit gets invaded by air (embolized)
+        the pressure at which each pore gets invaded by air (embolized)
     """
+    # TODO: why is the invasion pressure of all pores of component 8 the same although they have different entry pressures? also the throats of the component have different entry pressures
+    pressure = cfg.get('pressure', params.pressure)
     # creating the air phase
     air = op.phase.Air(network=sim_net)
     air['pore.contact_angle'] = cfg.get('air_contact_angle', params.air_contact_angle)
     air['pore.surface_tension'] = cfg.get('surface_tension', params.surface_tension)
     f = op.models.physics.capillary_pressure.washburn
     air.add_model(propname = 'throat.entry_pressure', model = f, surface_tension = 'throat.surface_tension',
-              contact_angle = 'throat.contact_angle', diameter = 'throat.diameter',)
+              contact_angle = 'throat.contact_angle', diameter = 'throat.diameter')
+    air.add_model(propname='pore.entry_pressure',
+                  model=f, contact_angle='pore.contact_angle', surface_tension='pore.surface_tension', diameter='pore.diameter')
     
     # creating and running the drainage algorithm
     drn = op.algorithms.Drainage(network = sim_net, phase = air)
-    drn.set_inlet_BC(pores = start_pores)
-    drn.run()
+    drn.set_inlet_BC(pores = start_pores) # NOTE: start_pores is used only to set invasion pressure of pores not connected to the seed to Inf; the invasion pressure of start_pores is not initialized to the smallest pressure investigated
+    drn.run(pressure)
     
     # obtaining the invasion pressure
-    invasion_pressure = drn['throat.invasion_pressure']
+    invasion_pressure = drn['pore.invasion_pressure']
     
     return invasion_pressure
 
