@@ -33,7 +33,7 @@ visualization.plot_percolation_curve(total_n_nodes, percolation_outcome_values,
                                      axindex=params.percolation_outcome_axindex, save_path=params.percolation_plot_save_path, x=x)
 visualization.plot_percolation_curve(total_n_nodes, np.expand_dims(nonfunctional_component_volume, axis=0),
                                      colors=[params.percolation_nonfunctional_component_size_color], labels=[params.percolation_nonfunctional_component_size_label], 
-                                     alphas=[params.percolation_nonfunctional_component_size_alpha], save_path=params.nonfunctional_componen_size_save_path, x=x)
+                                     alphas=[params.percolation_nonfunctional_component_size_alpha], save_path=params.nonfunctional_component_size_save_path, x=x)
 visualization.plot_percolation_curve(total_n_nodes, 
                                      np.concatenate((np.expand_dims(n_inlets, axis=0), np.expand_dims(n_outlets, axis=0)), axis=0),
                                      colors=[params.percolation_ninlet_color, params.percolation_noutlet_color],

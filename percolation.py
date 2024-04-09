@@ -99,7 +99,7 @@ def run_percolation(net, cfg, percolation_type='bond', removal_order='random', b
         effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume = run_graph_theoretical_element_percolation(net, cfg, percolation_type, removal_order)
     else:
         effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume = run_physiological_element_percolation(net, cfg, percolation_type)
-    if not percolation_type == 'si':
+    if not percolation_type in ['si', 'drainage']:
         prevalence = np.zeros(len(effective_conductances))
     
     return effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence
@@ -956,31 +956,6 @@ def run_physiological_conduit_drainage(net, cfg, start_conduits):
                 break
             else:
                 raise
-    
-    
-    
-    
-    # code for finding throats between a given conduit and its neighbours
-    #conduit_pores = np.arange(conduits[conduit - 1, 0], conduits[conduit - 1, 1] + 1)
-    #pore_pressure = []
-    #for neighbour in conduit_neighbours[conduit]:
-    #    neighbour_pores = np.arange(conduits[neighbour - 1, 0], conduits[neighbour - 1, 1] + 1)
-    #    neighbour_throats = conns[np.where(((np.isin(conns[:, 0], conduit_pores)) & (np.isin(conns[:, 1], neighbour_pores))) | (np.isin(conns[:, 0], neighbour_pores) & (np.isin(conns[:, 1], conduit_pores))))]
-            
-        # TODO: implement physiological SI where embolization spreads depending on air pressure in conduits
-        # 1) find pores of this conduit
-        # 2) find pores of the embolized neighbouring conduits
-        # 3) identify the throats between these from sim_net['throat.conns']
-        # 4) use StokesFlow.get_conduit_data('pore.pressure') to calculate the pressure difference for each throat
-        # 5) if any of these differences is larger than threshold, the conduit will be removed
-        
-        # NEW TODO:
-        # 1) create the drainage algorithm with water as wetting and air as non-wetting phase for the full network
-        # 2) run the algorithm to obtain the embolization pressure for each pore
-        # 3) define a pressure range to identify the pores (and corresponding conduits) embolized at each pressure
-        # 4) at each pressure, construct a simulation network by removing the embolized conduits and run simulate_water_flow to calculate effective conductance
-        # 5) calculate network metrics at each pressure threshold
-        # 6) open question: how is the pressure range related to the simulation steps of run_conduit_si? could the simulation step correspond to the smallest difference in embolization pressures of two conduits?
 
     return effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence
 
