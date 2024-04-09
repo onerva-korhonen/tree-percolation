@@ -57,7 +57,7 @@ conduit_frequency = 0 # TODO: fix frequency of conduits per area in cross-sectio
 # probabilities used for network construction
 Pc = np.array([0.75, 0.75])
 NPc = np.array([0.75, 0.75])
-Pe_rad = np.array([0.9,0.9]) # TODO: check how this and Pe_tan are defined in the Mrad code
+Pe_rad = np.array([0.9,0.9])
 Pe_tan = np.array([0.02, 0.02])
 
 # the numbers used to seed the random number generation for initiating and

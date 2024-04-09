@@ -56,13 +56,16 @@ ninlet_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/perc
 percolation_data_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/percolation_3D_si_stoch_data.pkl'
 
 # percolation parameters
-percolation_type = 'si'
+percolation_type = 'drainage'
 break_nonfunctional_components = False
 si_type = 'stochastic'
 si_length = 1000
 spreading_probability = 0.1
 spreading_threshold = 100 # TODO: set a reasonable value
 start_conduit = 'random'
+air_contact_angle = 120 # degrees
+surface_tension = 0.072 # Newtons/meter
+pressure = 100 # number of pressure steps used by the drainage algorithm
 
 # visualization parameters
 visualize_simulations = False

@@ -30,7 +30,8 @@ def create_mrad_network(cfg):
     cfg : dict
         contains
         fixed_random: bln, if True, fixed random seeds are used to create the same network as Mrad's Matlab code
-        net_size: np.array, size of the network to be created (n_rows x n_columns x n_depths)
+        net_size: np.array, size of the network to be created (n_rows x n_columns x n_depths). Note the directions:
+            rows: vertical, columns: radial, depth: tangential
         NPc: np.array, propabilities of initiating a conduit at the location closest to the pith (first element)
             and fartest away from it (second element); probabilities for other locations are interpolated from
             these two values
@@ -108,7 +109,7 @@ def create_mrad_network(cfg):
     cond_end = np.concatenate(cond_end, axis=1)
     
     temp_start = np.zeros([1, net_size[1], net_size[2]])
-    for j in range(net_size[2]): # looping in the radial (depth) direction
+    for j in range(net_size[2]): # looping in the tangential (depth) direction
         for i in range(net_size[1]): # looping in the column direction
             # construct a conduit at the first row of this column if there is
             # a 1 among the first 50 entires of the cond_start matrix at this column
@@ -186,9 +187,9 @@ def create_mrad_network(cfg):
         if ((row == 0) or (row == outlet_row_index)):
             continue # no pit connections in the first and last rows
         
-        # check if there is a horizontally (= in column direction) adjacent
-        # element that is part of another conduit. The maximal number of 
-        # potential connections in a 3D networks is 8 for each element.
+        # check if there is an adjacent element in radial (= column) or tangential (= depth) direction
+        # that belongs to another conduit (adjacent elements in the vertical (=row) direction belong to the same conduit by default). 
+        # The maximal number of potential connections in a 3D networks is 8 for each element (sides and corners).
         for conduit_element_2 in conduit_elements[i + 1:]:
             row2 = conduit_element_2[0]
             column2 = conduit_element_2[1]
@@ -197,7 +198,7 @@ def create_mrad_network(cfg):
             node2_index = conduit_element_2[4]
             
             if ((abs(column2 - column) > 1) and (abs(depth2 - depth) > 1) and (depth2 != max_depth) and (depth != 0)):
-                break # the conduit elements in next rows are further away than this one, so let's break the loop
+                break # there are no potential connections between the current conduit_element_2 and the following instances of conduit_element_2 are even further away (the array is sorted), so let's break the loop
             
             if (row2 == row):
                 if (column2 - column == 1) and (depth2 == depth):
@@ -378,101 +379,6 @@ def prepare_simulation_network(net, cfg):
     sim_net['throat.npore'] = np.floor(sim_net['throat.area_m_mrad'] / pore_area).astype(int)
     
     return sim_net
-
-def simulate_water_flow(sim_net, cfg, visualize=False):
-    """
-    Using OpenPNM tools, performs Stokes flow simulation and a simple advection-diffusion simulation
-    and calculates the effective conductance based on the Stokes flow simulation.
-
-    Parameters
-    ----------
-    sim_net : openpnm.Network()
-        pores correspond to conduit elements and throats to connections between them
-    cfg : dic
-        contains:
-        water_pore_viscosity: float, value of the water viscosity in pores
-        water_throat_viscosity: float, value of the water viscosity in throats
-        water_pore_diffusivity: float, value of the water diffusivity in pores
-        inlet_pressure: float, pressure at the inlet conduit elements (Pa)
-        outlet_pressure: float, pressure at the outlet conduit elements (Pa) 
-        Dp: float, average pit membrane pore diameter (m)
-        Tm: float, average thickness of membranes (m)
-        cec_indicator: int, value used to indicate that the type of a throat is CE
-        use_cylindrical_coords: bln, should Mrad model coordinates be interpreted as cylindrical ones in visualizations?
-    visualize : bln, optional
-        if True, the pressure and concentration at pores is visualized in form of scatter plots.
-
-    Returns
-    -------
-    effective_conductance : float
-        effective conductance calculated based on the Stokes flow simulation
-    """
-    water_pore_viscosity = cfg.get('water_pore_viscosity', params.water_pore_viscosity)
-    water_throat_viscosity = cfg.get('water_throat_viscosity', params.water_throat_viscosity)
-    water_pore_diffusivity = cfg.get('water_pore_diffusivity', params.water_pore_diffusivity)
-    inlet_pressure = cfg.get('inlet_pressure', params.inlet_pressure)
-    outlet_pressure = cfg.get('outlet_pressure', params.outlet_pressure)
-    Dp = cfg.get('Dp', params.Dp)
-    Tm = cfg.get('Tm', params.Tm)
-    cec_indicator = cfg.get('cec_indicator', params.cec_indicator)
-    use_cylindrical_coords = cfg.get('use_cylindrical_coords', True)
-    
-    conn_types = sim_net['throat.type']
-    cec_mask = conn_types == cec_indicator # cec_mask == 1 if the corresponding throat is a connection between two elements in the same conduit
-    
-    water = op.phase.Water(network=sim_net)
-    water['pore.viscosity'] = water_pore_viscosity
-    water['throat.viscosity'] = water_throat_viscosity
-    water['pore.diffusivity'] = water_pore_diffusivity
-    
-    water.add_model(propname='throat.diffusive_conductance',
-                    model=op.models.physics.diffusive_conductance.ordinary_diffusion)
-    water.add_model(propname='throat.hydraulic_conductance',
-                    model=op.models.physics.hydraulic_conductance.generic_hydraulic)
-    water.add_model(propname='throat.ad_dif_conductance',
-                    model=op.models.physics.ad_dif_conductance.ad_dif)
-    pit_conductance = (Dp**3 / (24 * water['throat.viscosity']) * (1 + 16 * Tm / (3 * np.pi * Dp))**(-1) * sim_net['throat.npore'])
-    water['throat.hydraulic_conductance'][~cec_mask] = pit_conductance[~cec_mask] #Set the separately calculated values for the hydraulic conductance of the ICCs
-    water.regenerate_models(propnames='throat.ad_dif_conductance') # redefining the diffusional conductance of the CECs
-    
-    if use_cylindrical_coords:
-        axnum = 2 # row information is in the last (z) column
-    else:
-        axnum = 0 # row information is in the first column
-        
-    inlet = sim_net['pore.coords'][:, axnum] == np.min(sim_net['pore.coords'][:, axnum])
-    outlet = sim_net['pore.coords'][:, axnum] == np.max(sim_net['pore.coords'][:, axnum])
-    
-    # Stokes flow simulation
-    
-    stokes_flow = op.algorithms.StokesFlow(network=sim_net, phase=water,)
-    stokes_flow.set_value_BC(pores=inlet, values=inlet_pressure)
-    stokes_flow.set_value_BC(pores=outlet, values=outlet_pressure)
-    stokes_flow.run()
-    
-    water['pore.pressure'] = stokes_flow['pore.pressure'] #The results calculated in the Stokes flow simulation are used in the determination of the advective-diffusive conductance in the advection-diffusion simulation
-    water.regenerate_models(propnames='throat.ad_dif_conductance')
-    
-    if visualize:
-        # visualizing water pressure at pores
-        visualization.make_colored_pore_scatter(sim_net, water['pore.pressure'], title='Pressure distribution')
-    
-    # Steady-state advection-diffusion simulation with constant boundary values
-    advection_diffusion = op.algorithms.AdvectionDiffusion(network=sim_net, phase=water)
-    advection_diffusion.set_value_BC(pores=inlet, values=inlet_pressure)
-    advection_diffusion.set_value_BC(pores=outlet, values=outlet_pressure)
-    advection_diffusion.settings['pore_volume'] = 'pore.effective_volume'
-    
-    advection_diffusion.run()
-    concentration = advection_diffusion['pore.concentration']
-    
-    if visualize:
-        # visualizing concentration at pores
-        visualization.make_colored_pore_scatter(sim_net, concentration, title='Concentration')
-    
-    effective_conductance = stokes_flow.rate(pores=inlet)[0] / (inlet_pressure - outlet_pressure)
-    
-    return effective_conductance
     
 # Conduit map operations
     

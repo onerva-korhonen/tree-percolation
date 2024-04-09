@@ -12,13 +12,14 @@ import mrad_params
 import params
 #import visualization
 import percolation
+import simulations
 
 import openpnm as op
 import numpy as np
 import pickle
 
 cfg = {}
-cfg['net_size'] = params.net_size
+cfg['net_size'] = mrad_params.net_size#params.net_size
 cfg['conduit_diameters'] = 'lognormal'#mrad_params.conduit_diameters
 cfg['Dc'] = params.Dc
 cfg['Dc_cv'] = params.Dc_cv
@@ -31,6 +32,9 @@ cfg['si_length'] = params.si_length
 cfg['start_conduit'] = params.start_conduit
 cfg['spreading_probability'] = params.spreading_probability
 cfg['spreading_threshold'] = params.spreading_threshold
+cfg['air_contact_angle'] = params.air_contact_angle
+cfg['surface_tension'] = params.surface_tension
+cfg['pressure'] = params.pressure
 
 cfg['fixed_random'] = True
 
@@ -47,7 +51,7 @@ net_cleaned, _ = mrad_model.clean_network(net, conduit_elements, cfg['net_size']
 sim_net = mrad_model.prepare_simulation_network(net_cleaned, cfg)
 #visualization.visualize_pores(sim_net)
 #visualization.visualize_network_with_openpnm(sim_net, params.use_cylindrical_coordinates, mrad_params.Lce, 'pore.coords')
-effective_conductance = mrad_model.simulate_water_flow(sim_net, cfg, visualize=params.visualize_simulations)
+effective_conductance = simulations.simulate_water_flow(sim_net, cfg, visualize=params.visualize_simulations)
 if params.percolation_type in ['conduit', 'si']:
     lcc_size, susceptibility, _ = percolation.get_conduit_lcc_size(sim_net)
 else:
