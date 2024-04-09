@@ -29,7 +29,7 @@ cfg['seed_ICC_rad'] = params.seed_ICC_rad
 cfg['seed_ICC_tan'] = params.seed_ICC_tan
 cfg['si_type'] = params.si_type
 cfg['si_length'] = params.si_length
-cfg['start_conduit'] = params.start_conduit
+cfg['start_conduits'] = params.start_conduits
 cfg['spreading_probability'] = params.spreading_probability
 cfg['spreading_threshold'] = params.spreading_threshold
 cfg['air_contact_angle'] = params.air_contact_angle
@@ -73,15 +73,15 @@ nonfunctional_component_volume = np.append(np.array([0]), nonfunctional_componen
 percolation_outcome_values = np.concatenate((np.expand_dims(effective_conductances, axis=0), 
                                              np.expand_dims(lcc_sizes, axis=0), np.expand_dims(functional_lcc_sizes, axis=0)),
                                              axis=0)
-if params.percolation_type in ['conduit', 'si']:
+if params.percolation_type in ['conduit', 'si', 'drainage']:
     total_n_nodes = len(effective_conductances)
 elif params.percolation_type == 'bond':
     total_n_nodes = net_cleaned['throat.conns'].shape[0] + 1
 elif params.percolation_type == 'site':
     total_n_nodes = net_cleaned['pore.coords'].shape[0] + 1
 else:
-    raise Exception('Unknown percolation type; percolation type must be bond, site, or conduit')
-if params.percolation_type == 'si':
+    raise Exception('Unknown percolation type; percolation type must be bond, site, conduit, si or drainage')
+if params.percolation_type in ['si', 'drainage']:
     x = np.append(np.array([0]), prevalence)
 else:
     x = []

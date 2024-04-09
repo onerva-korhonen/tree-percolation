@@ -52,8 +52,8 @@ def run_percolation(net, cfg, percolation_type='bond', removal_order='random', b
         conduit_element_length : float, length of a single conduit element (m), used only if use_cylindrical_coords == True (default from the Mrad et al. article)
         heartwood_d : float, diameter of the heartwood (= part of the tree not included in the xylem network) (in conduit elements) used only if use_cylindrical_coords == True (default value from the Mrad et al. article)
         spreading_probability : double, probability at which embolism spreads to neighbouring conduits if si_type == 'stochastic'
-        start_conduit : int or 'random', index of the first conduit to be removed (i.e. the first infected node of the simulation), if 'random', the start
-        conduit is selected at random
+        start_conduits : array-like of ints, 'random', or 'bottom', index of the first conduit to be removed (i.e. the first infected node of the simulation), if 'random', the start
+        conduit is selected at random, if 'bottom', all conduits with an inlet pore are used
         pressure : int or array-like, the frequency steps to investigate (if an int is given, a log-range with the corresponding number of steps is used)
     percolation type : str, optional
         type of the percolation, 'bond' to remove throats, 'site' to remove pores, 'conduit' to remove conduits,
@@ -92,9 +92,9 @@ def run_percolation(net, cfg, percolation_type='bond', removal_order='random', b
     if percolation_type == 'conduit':
         effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume = run_physiological_conduit_percolation(net, cfg)
     elif percolation_type == 'si':
-        effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence = run_conduit_si(net, cfg, si_length=cfg['si_length'], start_conduit=cfg['start_conduit'])
+        effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence = run_conduit_si(net, cfg, si_length=cfg['si_length'], start_conduits=cfg['start_conduits'])
     elif percolation_type == 'drainage':
-        effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence = run_physiological_conduit_drainage(net, cfg, start_conduit=cfg['start_conduit'])
+        effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence = run_physiological_conduit_drainage(net, cfg, start_conduits=cfg['start_conduits'])
     elif break_nonfunctional_components:
         effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume = run_graph_theoretical_element_percolation(net, cfg, percolation_type, removal_order)
     else:
@@ -556,7 +556,7 @@ def run_physiological_conduit_percolation(net, cfg, removal_order='random'):
                 raise
     return effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume
 
-def run_conduit_si(net, cfg, start_conduit, si_length=1000, spreading_probability=0.1):
+def run_conduit_si(net, cfg, start_conduits, si_length=1000, spreading_probability=0.1):
     """
     Starting from a given conduit, simulates an SI (embolism) spreading process on the conduit network: at each step, each conduit is
     removed from the network at a certain possibility that depends on if their neighbours have been removed. 
@@ -589,8 +589,8 @@ def run_conduit_si(net, cfg, start_conduit, si_length=1000, spreading_probabilit
         conduit_element_length : float, length of a single conduit element (m), used only if use_cylindrical_coords == True (default from the Mrad et al. article)
         heartwood_d : float, diameter of the heartwood (= part of the tree not included in the xylem network) (in conduit elements) used only if use_cylindrical_coords == True (default value from the Mrad et al. article)
         spreading_probability : double, probability at which embolism spreads to neighbouring conduits (default: 0.1)
-    start_conduit : int or 'random'
-        index of the first conduit to be removed (i.e. the first infected node of the simulation), if 'random', the start
+    start_conduits : array-like of ints or 'random'
+        indices of the first conduits to be removed (i.e. the first infected nodes of the simulation), if 'random', a single start
         conduit is selected at random
     si_length : int, optional
         number of time steps used for the simulation (default: 1000)
@@ -648,13 +648,15 @@ def run_conduit_si(net, cfg, start_conduit, si_length=1000, spreading_probabilit
     prevalence = np.zeros(si_length)
     cfg['conduit_diameters'] = 'inherit_from_net'
     
-    if start_conduit == 'random':
+    if start_conduits == 'random':
         start_conduit = np.random.randint(conduits.shape[0]) + 1 # indexing of conduits starts from 1, not from 0
+        start_conduits = np.array([start_conduit])
     
     time = np.arange(si_length)
     embolization_times = np.zeros((conduits.shape[0], 2))
     embolization_times[:, 0] = np.inf
-    embolization_times[start_conduit - 1, 0] = 0
+    for start_conduit in start_conduits:
+        embolization_times[start_conduit - 1, 0] = 0
     embolization_times[:, 1] = 1 # the second column indicates if the conduit is functional
     conduit_neighbours = get_conduit_neighbors(net, use_cylindrical_coords, conduit_element_length, heartwood_d, cec_indicator)
     
@@ -672,8 +674,9 @@ def run_conduit_si(net, cfg, start_conduit, si_length=1000, spreading_probabilit
         
         if time_step == 0:
             pores_to_remove.extend(list(np.arange(conduits[start_conduit - 1][0], conduits[start_conduit - 1][1] + 1)))
-            conduits[start_conduit - 1, :] = -1
-            conduits[start_conduit::, 0:2] = conduits[start_conduit::, 0:2] - len(pores_to_remove)
+            for start_conduit in np.sort(start_conduits)[::-1]:
+                conduits[start_conduit - 1, :] = -1
+                conduits[start_conduit::, 0:2] = conduits[start_conduit::, 0:2] - len(pores_to_remove)
         else:
             embolized_conduits = np.where(embolization_times[:, 0] < time_step)[0]
             possible_embolizations = False
@@ -766,7 +769,7 @@ def run_conduit_si(net, cfg, start_conduit, si_length=1000, spreading_probabilit
         cut_index = np.where(prevalence == prevalence[-1])[0][0] + 1
     return effective_conductances[0:cut_index], lcc_size[0:cut_index], functional_lcc_size[0:cut_index], nonfunctional_component_size[0:cut_index], susceptibility[0:cut_index], functional_susceptibility[0:cut_index], n_inlets[0:cut_index], n_outlets[0:cut_index], nonfunctional_component_volume[0:cut_index], prevalence[0:cut_index]
 
-def run_physiological_conduit_drainage(net, cfg, start_conduit):
+def run_physiological_conduit_drainage(net, cfg, start_conduits):
     """
     Starting from a given conduit, simulates the spreading of an air bubble (embolism) in the conduit network. The spreading of the embolism is simulated across a range of threshold
     pressures using the openPNM drainage algorithm, and the effective conductance and a set of network measures is calculated at each pressure threshold.
@@ -798,9 +801,11 @@ def run_physiological_conduit_drainage(net, cfg, start_conduit):
         conduit_element_length : float, length of a single conduit element (m), used only if use_cylindrical_coords == True (default from the Mrad et al. article)
         heartwood_d : float, diameter of the heartwood (= part of the tree not included in the xylem network) (in conduit elements) used only if use_cylindrical_coords == True (default value from the Mrad et al. article)
         pressure : int or array-like, the frequency steps to investigate (if an int is given, a log-range with the corresponding number of steps is used)
-    start_conduit : int or 'random'
-        index of the first conduit to be removed (i.e. the first infected node of the simulation), if 'random', the start
-        conduit is selected at random
+    start_conduits : str or int
+        the first conduits to be removed (i.e. the first infected node of the simulation)
+        if 'random', a single start conduit is selected at random
+        if 'bottom', all conduits with pores at the inlet row are used as start conduits
+        if an array-like of ints is given, the ints are used as indices of the start conduits
 
     Returns
     -------
@@ -828,8 +833,6 @@ def run_physiological_conduit_drainage(net, cfg, start_conduit):
         fraction of embolized conduits at each infection step
 
     """
-    import pdb; pdb.set_trace()
-    
     conduit_element_length = cfg.get('conduit_element_length', params.Lce)
     heartwood_d = cfg.get('heartwood_d', params.heartwood_d)
     cec_indicator = cfg.get('cec_indicator', params.cec_indicator)
@@ -843,16 +846,28 @@ def run_physiological_conduit_drainage(net, cfg, start_conduit):
     conduits = mrad_model.get_conduits(cec)
     orig_conduits = conduits.copy()
     
-    if start_conduit == 'random':
+    if start_conduits == 'random':
         start_conduit = np.random.randint(conduits.shape[0]) + 1 # indexing of conduits starts from 1, not from 0
-    start_pores = np.arange(conduits[start_conduit - 1, 0], conduits[start_conduit - 1, 1] + 1)
+        start_conduits = np.array([start_conduit])
+    elif start_conduits == 'bottom':
+        start_conduits = get_inlet_conduits(net, conduits, cec_indicator=cec_indicator, conduit_element_length=conduit_element_length, 
+                                            heartwood_d=heartwood_d, use_cylindrical_coords=use_cylindrical_coords) + 1
+    
+    start_pores = []
+    for conduit in start_conduits:
+        start_pores.extend(np.arange(conduits[conduit - 1, 0], conduits[conduit - 1, 1] + 1))
+    start_pores = np.array(start_pores)
     
     # obtaining the invasion pressure of each pore (i.e. the pressure at which each pore gets embolized) and constructing a pressure range
     sim_net = mrad_model.prepare_simulation_network(net, cfg)
-    invasion_pressure = simulations.simulate_drainage(sim_net, start_pores, cfg) # TODO: is it ok to give start_pores as indices?
+    invasion_pressure = simulations.simulate_drainage(sim_net, start_pores, cfg)
     pressure_difference = np.diff(np.sort(invasion_pressure))
     pressure_step = pressure_difference[pressure_difference > 0].min()
-    pressure_range = np.arange(np.amin(invasion_pressure), np.amax(invasion_pressure), pressure_step)
+    if np.amax(invasion_pressure) == np.inf:
+        max_pressure = np.sort(np.unique(invasion_pressure))[-2]
+    else:
+        max_pressure = np.amax(invasion_pressure)
+    pressure_range = np.arange(np.amin(invasion_pressure), max_pressure, pressure_step)
     pressure_range_length = pressure_range.shape[0]
         
     effective_conductances = np.zeros(pressure_range_length)
@@ -870,23 +885,26 @@ def run_physiological_conduit_drainage(net, cfg, start_conduit):
     perc_net = op.network.Network(conns=net['throat.conns'], coords=net['pore.coords'])
     perc_net['throat.type'] = net['throat.type']
     perc_net['pore.diameter'] = net['pore.diameter']
+    perc_net['pore.invasion_pressure'] = invasion_pressure
         
     max_removed_lcc = 0
     embolized_conduits = []
+    n_embolized = 0
         
     # TODO: add handling of non-functional components. in particular, can non-functional conduits get embolized? how do we know if a conduit is functional when it gets embolized?
     
     for i, pressure in enumerate(pressure_range):
         if i == 0:
-            embolized_pores = np.where(invasion_pressure <= pressure) # finds all pores embolized at pressures smaller than the first one investigated
+            embolized_pores = np.where(perc_net['pore.invasion_pressure'] <= pressure)[0] # finds all pores embolized at pressures smaller than the first one investigated
         else:
-            embolized_pores = np.where((invasion_pressure <= pressure) & (invasion_pressure > pressure_range[i - 1])) # pores embolized at this pressure but not at the previous pressure
+            embolized_pores = np.where((perc_net['pore.invasion_pressure'] <= pressure) & (perc_net['pore.invasion_pressure'] > pressure_range[i - 1]))[0] # pores embolized at this pressure but not at the previous pressure
         op.topotools.trim(perc_net, pores=embolized_pores)
         embolized_conduits = get_conduit_indices(conduits, embolized_pores)
+        n_embolized += embolized_conduits.shape[0]
         for embolized_conduit in np.sort(embolized_conduits)[::-1]:
             conduits[embolized_conduit + 1::, 0:2] = conduits[embolized_conduit + 1::, 0:2] - conduits[embolized_conduit, 2]
             conduits[embolized_conduit, :] = -1
-        prevalence[i] = embolized_conduits.shape[0] / conduits.shape[0]
+        prevalence[i] = n_embolized / conduits.shape[0]
     
         try:
             lcc_size[i], susceptibility[i], _ = get_conduit_lcc_size(perc_net, use_cylindrical_coords=use_cylindrical_coords, 
@@ -1198,6 +1216,39 @@ def get_conduit_indices(conduits, elements):
     conduit_indices = np.unique(conduit_indices)
     return conduit_indices
             
-    
+def get_inlet_conduits(net, conduits, cec_indicator=params.cec_indicator, conduit_element_length=params.Lce, 
+                       heartwood_d=params.heartwood_d, use_cylindrical_coords=False):
+    """
+    Finds the conduits that contain inlet pores (pores at the bottom row)
+
+    Parameters
+    ----------
+    net : openpnm.Network()
+        a network object
+    conduits : np.array
+        three columns: 1) the first element of the conduit, 2) the last element of the conduit, 3) size of the conduit
+    cec_indicator : int, optional 
+        value used to indicate that the type of a throat is CEC (default value from the Mrad Matlab implementation)
+    conduit_element_length : float, optional
+        length of a single conduit element (m), used only if use_cylindrical_coords == True (default from the Mrad et al. article)
+    heartwood_d : float, optional
+        diameter of the heartwood (= part of the tree not included in the xylem network) (in conduit elements)
+        used only if use_cylindrical_coords == True (default value from the Mrad et al. article)
+    use_cylindrical_coords : bln, optional
+        should Mrad model coordinates be interpreted as cylindrical ones
+
+    Returns
+    -------
+    inlet_conduit_indices : np.array
+        indices of the conduits with inlet pores
+    """
+    conduit_elements = mrad_model.get_conduit_elements(net, use_cylindrical_coords=use_cylindrical_coords,
+                                                       conduit_element_length=conduit_element_length, 
+                                                       heartwood_d=heartwood_d, cec_indicator=cec_indicator)
+    inlet_conduit_indices = []
+    for pore in conduit_elements:
+        if pore[0] == 0:
+            inlet_conduit_indices.append(int(pore[3]))
+    return np.array(inlet_conduit_indices)
             
     
