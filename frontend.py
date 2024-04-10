@@ -29,6 +29,7 @@ cfg['seed_ICC_rad'] = params.seed_ICC_rad
 cfg['seed_ICC_tan'] = params.seed_ICC_tan
 cfg['si_type'] = params.si_type
 cfg['si_length'] = params.si_length
+cfg['si_tolerance_length'] = params.si_tolerance_length
 cfg['start_conduits'] = params.start_conduits
 cfg['spreading_probability'] = params.spreading_probability
 cfg['spreading_threshold'] = params.spreading_threshold

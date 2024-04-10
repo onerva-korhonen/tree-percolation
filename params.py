@@ -62,6 +62,7 @@ percolation_type = 'si'
 break_nonfunctional_components = False
 si_type = 'stochastic'
 si_length = 1000
+si_tolerance_length = 20
 spreading_probability = 0.1
 spreading_threshold = 100 # TODO: set a reasonable value
 start_conduits = 'random' # options: 'bottom' (= all conduits with a pore at the first row), 'random' and int

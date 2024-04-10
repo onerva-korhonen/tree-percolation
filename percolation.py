@@ -589,11 +589,12 @@ def run_conduit_si(net, cfg, start_conduits, si_length=1000, spreading_probabili
         conduit_element_length : float, length of a single conduit element (m), used only if use_cylindrical_coords == True (default from the Mrad et al. article)
         heartwood_d : float, diameter of the heartwood (= part of the tree not included in the xylem network) (in conduit elements) used only if use_cylindrical_coords == True (default value from the Mrad et al. article)
         spreading_probability : double, probability at which embolism spreads to neighbouring conduits (default: 0.1)
+        si_tolerance_length : int, tolerance parameter for defining the end of the simulation: when the prevalence hasn't changed for si_tolerance_length steps, the simulation stops (default 20)
     start_conduits : array-like of ints or 'random'
         indices of the first conduits to be removed (i.e. the first infected nodes of the simulation), if 'random', a single start
         conduit is selected at random
     si_length : int, optional
-        number of time steps used for the simulation (default: 1000)
+        maximum number of time steps used for the simulation (default: 1000)
     
     Returns:
     --------
@@ -620,13 +621,12 @@ def run_conduit_si(net, cfg, start_conduits, si_length=1000, spreading_probabili
 
     """
     # TODO: pick a reasonable default value for si_length and spreading_probability
-    # TODO: figure out a way to automatically define SI length: this would require replacing the for time_step loop
-    # with a while loop and introducing a tolerance parameter to define when the simulation should end
     conduit_element_length = cfg.get('conduit_element_length', params.Lce)
     heartwood_d = cfg.get('heartwood_d', params.heartwood_d)
     cec_indicator = cfg.get('cec_indicator', params.cec_indicator)
     use_cylindrical_coords = cfg.get('use_cylindrical_coords', False)
     spreading_probability = cfg.get('spreading_probability', 0.1)
+    si_tolerance_length = cfg.get('si_tolerance_length', 20)
     
     conns = net['throat.conns']
     assert len(conns) > 0, 'Network has no throats; cannot run percolation analysis'
@@ -652,7 +652,6 @@ def run_conduit_si(net, cfg, start_conduits, si_length=1000, spreading_probabili
         start_conduit = np.random.randint(conduits.shape[0]) + 1 # indexing of conduits starts from 1, not from 0
         start_conduits = np.array([start_conduit])
     
-    time = np.arange(si_length)
     embolization_times = np.zeros((conduits.shape[0], 2))
     embolization_times[:, 0] = np.inf
     for start_conduit in start_conduits:
@@ -666,8 +665,10 @@ def run_conduit_si(net, cfg, start_conduits, si_length=1000, spreading_probabili
         perc_net['pore.diameter'] = net['pore.diameter']
         
     max_removed_lcc = 0
-        
-    for time_step in time:
+    time_step = 0
+    prevalence_diff = 1
+       
+    while prevalence_diff > 0:
             
         pores_to_remove = []
         removed_conduit_indices = []
@@ -695,7 +696,7 @@ def run_conduit_si(net, cfg, start_conduits, si_length=1000, spreading_probabili
                     if len(conduit_neighbours[conduit]) > 0:
                         neighbour_embolization_times = embolization_times[np.array(conduit_neighbours[conduit]) - 1, 0]
                     else:
-                        neighbour_embolization_times = []
+                        neighbour_embolization_times = np.array([])
                     if np.any(neighbour_embolization_times < time_step): # there are embolized neighbours
                         if np.random.rand() > 1 - spreading_probability:
                             embolization_times[conduit - 1, 0] = time_step
@@ -763,11 +764,10 @@ def run_conduit_si(net, cfg, start_conduits, si_length=1000, spreading_probabili
                 break
             else:
                 raise
-    if not possible_embolizations:
-        cut_index = time_step
-    else:
-        cut_index = np.where(prevalence == prevalence[-1])[0][0] + 1
-    return effective_conductances[0:cut_index], lcc_size[0:cut_index], functional_lcc_size[0:cut_index], nonfunctional_component_size[0:cut_index], susceptibility[0:cut_index], functional_susceptibility[0:cut_index], n_inlets[0:cut_index], n_outlets[0:cut_index], nonfunctional_component_volume[0:cut_index], prevalence[0:cut_index]
+        if time_step > si_tolerance_length:
+            prevalence_diff = np.abs(prevalence[time_step] - prevalence[time_step - si_tolerance_length])
+        time_step += 1
+    return effective_conductances[0:time_step], lcc_size[0:time_step], functional_lcc_size[0:time_step], nonfunctional_component_size[0:time_step], susceptibility[0:time_step], functional_susceptibility[0:time_step], n_inlets[0:time_step], n_outlets[0:time_step], nonfunctional_component_volume[0:time_step], prevalence[0:time_step]
 
 def run_physiological_conduit_drainage(net, cfg, start_conduits):
     """
