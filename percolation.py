@@ -898,13 +898,6 @@ def run_physiological_conduit_drainage(net, cfg, start_conduits):
     n_embolized = 0
     
     n_nonfunctional = 0
-        
-    # TODO: add handling of non-functional components. in particular, can non-functional conduits get embolized? how do we know if a conduit is functional when it gets embolized?
-    # Handling of non-functional conduits in SI:
-        # conduit becomes non-functional if the neighbour that connects it to inlet/outlet gets embolized
-        # such conduit doesn't automatically get embolized but can remain in the system containing non-functional or "dead" water
-        # however, non-functional conduits are removed from the simulation network
-    # Problem: if a conduit is removed from perc_net, its pores don't have invasion_pressure anymore and thus "never" get embolized
     
     # TODO: invasion pressure should be updated whenever conduits get embolized (or non-functional) and are thus removed from the network
     # problem: the pressure range is constructed based on the original invasion pressure; is it possible that later pressures fall outside the range?
@@ -913,10 +906,6 @@ def run_physiological_conduit_drainage(net, cfg, start_conduits):
     # and the neighbouring conduits should get embolized at each step if their invasion pressure is exceeded
     # problem: what is the current pressure? or the pressure difference between two conduits?
     
-    # TODO: in the current model, the final prevalence is pretty low since non-functional conduits don't get embolized. For an example simulation, only 37 conduits get embolized
-    # while 54 conduits get removed as non-functional
-    
-    #import pdb; pdb.set_trace()
     for i, pressure in enumerate(pressure_range):
         
         #sim_net = mrad_model.prepare_simulation_network(perc_net, cfg)
@@ -927,11 +916,8 @@ def run_physiological_conduit_drainage(net, cfg, start_conduits):
         
         if i == 0:
             embolized_conduits = np.where(conduit_invasion_pressures[:, 0] <= pressure)[0] # finds all conduits embolized at pressures smaller than the first one investigated
-            #embolized_pores = np.where(perc_net['pore.invasion_pressure'] <= pressure)[0] # finds all pores embolized at pressures smaller than the first one investigated
         else:
-            #embolized_pores = np.where((perc_net['pore.invasion_pressure'] <= pressure) & (perc_net['pore.invasion_pressure'] > pressure_range[i - 1]))[0] # pores embolized at this pressure but not at the previous pressure
             embolized_conduits = np.where((conduit_invasion_pressures[:, 0] <= pressure) & (conduit_invasion_pressures[:, 0] > pressure_range[i - 1]))[0] # conduits embolized at this pressure but not at the previous pressure
-        #embolized_conduits = get_conduit_indices(conduits, embolized_pores)
         n_embolized += embolized_conduits.shape[0]
         for embolized_conduit in np.sort(embolized_conduits)[::-1]:
             if conduit_invasion_pressures[embolized_conduit, 1] > 0:
