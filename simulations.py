@@ -133,7 +133,6 @@ def simulate_drainage(sim_net, start_pores, cfg):
     invasion_pressure : np.array of floats
         the pressure at which each pore gets invaded by air (embolized)
     """
-    # TODO: why is the invasion pressure of all pores of component 8 the same although they have different entry pressures? also the throats of the component have different entry pressures
     pressure = cfg.get('pressure', params.pressure)
     # creating the air phase
     air = op.phase.Air(network=sim_net)

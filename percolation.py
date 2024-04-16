@@ -869,6 +869,12 @@ def run_physiological_conduit_drainage(net, cfg, start_conduits):
         max_pressure = np.amax(invasion_pressure)
     pressure_range = np.arange(np.amin(invasion_pressure), max_pressure, pressure_step)
     pressure_range_length = pressure_range.shape[0]
+    conduit_invasion_pressures = np.zeros((conduits.shape[0], 2))
+    conduit_invasion_pressures[:, 1] = 1 # the second column indicates if the conduit is functional
+    for i, conduit in enumerate(conduits):
+        conduit_invasion_pressure = invasion_pressure[np.arange(conduit[0], conduit[1] + 1)]
+        assert np.amax(conduit_invasion_pressure) == np.amin(conduit_invasion_pressure), 'Detected a conduit with multiple invasion pressures'
+        conduit_invasion_pressures[i, 0] = np.amax(conduit_invasion_pressure)
         
     effective_conductances = np.zeros(pressure_range_length)
     lcc_size = np.zeros(pressure_range_length)
@@ -886,24 +892,56 @@ def run_physiological_conduit_drainage(net, cfg, start_conduits):
     perc_net['throat.type'] = net['throat.type']
     perc_net['pore.diameter'] = net['pore.diameter']
     perc_net['pore.invasion_pressure'] = invasion_pressure
-        
+    
     max_removed_lcc = 0
     embolized_conduits = []
     n_embolized = 0
+    
+    n_nonfunctional = 0
         
     # TODO: add handling of non-functional components. in particular, can non-functional conduits get embolized? how do we know if a conduit is functional when it gets embolized?
+    # Handling of non-functional conduits in SI:
+        # conduit becomes non-functional if the neighbour that connects it to inlet/outlet gets embolized
+        # such conduit doesn't automatically get embolized but can remain in the system containing non-functional or "dead" water
+        # however, non-functional conduits are removed from the simulation network
+    # Problem: if a conduit is removed from perc_net, its pores don't have invasion_pressure anymore and thus "never" get embolized
     
+    # TODO: invasion pressure should be updated whenever conduits get embolized (or non-functional) and are thus removed from the network
+    # problem: the pressure range is constructed based on the original invasion pressure; is it possible that later pressures fall outside the range?
+    
+    # TODO: now the outcome reflects simply the distribution of invasion pressures. Instead, the spreading should still start from a single conduit (spontaneously embolized one),
+    # and the neighbouring conduits should get embolized at each step if their invasion pressure is exceeded
+    # problem: what is the current pressure? or the pressure difference between two conduits?
+    
+    # TODO: in the current model, the final prevalence is pretty low since non-functional conduits don't get embolized. For an example simulation, only 37 conduits get embolized
+    # while 54 conduits get removed as non-functional
+    
+    #import pdb; pdb.set_trace()
     for i, pressure in enumerate(pressure_range):
+        
+        #sim_net = mrad_model.prepare_simulation_network(perc_net, cfg)
+        #invasion_pressure = simulations.simulate_drainage(sim_net, start_pores, cfg)
+        #perc_net['pore.invasion_pressure'] = invasion_pressure # TODO: is this necessary if invasion_pressure is recalculated at each iteration and its dimensions thus should match the number of nodes?
+        
+        pores_to_remove = []
+        
         if i == 0:
-            embolized_pores = np.where(perc_net['pore.invasion_pressure'] <= pressure)[0] # finds all pores embolized at pressures smaller than the first one investigated
+            embolized_conduits = np.where(conduit_invasion_pressures[:, 0] <= pressure)[0] # finds all conduits embolized at pressures smaller than the first one investigated
+            #embolized_pores = np.where(perc_net['pore.invasion_pressure'] <= pressure)[0] # finds all pores embolized at pressures smaller than the first one investigated
         else:
-            embolized_pores = np.where((perc_net['pore.invasion_pressure'] <= pressure) & (perc_net['pore.invasion_pressure'] > pressure_range[i - 1]))[0] # pores embolized at this pressure but not at the previous pressure
-        op.topotools.trim(perc_net, pores=embolized_pores)
-        embolized_conduits = get_conduit_indices(conduits, embolized_pores)
+            #embolized_pores = np.where((perc_net['pore.invasion_pressure'] <= pressure) & (perc_net['pore.invasion_pressure'] > pressure_range[i - 1]))[0] # pores embolized at this pressure but not at the previous pressure
+            embolized_conduits = np.where((conduit_invasion_pressures[:, 0] <= pressure) & (conduit_invasion_pressures[:, 0] > pressure_range[i - 1]))[0] # conduits embolized at this pressure but not at the previous pressure
+        #embolized_conduits = get_conduit_indices(conduits, embolized_pores)
         n_embolized += embolized_conduits.shape[0]
         for embolized_conduit in np.sort(embolized_conduits)[::-1]:
-            conduits[embolized_conduit + 1::, 0:2] = conduits[embolized_conduit + 1::, 0:2] - conduits[embolized_conduit, 2]
-            conduits[embolized_conduit, :] = -1
+            if conduit_invasion_pressures[embolized_conduit, 1] > 0:
+                pores_to_remove.extend(list(np.arange(conduits[embolized_conduit, 0], conduits[embolized_conduit, 1] + 1)))
+                conduits[embolized_conduit + 1::, 0:2] = conduits[embolized_conduit + 1::, 0:2] - conduits[embolized_conduit, 2]
+                conduits[embolized_conduit, :] = -1
+            else: # if a nonfunctional conduit is embolized, nonfunctional component size and volume decrease
+                nonfunctional_component_size[i] -= 1
+                nonfunctional_component_volume[i] -= np.sum(np.pi * 0.5 * net['pore.diameter'][np.arange(orig_conduits[embolized_conduit - 1, 0], orig_conduits[embolized_conduit - 1, 1] + 1)]**2 * conduit_element_length)
+        op.topotools.trim(perc_net, pores=pores_to_remove)
         prevalence[i] = n_embolized / conduits.shape[0]
     
         try:
@@ -926,11 +964,14 @@ def run_physiological_conduit_drainage(net, cfg, start_conduits):
                 nonfunctional_component_size[i] = nonfunctional_component_size[i] + nonfunctional_component_size[i - 1] + n_nonfunctional_conduits
                 if removed_lcc > max_removed_lcc: # Percolation doesn't affect the sizes of removed components -> the largest removed component size changes only if a new, larger component gets removed
                     max_removed_lcc = removed_lcc
-                removed_conduit_indices = get_conduit_indices(conduits, removed_elements)
-                for removed_conduit_index in removed_conduit_indices[::-1]: # indexing of conduits starts from 1, not 0
-                    conduits[removed_conduit_index + 1::, 0:2] = conduits[removed_conduit_index + 1::, 0:2] - conduits[removed_conduit_index, 2]
-                    conduits[removed_conduit_index, :] = -1
-                #embolization_times[removed_conduit_indices, 1] = 0
+                removed_conduits = get_conduit_indices(conduits, removed_elements)
+                for removed_conduit in removed_conduits[::-1]: # indexing of conduits starts from 1, not 0
+                    conduits[removed_conduit + 1::, 0:2] = conduits[removed_conduit + 1::, 0:2] - conduits[removed_conduit, 2]
+                    conduits[removed_conduit, :] = -1
+                conduit_invasion_pressures[removed_conduits, 1] = 0
+                
+                n_nonfunctional += removed_conduits.shape[0]
+                
             else:
                 nonfunctional_component_size[i] = nonfunctional_component_size[i] + nonfunctional_component_size[i - 1]
             if max_removed_lcc > lcc_size[i]: # checking if the largest removed component is larger than the largest functional one
@@ -956,7 +997,6 @@ def run_physiological_conduit_drainage(net, cfg, start_conduits):
                 break
             else:
                 raise
-
     return effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence
 
 def get_lcc_size(net):
