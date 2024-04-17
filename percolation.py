@@ -37,8 +37,8 @@ def run_percolation(net, cfg, percolation_type='bond', removal_order='random', b
         Dc_cv: float, coefficient of variation of conduit diameter
         fc: float, average contact fraction between two conduits
         fpf: float, average pit field fraction between two conduits
-        conduit_diameters: np.array of floats, diameters of the conduits, or 'lognormal'
-        to draw diameters from a lognormal distribution defined by Dc and Dc_cv
+        conduit_diameters: np.array of floats, diameters of the conduits, 'inherit_from_net' to use the conduit diameters from net, or 'lognormal' to draw diameters from a lognormal 
+        distribution defined by Dc and Dc_cv. NOTE: if diameters have been defined in net (i.e. net['pore.diameter'] != []), conduit_diameters is omitted and the diameters from net are used.
         cec_indicator: int, value used to indicate that the type of a throat is CE
         tf: float, microfibril strand thickness (m)
         icc_length: float, length of an ICC throat (m)
@@ -51,7 +51,7 @@ def run_percolation(net, cfg, percolation_type='bond', removal_order='random', b
         Tm: float, average thickness of membranes (m)
         conduit_element_length : float, length of a single conduit element (m), used only if use_cylindrical_coords == True (default from the Mrad et al. article)
         heartwood_d : float, diameter of the heartwood (= part of the tree not included in the xylem network) (in conduit elements) used only if use_cylindrical_coords == True (default value from the Mrad et al. article)
-        spreading_probability : double, probability at which embolism spreads to neighbouring conduits if si_type == 'stochastic'
+        spreading_probability : double, probability at which embolism spreads to neighbouring conduits
         start_conduits : array-like of ints, 'random', or 'bottom', index of the first conduit to be removed (i.e. the first infected node of the simulation), if 'random', the start
         conduit is selected at random, if 'bottom', all conduits with an inlet pore are used
         pressure : int or array-like, the frequency steps to investigate (if an int is given, a log-range with the corresponding number of steps is used)
@@ -88,6 +88,8 @@ def run_percolation(net, cfg, percolation_type='bond', removal_order='random', b
         the fraction of embolized conduits in the network (only calculated if percolation_type == 'si')
     """
     # TODO: calculate also the percentage of conductance lost to match Mrad's VC plots (although this is a pure scaling: current conductance divided by the original one)
+    if 'pore.diameter' in net.keys() and len(net['pore.diameter']) > 0:
+        cfg['conduit_diameters'] == 'inherit_from_net'
     assert percolation_type in ['bond', 'site', 'conduit', 'si', 'drainage'], 'percolation type must be bond (removal of throats), site (removal of pores), conduit (removal of conduits), si (removal of conduits as SI spreading process), or drainage (removal of conduits using the openpnm drainage algorithm)'
     if percolation_type == 'conduit':
         effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume = run_physiological_conduit_percolation(net, cfg)
@@ -122,8 +124,8 @@ def run_graph_theoretical_element_percolation(net, cfg, percolation_type='bond',
         Dc_cv: float, coefficient of variation of conduit diameter
         fc: float, average contact fraction between two conduits
         fpf: float, average pit field fraction between two conduits
-        conduit_diameters: np.array of floats, diameters of the conduits, or 'lognormal'
-        to draw diameters from a lognormal distribution defined by Dc and Dc_cv
+        conduit_diameters: np.array of floats, diameters of the conduits, 'inherit_from_net' to use the conduit diameters from net, or 'lognormal' to draw diameters from a lognormal 
+        distribution defined by Dc and Dc_cv. NOTE: if diameters have been defined in net (i.e. net['pore.diameter'] != []), conduit_diameters is omitted and the diameters from net are used.
         cec_indicator: int, value used to indicate that the type of a throat is CE
         tf: float, microfibril strand thickness (m)
         icc_length: float, length of an ICC throat (m)
@@ -163,6 +165,7 @@ def run_graph_theoretical_element_percolation(net, cfg, percolation_type='bond',
     nonfunctional_component_volume : np.array
         the total volume of non-functional components
     """
+    assert len(net['pore.diameter']) > 0, 'pore diameters not defined; please define pore diameters before running percolation'
     if percolation_type == 'bond':
         n_removals = net['throat.conns'].shape[0]
     elif percolation_type == 'site':
@@ -181,7 +184,6 @@ def run_graph_theoretical_element_percolation(net, cfg, percolation_type='bond',
     n_inlets = np.zeros(n_removals)
     n_outlets = np.zeros(n_removals)
     nonfunctional_component_volume = np.zeros(n_removals)
-    cfg['conduit_diameters'] = 'inherit_from_net'
     
     if removal_order == 'random':
         removal_order = np.arange(0, n_removals)
@@ -288,6 +290,7 @@ def run_physiological_element_percolation(net, cfg, percolation_type):
         the mean number of outlet elements per functional component
     """
     # TODO: add a case for removing elements in given order instead of at random; however, this is not a high priority thing
+    assert len(net['pore.diameter']) > 0, 'pore diameters not defined; please define pore diameters before running percolation'
     if percolation_type == 'bond':
         n_removals = net['throat.conns'].shape[0]
     elif percolation_type == 'site':
@@ -306,7 +309,6 @@ def run_physiological_element_percolation(net, cfg, percolation_type):
     n_inlets = np.zeros(n_removals)
     n_outlets = np.zeros(n_removals)
     nonfunctional_component_volume = np.zeros(n_removals)
-    cfg['conduit_diameters'] = 'inherit_from_net'
     
     perc_net = op.network.Network(conns=net['throat.conns'], coords=net['pore.coords'])
     perc_net['throat.type'] = net['throat.type']
@@ -441,7 +443,8 @@ def run_physiological_conduit_percolation(net, cfg, removal_order='random'):
         the total volume of non-functional components
     """
     # TODO: What would bond percolation mean at the level of conduits?
-        
+       
+    assert len(net['pore.diameter']) > 0, 'pore diameters not defined; please define pore diameters before running percolation'
     conduit_element_length = cfg.get('conduit_element_length', params.Lce)
     heartwood_d = cfg.get('heartwood_d', params.heartwood_d)
     cec_indicator = cfg.get('cec_indicator', params.cec_indicator)
@@ -464,7 +467,6 @@ def run_physiological_conduit_percolation(net, cfg, removal_order='random'):
     functional_susceptibility = np.zeros(n_removals)
     n_inlets = np.zeros(n_removals)
     n_outlets = np.zeros(n_removals)
-    cfg['conduit_diameters'] = 'inherit_from_net'
     
     perc_net = op.network.Network(conns=net['throat.conns'], coords=net['pore.coords'])
     perc_net['throat.type'] = net['throat.type']
@@ -621,6 +623,7 @@ def run_conduit_si(net, cfg, start_conduits, si_length=1000, spreading_probabili
 
     """
     # TODO: pick a reasonable default value for si_length and spreading_probability
+    assert len(net['pore.diameter']) > 0, 'pore diameters not defined; please define pore diameters before running percolation'
     conduit_element_length = cfg.get('conduit_element_length', params.Lce)
     heartwood_d = cfg.get('heartwood_d', params.heartwood_d)
     cec_indicator = cfg.get('cec_indicator', params.cec_indicator)
@@ -646,7 +649,6 @@ def run_conduit_si(net, cfg, start_conduits, si_length=1000, spreading_probabili
     n_inlets = np.zeros(si_length)
     n_outlets = np.zeros(si_length)
     prevalence = np.zeros(si_length)
-    cfg['conduit_diameters'] = 'inherit_from_net'
     
     if start_conduits == 'random':
         start_conduit = np.random.randint(conduits.shape[0]) + 1 # indexing of conduits starts from 1, not from 0
@@ -833,6 +835,8 @@ def run_physiological_conduit_drainage(net, cfg, start_conduits):
         fraction of embolized conduits at each infection step
 
     """
+    if not cfg['conduit_diameters'] == 'inherit_from_net':
+        print("NOTE: pore diameters re-defined in percolation; you may want to set cfg['conduit_diameters'] to 'inherit_from_net' to avoid this")
     conduit_element_length = cfg.get('conduit_element_length', params.Lce)
     heartwood_d = cfg.get('heartwood_d', params.heartwood_d)
     cec_indicator = cfg.get('cec_indicator', params.cec_indicator)
@@ -886,7 +890,8 @@ def run_physiological_conduit_drainage(net, cfg, start_conduits):
     n_inlets = np.zeros(pressure_range_length)
     n_outlets = np.zeros(pressure_range_length)
     prevalence = np.zeros(pressure_range_length)
-    cfg['conduit_diameters'] = 'inherit_from_net'
+    if not cfg['conduit_diameters'] == 'inherit_from_net':
+        cfg['conduit_diameters'] = 'inherit_from_net'
     
     perc_net = op.network.Network(conns=net['throat.conns'], coords=net['pore.coords'])
     perc_net['throat.type'] = net['throat.type']
@@ -906,10 +911,20 @@ def run_physiological_conduit_drainage(net, cfg, start_conduits):
     # and the neighbouring conduits should get embolized at each step if their invasion pressure is exceeded
     # problem: what is the current pressure? or the pressure difference between two conduits?
     
+    #import pdb; pdb.set_trace()
     for i, pressure in enumerate(pressure_range):
         
-        #sim_net = mrad_model.prepare_simulation_network(perc_net, cfg)
-        #invasion_pressure = simulations.simulate_drainage(sim_net, start_pores, cfg)
+        if False: # debugging case
+            test_sim_net = mrad_model.prepare_simulation_network(perc_net, cfg)
+            test_invasion_pressure = simulations.simulate_drainage(test_sim_net, start_pores, cfg)
+            
+            functional_conduits = get_conduit_indices(conduits, np.arange(test_sim_net['pore.all'].shape[0]))
+            functional_conduit_invasion_pressures = np.array([np.amax(test_invasion_pressure[np.arange(conduits[conduit, 0], conduits[conduit, 1] + 1)]) for conduit in functional_conduits])
+            test = [conduit_invasion_pressures[conduit, 0] == functional_conduit_invasion_pressures[i] for i, conduit in enumerate(functional_conduits)]
+            
+        
+        
+        
         #perc_net['pore.invasion_pressure'] = invasion_pressure # TODO: is this necessary if invasion_pressure is recalculated at each iteration and its dimensions thus should match the number of nodes?
         
         pores_to_remove = []

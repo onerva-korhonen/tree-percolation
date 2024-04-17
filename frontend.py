@@ -27,7 +27,6 @@ cfg['seeds_NPc'] = params.seeds_NPc
 cfg['seeds_Pc'] = params.seeds_Pc
 cfg['seed_ICC_rad'] = params.seed_ICC_rad
 cfg['seed_ICC_tan'] = params.seed_ICC_tan
-cfg['si_type'] = params.si_type
 cfg['si_length'] = params.si_length
 cfg['si_tolerance_length'] = params.si_tolerance_length
 cfg['start_conduits'] = params.start_conduits
@@ -61,6 +60,7 @@ n_inlet, n_outlet = percolation.get_n_inlets(sim_net, cfg['net_size'][0] - 1, us
 
 cfg['use_cylindrical_coords'] = False
 net_cleaned['pore.diameter'] = sim_net['pore.diameter']
+cfg['conduit_diameters'] = 'inherit_from_net'
 effective_conductances, lcc_sizes, functional_lcc_sizes, nonfunctional_component_size, susceptibilities, functional_susceptibilities, n_inlets, n_outlets, nonfunctional_component_volume, prevalence = percolation.run_percolation(net_cleaned, cfg, percolation_type=params.percolation_type, removal_order='random', break_nonfunctional_components=params.break_nonfunctional_components)
 effective_conductances = np.append(np.array([effective_conductance]), effective_conductances)
 lcc_sizes = np.append(np.array([lcc_size]), lcc_sizes)
