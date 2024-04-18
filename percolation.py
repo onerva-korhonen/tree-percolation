@@ -835,6 +835,8 @@ def run_physiological_conduit_drainage(net, cfg, start_conduits):
         fraction of embolized conduits at each infection step
 
     """
+    # TODO: fix the conduit indexing issue! set the indexing to start from 0!
+    
     if not cfg['conduit_diameters'] == 'inherit_from_net':
         print("NOTE: pore diameters re-defined in percolation; you may want to set cfg['conduit_diameters'] to 'inherit_from_net' to avoid this")
     conduit_element_length = cfg.get('conduit_element_length', params.Lce)
@@ -852,14 +854,15 @@ def run_physiological_conduit_drainage(net, cfg, start_conduits):
     
     if start_conduits == 'random':
         start_conduit = np.random.randint(conduits.shape[0]) + 1 # indexing of conduits starts from 1, not from 0
-        start_conduits = np.array([start_conduit])
+        start_conduits = [start_conduit]
     elif start_conduits == 'bottom':
         start_conduits = get_inlet_conduits(net, conduits, cec_indicator=cec_indicator, conduit_element_length=conduit_element_length, 
-                                            heartwood_d=heartwood_d, use_cylindrical_coords=use_cylindrical_coords) + 1
-    
+                                            heartwood_d=heartwood_d, use_cylindrical_coords=use_cylindrical_coords)
+        #start_conduits = [start_conduit + 1 for start_conduit in start_conduits]
+    n_start_conduits = len(start_conduits)
     start_pores = []
     for conduit in start_conduits:
-        start_pores.extend(np.arange(conduits[conduit - 1, 0], conduits[conduit - 1, 1] + 1))
+        start_pores.extend(np.arange(conduits[conduit - 1, 0], conduits[conduit - 1, 1] + 1)) # -1 is needed because the indexing of start conduits starts from 1, not from 0
     start_pores = np.array(start_pores)
     
     # obtaining the invasion pressure of each pore (i.e. the pressure at which each pore gets embolized) and constructing a pressure range
@@ -874,7 +877,7 @@ def run_physiological_conduit_drainage(net, cfg, start_conduits):
     pressure_range = np.arange(np.amin(invasion_pressure), max_pressure, pressure_step)
     pressure_range_length = pressure_range.shape[0]
     conduit_invasion_pressures = np.zeros((conduits.shape[0], 2))
-    conduit_invasion_pressures[:, 1] = 1 # the second column indicates if the conduit is functional
+    conduit_invasion_pressures[:, 1] = 1 # the second column indicates if the conduit is functional (and non-embolized)
     for i, conduit in enumerate(conduits):
         conduit_invasion_pressure = invasion_pressure[np.arange(conduit[0], conduit[1] + 1)]
         assert np.amax(conduit_invasion_pressure) == np.amin(conduit_invasion_pressure), 'Detected a conduit with multiple invasion pressures'
@@ -904,34 +907,41 @@ def run_physiological_conduit_drainage(net, cfg, start_conduits):
     
     n_nonfunctional = 0
     
-    # TODO: invasion pressure should be updated whenever conduits get embolized (or non-functional) and are thus removed from the network
-    # problem: the pressure range is constructed based on the original invasion pressure; is it possible that later pressures fall outside the range?
-    
     # TODO: now the outcome reflects simply the distribution of invasion pressures. Instead, the spreading should still start from a single conduit (spontaneously embolized one),
     # and the neighbouring conduits should get embolized at each step if their invasion pressure is exceeded
     # problem: what is the current pressure? or the pressure difference between two conduits?
     
+    # TODO: visualization: if x axis starts from the lowest invasion pressure, the phase transition never becomes visible => check range. Further, visualizing as a function
+    # of the fraction of nodes removed seems not to show the phase transition
+    
     #import pdb; pdb.set_trace()
     for i, pressure in enumerate(pressure_range):
-        
-        if False: # debugging case
-            test_sim_net = mrad_model.prepare_simulation_network(perc_net, cfg)
-            test_invasion_pressure = simulations.simulate_drainage(test_sim_net, start_pores, cfg)
             
-            functional_conduits = get_conduit_indices(conduits, np.arange(test_sim_net['pore.all'].shape[0]))
-            functional_conduit_invasion_pressures = np.array([np.amax(test_invasion_pressure[np.arange(conduits[conduit, 0], conduits[conduit, 1] + 1)]) for conduit in functional_conduits])
-            test = [conduit_invasion_pressures[conduit, 0] == functional_conduit_invasion_pressures[i] for i, conduit in enumerate(functional_conduits)]
-            
-        
-        
-        
-        #perc_net['pore.invasion_pressure'] = invasion_pressure # TODO: is this necessary if invasion_pressure is recalculated at each iteration and its dimensions thus should match the number of nodes?
-        
         pores_to_remove = []
         
         if i == 0:
             embolized_conduits = np.where(conduit_invasion_pressures[:, 0] <= pressure)[0] # finds all conduits embolized at pressures smaller than the first one investigated
         else:
+            # removing start conduits that have gotten embolized or non-functional and re-defining start pores
+            j = 0        
+            while j < n_start_conduits:
+                if conduit_invasion_pressures[start_conduits[j] - 1, 1] <= 0:
+                    start_conduits.pop(j)
+                    n_start_conduits -= 1
+                else:
+                    j += 1
+            start_pores = []
+            for conduit in start_conduits: # smallest possible start conduit index is 1, not 0
+                start_pores.extend(np.arange(conduits[conduit - 1, 0], conduits[conduit - 1, 1] + 1))
+            start_pores = np.array(start_pores)
+            
+            # recalculating invasion pressures for functional conduits (the pressure of non-functional conduits doesn't change)
+            sim_net = mrad_model.prepare_simulation_network(perc_net, cfg)
+            invasion_pressure = simulations.simulate_drainage(sim_net, start_pores, cfg)
+            functional_conduits = get_conduit_indices(conduits, np.arange(perc_net['pore.all'].shape[0]))
+            for conduit in functional_conduits:
+                conduit_invasion_pressures[conduit, 0] = np.amax(invasion_pressure[np.arange(conduits[conduit, 0], conduits[conduit, 1] + 1)])
+            
             embolized_conduits = np.where((conduit_invasion_pressures[:, 0] <= pressure) & (conduit_invasion_pressures[:, 0] > pressure_range[i - 1]))[0] # conduits embolized at this pressure but not at the previous pressure
         n_embolized += embolized_conduits.shape[0]
         for embolized_conduit in np.sort(embolized_conduits)[::-1]:
@@ -939,6 +949,7 @@ def run_physiological_conduit_drainage(net, cfg, start_conduits):
                 pores_to_remove.extend(list(np.arange(conduits[embolized_conduit, 0], conduits[embolized_conduit, 1] + 1)))
                 conduits[embolized_conduit + 1::, 0:2] = conduits[embolized_conduit + 1::, 0:2] - conduits[embolized_conduit, 2]
                 conduits[embolized_conduit, :] = -1
+                conduit_invasion_pressures[embolized_conduit, 1] = 0
             else: # if a nonfunctional conduit is embolized, nonfunctional component size and volume decrease
                 nonfunctional_component_size[i] -= 1
                 nonfunctional_component_volume[i] -= np.sum(np.pi * 0.5 * net['pore.diameter'][np.arange(orig_conduits[embolized_conduit - 1, 0], orig_conduits[embolized_conduit - 1, 1] + 1)]**2 * conduit_element_length)
@@ -1233,7 +1244,7 @@ def get_conduit_indices(conduits, elements):
     return conduit_indices
             
 def get_inlet_conduits(net, conduits, cec_indicator=params.cec_indicator, conduit_element_length=params.Lce, 
-                       heartwood_d=params.heartwood_d, use_cylindrical_coords=False):
+                 heartwood_d=params.heartwood_d, use_cylindrical_coords=False):
     """
     Finds the conduits that contain inlet pores (pores at the bottom row)
 
@@ -1255,7 +1266,7 @@ def get_inlet_conduits(net, conduits, cec_indicator=params.cec_indicator, condui
 
     Returns
     -------
-    inlet_conduit_indices : np.array
+    inlet_conduit_indices : list
         indices of the conduits with inlet pores
     """
     conduit_elements = mrad_model.get_conduit_elements(net, use_cylindrical_coords=use_cylindrical_coords,
@@ -1265,6 +1276,6 @@ def get_inlet_conduits(net, conduits, cec_indicator=params.cec_indicator, condui
     for pore in conduit_elements:
         if pore[0] == 0:
             inlet_conduit_indices.append(int(pore[3]))
-    return np.array(inlet_conduit_indices)
+    return inlet_conduit_indices
             
     
