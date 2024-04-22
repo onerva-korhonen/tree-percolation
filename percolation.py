@@ -871,7 +871,7 @@ def run_physiological_conduit_drainage(net, cfg, start_conduits):
         max_pressure = np.sort(np.unique(invasion_pressure))[-2]
     else:
         max_pressure = np.amax(invasion_pressure)
-    pressure_range = np.arange(np.amin(invasion_pressure), max_pressure, pressure_step)
+    pressure_range = np.arange(0, max_pressure, pressure_step)
     pressure_range_length = pressure_range.shape[0]
     conduit_invasion_pressures = np.zeros((conduits.shape[0], 2))
     conduit_invasion_pressures[:, 1] = 1 # the second column indicates if the conduit is functional (and non-embolized)
@@ -908,10 +908,12 @@ def run_physiological_conduit_drainage(net, cfg, start_conduits):
     # and the neighbouring conduits should get embolized at each step if their invasion pressure is exceeded
     # problem: what is the current pressure? or the pressure difference between two conduits?
     
-    # TODO: visualization: if x axis starts from the lowest invasion pressure, the phase transition never becomes visible => check range. Further, visualizing as a function
+    # TODO: visualizing as a function
     # of the fraction of nodes removed seems not to show the phase transition
     
-    #import pdb; pdb.set_trace()
+    # comment on both these issues: probably the solution would be to write a separate function for drainage that spreads from a given start conduit instead
+    # of just following the invasion pressure distribution. There's no need to expect phase transition based on invasion pressure distribution alone.
+    
     for i, pressure in enumerate(pressure_range):
             
         pores_to_remove = []
@@ -1006,6 +1008,7 @@ def run_physiological_conduit_drainage(net, cfg, start_conduits):
                 break
             else:
                 raise
+    import pdb; pdb.set_trace()
     return effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence
 
 def get_lcc_size(net):
