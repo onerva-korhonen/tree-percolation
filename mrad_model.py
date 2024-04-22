@@ -19,7 +19,6 @@ import openpnm as op
 import scipy.sparse.csgraph as csg
 
 import mrad_params as params
-import visualization
 
 def create_mrad_network(cfg):
     """
@@ -61,7 +60,7 @@ def create_mrad_network(cfg):
               1) the row index of the element
               2) the column index of the element
               3) the radial (depth) index of the element
-              4) the index of the conduit the element belongs to (from 1 to n_conduits)
+              4) the index of the conduit the element belongs to (from 0 to n_conduits)
               5) the index of the element (from 0 to n_conduit_elements - 1)
     conns : np.array
               has one row for each connection between conduit elements and five columns, containing
@@ -72,11 +71,10 @@ def create_mrad_network(cfg):
               5) index of the second conduit of the connection
     """
     # Reading data
-    save_switch = cfg.get('save_switch',True)
-    fixed_random = cfg.get('fixed_random',True)
-    net_size = cfg.get('net_size',params.net_size)
-    Pc = cfg.get('Pc',params.Pc)
-    NPc = cfg.get('NPc',params.NPc)
+    fixed_random = cfg.get('fixed_random', True)
+    net_size = cfg.get('net_size', params.net_size)
+    Pc = cfg.get('Pc', params.Pc)
+    NPc = cfg.get('NPc', params.NPc)
     Pe_rad = cfg.get('Pe_rad', params.Pe_rad)
     Pe_tan = cfg.get('Pe_ran', params.Pe_tan)
     cec_indicator = cfg.get('cec_indicator', params.cec_indicator)
@@ -142,10 +140,10 @@ def create_mrad_network(cfg):
     conduit_elements = []
     conduit_index = 0
     conduit_element_index = 0
-    
+
     for i in range(0, len(start_and_end_coords_sorted), 2):
         start_row = start_and_end_coords_sorted[i, 0]
-        end_row = start_and_end_coords_sorted[i+1, 0]
+        end_row = start_and_end_coords_sorted[i + 1, 0]
         conduit_element = np.zeros((end_row - start_row + 1, 5))
         conduit_element[:, 0] = np.linspace(start_row, end_row, end_row - start_row + 1).astype(int)
         conduit_element[:, 1] = start_and_end_coords_sorted[i, 1]
@@ -161,7 +159,7 @@ def create_mrad_network(cfg):
     # 1) the row index of the element
     # 2) the column index of the element
     # 3) the radial (depth) index of the element
-    # 4) the index of the conduit the element belongs to (from 0 to n_contuits)
+    # 4) the index of the conduit the element belongs to (from 0 to n_conduits)
     # 5) the index of the element (from 0 to n_conduit_elements)
     
     # finding axial nodes (= pairs of consequtive, in the row direction, elements that belong to the same conduit)
@@ -467,7 +465,7 @@ def mrad_to_openpnm(conduit_elements, conns):
         1) the row index of the element
         2) the column index of the element
         3) the radial (depth) index of the element
-        4) the index of the conduit the element belongs to (from 1 to n_conduits)
+        4) the index of the conduit the element belongs to (from 0 to n_conduits)
         5) the index of the element (from 0 to n_conduit_elements - 1)
     conns : np.array
         has one row for each connection and five columns, containing
@@ -510,7 +508,7 @@ def clean_network(net, conduit_elements, outlet_row_index, remove_dead_ends=True
         1) the row index of the element
         2) the column index of the element
         3) the radial (depth) index of the element
-        4) the index of the conduit the element belongs to (from 1 to n_conduits)
+        4) the index of the conduit the element belongs to (from 0 to n_conduits)
         5) the index of the element (from 0 to n_conduit_elements - 1)
     outlet_row_index : int
         index of the last row of the network (= n_rows - 1)
@@ -655,7 +653,7 @@ def get_conduit_degree(conduit_elements, throat_conduits, outlet_row_index):
         1) the row index of the element
         2) the column index of the element
         3) the radial (depth) index of the element
-        4) the index of the conduit the element belongs to (from 1 to n_conduits)
+        4) the index of the conduit the element belongs to (from 0 to n_conduits)
         5) the index of the element (from 0 to n_conduit_elements - 1)
     throat_conduits : np.array
         each row contains the indices of the start and end conduits of a throat
@@ -832,7 +830,7 @@ def get_conduit_elements(net, use_cylindrical_coords=False, conduit_element_leng
         1) the row index of the element
         2) the column index of the element
         3) the radial (depth) index of the element
-        4) the index of the conduit the element belongs to (from 1 to n_conduits)
+        4) the index of the conduit the element belongs to (from 0 to n_conduits - 1)
         5) the index of the element (from 0 to n_conduit_elements - 1)
     """
     pore_coords = net['pore.coords']
@@ -854,7 +852,7 @@ def get_conduit_elements(net, use_cylindrical_coords=False, conduit_element_leng
         conduits = get_conduits(cecs) # contains the start and end elements and size of each conduit
         conduit_indices = np.zeros(np.shape(pore_coords)[0])
         for i, conduit in enumerate(conduits):
-            conduit_indices[conduit[0] : conduit[1] + 1] = i + 1
+            conduit_indices[conduit[0] : conduit[1] + 1] = i
         conduit_indices = conduit_indices.astype(int) # contains the index of the conduit to which each element belongs, indexing starts from 1
         conduit_elements[:, 3] = conduit_indices
     else:
