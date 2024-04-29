@@ -29,12 +29,14 @@ cfg['seed_ICC_rad'] = params.seed_ICC_rad
 cfg['seed_ICC_tan'] = params.seed_ICC_tan
 cfg['si_length'] = params.si_length
 cfg['si_tolerance_length'] = params.si_tolerance_length
+cfg['si_type'] = params.si_type
 cfg['start_conduits'] = params.start_conduits
 cfg['spreading_probability'] = params.spreading_probability
 cfg['spreading_threshold'] = params.spreading_threshold
 cfg['air_contact_angle'] = params.air_contact_angle
 cfg['surface_tension'] = params.surface_tension
 cfg['pressure'] = params.pressure
+cfg['pressure_diff'] = params.pressure_diff
 
 cfg['fixed_random'] = True
 
@@ -51,7 +53,7 @@ net_cleaned, _ = mrad_model.clean_network(net, conduit_elements, cfg['net_size']
 sim_net = mrad_model.prepare_simulation_network(net_cleaned, cfg)
 #visualization.visualize_pores(sim_net)
 #visualization.visualize_network_with_openpnm(sim_net, params.use_cylindrical_coordinates, mrad_params.Lce, 'pore.coords')
-effective_conductance = simulations.simulate_water_flow(sim_net, cfg, visualize=params.visualize_simulations)
+effective_conductance, _ = simulations.simulate_water_flow(sim_net, cfg, visualize=params.visualize_simulations)
 if params.percolation_type in ['conduit', 'si']:
     lcc_size, susceptibility, _ = percolation.get_conduit_lcc_size(sim_net)
 else:

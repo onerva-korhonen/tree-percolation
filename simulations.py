@@ -41,6 +41,8 @@ def simulate_water_flow(sim_net, cfg, visualize=False):
     -------
     effective_conductance : float
         effective conductance, i.e. total flow out of the xylem normalized by the pressure difference between inlet and outlet. 
+    pore_pressure : np.array of floats
+        water pressure at each pore of sim_net
     """
     water_pore_viscosity = cfg.get('water_pore_viscosity', mrad_params.water_pore_viscosity)
     water_throat_viscosity = cfg.get('water_throat_viscosity', mrad_params.water_throat_viscosity)
@@ -107,7 +109,9 @@ def simulate_water_flow(sim_net, cfg, visualize=False):
     effective_conductance = stokes_flow.rate(pores=outlet)[0] / (inlet_pressure - outlet_pressure)
     effective_conductance = effective_conductance * -1 # stokes_flow.rate gives the flow exiting the pores (flow_out - flow_in). Since the outlet pores are the edge of the xylem, there is no flow out of them, and the stokes_flow.rate(pores=outlet) is thus negative.
     
-    return effective_conductance
+    pore_pressure = stokes_flow['pore.pressure']
+    
+    return effective_conductance, pore_pressure
 
 def simulate_drainage(sim_net, start_pores, cfg):
     """
