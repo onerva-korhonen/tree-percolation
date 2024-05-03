@@ -40,16 +40,16 @@ if fixed_random:
     seed_ICC_tan = 73956
     
 # dimensions of conduit elements
-Dc = 18.18232653752158e-9 # diameter of a conduit element
+Dc = 18.18232653752158e-6 # diameter of a conduit element
 #Dc_ci = [13.3995938309482, 18.4374185582225] # confidence interval of Dc
-Dc_std = 10.76131985221804
+Dc_std = 10.76131985221804e-6
 Dc_cv = Dc_std / Dc
 Dc_alpha = 0.05 # alpha value of Dc_ci
 Dc_z = norm.ppf(1 - (1 - Dc_alpha) / 2)
     
 
 # paths for saving
-identifier = 'conduit_drainage'
+identifier = 'physiological_conduit_si'
 network_save_file = '/home/onervak/projects/hidrogat/output/netpoints'
 percolation_plot_save_path = '/home/onervak/projects/hidrogat/output/percolation_3D_' + identifier + '.pdf'
 nonfunctional_component_size_save_path = '/home/onervak/projects/hidrogat/output/percolation_3D_' + identifier + '_nonfunc_volume.pdf'
@@ -59,8 +59,8 @@ lcc_in_time_save_path = '/home/onervak/projects/hidrogat/output/percolation_3D_'
 percolation_data_save_path = '/home/onervak/projects/hidrogat/output/percolation_3D_' + identifier + '_data.pkl'
 
 # percolation parameters
-percolation_type = 'drainage'
-si_type = 'stochastic'
+percolation_type = 'si'
+si_type = 'physiological'
 break_nonfunctional_components = False
 si_length = 1000
 si_tolerance_length = 20

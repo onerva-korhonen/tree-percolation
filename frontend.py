@@ -37,6 +37,13 @@ cfg['air_contact_angle'] = params.air_contact_angle
 cfg['surface_tension'] = params.surface_tension
 cfg['pressure'] = params.pressure
 cfg['pressure_diff'] = params.pressure_diff
+# TODO: check that the followig params match the physiology of betula pendula
+cfg['weibull_a'] = mrad_params.weibull_a
+cfg['weibull_b'] = mrad_params.weibull_b
+cfg['average_pit_area'] = mrad_params.Dm**2
+cfg['conduit_element_length'] = mrad_params.Lce
+cfg['fc'] = mrad_params.fc
+cfg['fpf'] = mrad_params.fpf
 
 cfg['fixed_random'] = True
 

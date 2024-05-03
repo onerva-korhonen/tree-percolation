@@ -55,6 +55,8 @@ def run_percolation(net, cfg, percolation_type='bond', removal_order='random', b
         start_conduits : array-like of ints, 'random', or 'bottom', index of the first conduit to be removed (i.e. the first infected node of the simulation), if 'random', the start
         conduit is selected at random, if 'bottom', all conduits with an inlet pore are used
         pressure : int or array-like, the frequency steps to investigate (if an int is given, a log-range with the corresponding number of steps is used)
+        weibull_a : float, Weibull distribution scale parameter (used for simulating pressure-difference-based embolism spreading)
+        weibull_b : float, Weibull distribution shape parameter (used for simulating pressure-difference-based embolism spreading)
     percolation type : str, optional
         type of the percolation, 'bond' to remove throats, 'site' to remove pores, 'conduit' to remove conduits,
         'si' to simulate the spreading of embolism between conduits using the SI model or 'drainage' to simulate the spreading of embolism with the openpnm drainage algorithm (default: 'bond')
@@ -595,6 +597,9 @@ def run_conduit_si(net, cfg, start_conduits, si_length=1000, spreading_probabili
         si_tolerance_length : int, tolerance parameter for defining the end of the simulation: when the prevalence hasn't changed for si_tolerance_length steps, the simulation stops (default 20)
         pressure_diff : float, difference between water pressure and vapour-air bubble pressure, delta P in the Mrad et al. article
         si_type : str, 'stochastic' for probability-based spreading, 'physiological' for spreading based on pressure differences (default stochastic)
+        weibull_a : float, Weibull distribution scale parameter (used for simulating pressure-difference-based embolism spreading) (default 20.28E6)
+        weibull_b : float, Weibull distribution shape parameter (used for simulating pressure-difference-based embolism spreading) (default 3.2)
+        average_pit_area : float, the average area of a pit
     start_conduits : str or array-like of ints
         the first conduits to be removed (i.e. the first infected node of the simulation)
         if 'random', a single start conduit is selected at random
@@ -636,7 +641,6 @@ def run_conduit_si(net, cfg, start_conduits, si_length=1000, spreading_probabili
     spreading_probability = cfg.get('spreading_probability', 0.1)
     si_tolerance_length = cfg.get('si_tolerance_length', 20)
     si_type = cfg.get('si_type', 'stochastic')
-    pressure_diff = cfg.get('pressure_diff', 0)
     
     assert si_type in ['stochastic', 'physiological'], 'unknown si type, select stochastic or physiological'
     
@@ -678,15 +682,8 @@ def run_conduit_si(net, cfg, start_conduits, si_length=1000, spreading_probabili
     if 'pore.diameter' in net.keys():
         perc_net['pore.diameter'] = net['pore.diameter']
     if si_type == 'physiological':
-        import pdb; pdb.set_trace()
-        sim_net = mrad_model.prepare_simulation_network(perc_net, cfg)
-        _, pore_pressures = simulations.simulate_water_flow(sim_net, cfg)
-        conduit_pressures = np.zeros((conduits.shape[0]))
-        for i, conduit in enumerate(conduits):
-            conduit_pressure = pore_pressures[np.arange(conduit[0], conduit[1] + 1)]
-            assert np.amax(conduit_pressure) == np.amin(conduit_pressure), 'Detected a conduit with multiple invasion pressures'
-            conduit_pressures[i] = np.amax(conduit_pressure)
-            
+        bpp = calculate_bpp(perc_net, conduits, 1 - cec_mask, cfg)
+        
     max_removed_lcc = 0
     time_step = 0
     prevalence_diff = 1
@@ -724,10 +721,10 @@ def run_conduit_si(net, cfg, start_conduits, si_length=1000, spreading_probabili
                         embolize = False
                         if si_type == 'stochastic':
                             embolize =  (np.random.rand() > 1 - spreading_probability)
-                        elif si_type == 'physiological':
-                            conduit_pressure = conduit_pressures[conduit]
-                            neighbour_pressures = conduit_pressures[np.array(conduit_neighbours[conduit])][np.where(neighbour_embolization_times < time_step)]
-                            embolize = np.any(neighbour_pressures - conduit_pressure <= pressure_diff)
+                        #elif si_type == 'physiological':
+                            #conduit_pressure = conduit_pressures[conduit]
+                            #neighbour_pressures = conduit_pressures[np.array(conduit_neighbours[conduit])][np.where(neighbour_embolization_times < time_step)]
+                            #embolize = np.any(neighbour_pressures - conduit_pressure <= pressure_diff)
                         if embolize:
                             embolization_times[conduit, 0] = time_step
                             if embolization_times[conduit, 1] > 0: # if conduit is functional, it will be removed from the simulation network
@@ -778,10 +775,10 @@ def run_conduit_si(net, cfg, start_conduits, si_length=1000, spreading_probabili
                                                      use_cylindrical_coords=use_cylindrical_coords)
             sim_net = mrad_model.prepare_simulation_network(perc_net, cfg)
             effective_conductances[time_step], pore_pressures = simulations.simulate_water_flow(sim_net, cfg, visualize=False)
-            if si_type == 'physiological':
-                functional_conduits = get_conduit_indices(conduits, np.arange(perc_net['pore.all'].shape[0]))
-                for conduit in functional_conduits:
-                    conduit_pressures[conduit] = np.amax(pore_pressures[np.arange(conduits[conduit, 0], conduits[conduit, 1] + 1)])
+            #if si_type == 'physiological':
+            #    functional_conduits = get_conduit_indices(conduits, np.arange(perc_net['pore.all'].shape[0]))
+            #    for conduit in functional_conduits:
+            #        conduit_pressure[conduit] = np.amax(pore_pressures[np.arange(conduits[conduit, 0], conduits[conduit, 1] + 1)])
             functional_lcc_size[time_step], functional_susceptibility[time_step], _ = get_conduit_lcc_size(perc_net)
         except Exception as e:
             if str(e) == 'Cannot delete ALL pores': # this is because all remaining nodes belong to non-functional components
@@ -806,20 +803,14 @@ def run_conduit_si(net, cfg, start_conduits, si_length=1000, spreading_probabili
     # related to physilogical si:
     # TODO: note: the outcome of the spreading is different for different pressure_diffs, so probably the trick is to run the simulation separately for each pressure_diff
     # and calculate the final prevalence?
-
-    # TODO: 
-    # 1) pick start conduit and embolize it
-    # 2) use StokesFlow.get_conduit_data('pore.pressure') (in simulations.simulate_water_flow) to calculate start and end pressures of each throat
-    # 3) identify throats of each conduit and interpret conduit pressures
-    #   - check that all throats of a conduit give the same pressure, since the whole conduit should be in the same pressure
-    # 4) construct conduit_pressures array similar to conduit_invasion_pressures; second column tells if the conduit is functional
-    # 5) for each step, for each conduit: 
-    #   - check if there are embolized neighbours and if so, if the pressure difference is large enough
-    #   - where to get the threshold for pressure difference? what does Mrad use?
-    # 6) if, so, embolize the conduit + mark it as non-functional
-    # 7) remove non-functional conduits, update conduit_pressures, calculate network metrics
     
-    # TODO: pore_pressures and pore pressure difference don't work as an approximation for BPP => use the Mrad equations to calculate conduit-conduit BPP
+    # new TODO:
+
+    # 2) for each conduit, detect the neighbouring conduits and all ICC ASPs with them. Find the smallest; that's the conduit ASP (BPP)
+    # 3) pick start conduit and embolize it
+    # 4) for each conduit, check if it has embolized neighbours. if so, check if the relevant conduit ASP is larger than the pressure_diff. if so, embolize the present conduit.
+    # 5) remove non-functional conduits, calculate network metrics
+        
 
 def run_physiological_conduit_drainage(net, cfg, start_conduits):
     """
@@ -1325,5 +1316,56 @@ def get_inlet_conduits(net, conduits, cec_indicator=params.cec_indicator, condui
         if pore[0] == 0:
             inlet_conduit_indices.append(int(pore[3]))
     return inlet_conduit_indices
-            
+
+def calculate_bpp(net, conduits, icc_mask, cfg):
+    """
+    Calculates the bubble propagation pressure (BPP) for each ICC as 4*gamma/D_p where D_p is drawn from Weibull
+    distribution (equation 6 of the Mrad et al. article). 
+
+    Parameters
+    ----------
+    net : openpnm.network()
+        pores correspond to conduit elements, throats to CECs and ICCs
+    conduits : np.array
+        three columns: 1) the first element of the conduit, 2) the last element of the conduit, 3) size of the conduit
+    icc_mask : np.array
+        for each throat of the network, contains 1 if the throat is an ICC and 0 otherwise
+    cfg : dict
+        contains: 
+        weibull_a : float, Weibull distribution scale parameter (used for simulating pressure-difference-based embolism spreading) (default 20.28E6)
+        weibull_b : float, Weibull distribution shape parameter (used for simulating pressure-difference-based embolism spreading) (default 3.2)
+        average_pit_area : float, the average area of a pit
+        Lce: float, length of a conduit element
+        Dc: float, average conduit diameter (m)
+        Dc_cv: float, coefficient of variation of conduit diameter
+        fc: float, average contact fraction between two conduits
+        fpf: float, average pit field fraction between two conduits
+    Returns
+    -------
+    bpp : np.array
+        bubble propagation pressure for each ICC of the network
+    """
+    weibull_a = cfg.get('weibull_a', params.weibull_a)
+    weibull_b = cfg.get('weibull_b', params.weibull_b)
+    average_pit_area = cfg.get('average_pit_area', params.Dm**2)
+    Dc = cfg.get('Dc', params.Dc)
+    Dc_cv = cfg.get('Dc_cv', params.Dc_cv)
+    conduit_element_length = cfg.get('conduit_element_length', params.Lce)
+    fc = cfg.get('fc', params.fc)
+    fpf = cfg.get('fpf', params.fpf)
+    conns = net['throat.conns']
     
+    diameters_per_conduit, _ = mrad_model.get_conduit_diameters(net, 'inherit_from_net', conduits, Dc_cv=Dc_cv, Dc=Dc)
+    conduit_areas = (conduits[:, 2] - 1) * conduit_element_length * np.pi * diameters_per_conduit
+    iccs = conns[np.where(icc_mask)]
+    icc_count = np.array([np.sum((conduit[0] <= iccs[:, 0]) & (iccs[:, 0] <= conduit[1])) + np.sum((conduit[0] <= iccs[:, 1]) & (iccs[:, 1] <= conduit[1])) for conduit in conduits])
+    
+    bpp = np.zeros(iccs.shape[0])
+    for i, icc in enumerate(iccs):
+        start_conduit = np.where((conduits[:, 0] <= icc[0]) & (icc[0] <= conduits[:, 1]))[0][0]
+        end_conduit = np.where((conduits[:, 0] <= icc[1]) & (icc[1] <= conduits[:, 1]))[0][0]
+        Am = 0.5 * (conduit_areas[start_conduit] / icc_count[start_conduit] + conduit_areas[end_conduit] / icc_count[end_conduit]) * fc * fpf
+        pit_count = Am / average_pit_area
+        bpp[i] = (weibull_a / pit_count**(1 / weibull_b)) * np.random.weibull(weibull_b)
+        
+    return bpp
