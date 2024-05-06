@@ -595,7 +595,7 @@ def run_conduit_si(net, cfg, start_conduits, si_length=1000, spreading_probabili
         heartwood_d : float, diameter of the heartwood (= part of the tree not included in the xylem network) (in conduit elements) used only if use_cylindrical_coords == True (default value from the Mrad et al. article)
         spreading_probability : double, probability at which embolism spreads to neighbouring conduits (default: 0.1)
         si_tolerance_length : int, tolerance parameter for defining the end of the simulation: when the prevalence hasn't changed for si_tolerance_length steps, the simulation stops (default 20)
-        pressure_diff : float, difference between water pressure and vapour-air bubble pressure, delta P in the Mrad et al. article
+        pressure_diff : float, difference between water pressure and vapour-air bubble pressure, delta P in the Mrad et al. article (default 0)
         si_type : str, 'stochastic' for probability-based spreading, 'physiological' for spreading based on pressure differences (default stochastic)
         weibull_a : float, Weibull distribution scale parameter (used for simulating pressure-difference-based embolism spreading) (default 20.28E6)
         weibull_b : float, Weibull distribution shape parameter (used for simulating pressure-difference-based embolism spreading) (default 3.2)
@@ -633,6 +633,9 @@ def run_conduit_si(net, cfg, start_conduits, si_length=1000, spreading_probabili
 
     """
     # TODO: pick a reasonable default value for si_length and spreading_probability
+    # TODO: Mrad et al. use one random seed per network component; implement this to reproduce their results
+    # TODO: repeat the physiological simulation for several pressure_diff values to produce vulnerability curves as in Mrad et al. Most probably this should be through a new function, generate_VC, that takes as argument the desired pressure_diff range and calls run_percolation
+    # TODO: for producing the vulnerability curves, add normalization: PLC (percent loss of conductance) = 100% * (1 - conductance(pressure_diff)/conductance(pressure_diff=0))
     assert len(net['pore.diameter']) > 0, 'pore diameters not defined; please define pore diameters before running percolation'
     conduit_element_length = cfg.get('conduit_element_length', params.Lce)
     heartwood_d = cfg.get('heartwood_d', params.heartwood_d)
@@ -682,7 +685,20 @@ def run_conduit_si(net, cfg, start_conduits, si_length=1000, spreading_probabili
     if 'pore.diameter' in net.keys():
         perc_net['pore.diameter'] = net['pore.diameter']
     if si_type == 'physiological':
+        pressure_diff = cfg.get('pressure_diff', 0)
         bpp = calculate_bpp(perc_net, conduits, 1 - cec_mask, cfg)
+        conduit_neighbour_bpp = {}
+        for i, conduit in enumerate(conduits):
+            iccs = conns[np.where(1 - cec_mask)]
+            conduit_iccs = np.where(((conduit[0] <= iccs[:, 0]) & (iccs[:, 0] <= conduit[1])) | ((conduit[0] <= iccs[:, 1]) & (iccs[:, 1] <= conduit[1])))[0]
+            neighbours = conduit_neighbours[i]
+            neighbour_bpps = {}
+            for neighbour in neighbours:
+                neighbour_iccs = np.where(((conduits[neighbour, 0] <= iccs[:, 0]) & (iccs[:, 0] <= conduits[neighbour, 1])) | ((conduits[neighbour, 0] <= iccs[:, 1]) & (iccs[:, 1] <= conduits[neighbour, 1])))[0]
+                shared_iccs = np.intersect1d(conduit_iccs, neighbour_iccs)
+                shared_bpp = bpp[shared_iccs]
+                neighbour_bpps[neighbour] = np.amin(shared_bpp)
+            conduit_neighbour_bpp[i] = neighbour_bpps
         
     max_removed_lcc = 0
     time_step = 0
@@ -694,8 +710,8 @@ def run_conduit_si(net, cfg, start_conduits, si_length=1000, spreading_probabili
         removed_conduit_indices = []
         
         if time_step == 0:
-            pores_to_remove.extend(list(np.arange(conduits[start_conduit][0], conduits[start_conduit][1] + 1)))
             for start_conduit in np.sort(start_conduits)[::-1]:
+                pores_to_remove.extend(list(np.arange(conduits[start_conduit][0], conduits[start_conduit][1] + 1)))
                 conduits[start_conduit, :] = -1
                 conduits[start_conduit::, 0:2] = conduits[start_conduit::, 0:2] - len(pores_to_remove)
         else:
@@ -721,10 +737,11 @@ def run_conduit_si(net, cfg, start_conduits, si_length=1000, spreading_probabili
                         embolize = False
                         if si_type == 'stochastic':
                             embolize =  (np.random.rand() > 1 - spreading_probability)
-                        #elif si_type == 'physiological':
-                            #conduit_pressure = conduit_pressures[conduit]
-                            #neighbour_pressures = conduit_pressures[np.array(conduit_neighbours[conduit])][np.where(neighbour_embolization_times < time_step)]
-                            #embolize = np.any(neighbour_pressures - conduit_pressure <= pressure_diff)
+                        elif si_type == 'physiological':
+                            neighbours = conduit_neighbours[conduit]
+                            embolized_neighbours = np.intersect1d(embolized_conduits, neighbours)
+                            neighbour_bpp = np.array([conduit_neighbour_bpp[conduit][neighbour] for neighbour in embolized_neighbours])
+                            embolize =  np.any(neighbour_bpp <= pressure_diff)
                         if embolize:
                             embolization_times[conduit, 0] = time_step
                             if embolization_times[conduit, 1] > 0: # if conduit is functional, it will be removed from the simulation network
@@ -775,10 +792,6 @@ def run_conduit_si(net, cfg, start_conduits, si_length=1000, spreading_probabili
                                                      use_cylindrical_coords=use_cylindrical_coords)
             sim_net = mrad_model.prepare_simulation_network(perc_net, cfg)
             effective_conductances[time_step], pore_pressures = simulations.simulate_water_flow(sim_net, cfg, visualize=False)
-            #if si_type == 'physiological':
-            #    functional_conduits = get_conduit_indices(conduits, np.arange(perc_net['pore.all'].shape[0]))
-            #    for conduit in functional_conduits:
-            #        conduit_pressure[conduit] = np.amax(pore_pressures[np.arange(conduits[conduit, 0], conduits[conduit, 1] + 1)])
             functional_lcc_size[time_step], functional_susceptibility[time_step], _ = get_conduit_lcc_size(perc_net)
         except Exception as e:
             if str(e) == 'Cannot delete ALL pores': # this is because all remaining nodes belong to non-functional components
@@ -799,18 +812,6 @@ def run_conduit_si(net, cfg, start_conduits, si_length=1000, spreading_probabili
             prevalence_diff = np.abs(prevalence[time_step] - prevalence[time_step - si_tolerance_length])
         time_step += 1
     return effective_conductances[0:time_step], lcc_size[0:time_step], functional_lcc_size[0:time_step], nonfunctional_component_size[0:time_step], susceptibility[0:time_step], functional_susceptibility[0:time_step], n_inlets[0:time_step], n_outlets[0:time_step], nonfunctional_component_volume[0:time_step], prevalence[0:time_step]
-
-    # related to physilogical si:
-    # TODO: note: the outcome of the spreading is different for different pressure_diffs, so probably the trick is to run the simulation separately for each pressure_diff
-    # and calculate the final prevalence?
-    
-    # new TODO:
-
-    # 2) for each conduit, detect the neighbouring conduits and all ICC ASPs with them. Find the smallest; that's the conduit ASP (BPP)
-    # 3) pick start conduit and embolize it
-    # 4) for each conduit, check if it has embolized neighbours. if so, check if the relevant conduit ASP is larger than the pressure_diff. if so, embolize the present conduit.
-    # 5) remove non-functional conduits, calculate network metrics
-        
 
 def run_physiological_conduit_drainage(net, cfg, start_conduits):
     """
@@ -943,16 +944,6 @@ def run_physiological_conduit_drainage(net, cfg, start_conduits):
     n_embolized = 0
     
     n_nonfunctional = 0
-    
-    # TODO: now the outcome reflects simply the distribution of invasion pressures. Instead, the spreading should still start from a single conduit (spontaneously embolized one),
-    # and the neighbouring conduits should get embolized at each step if their invasion pressure is exceeded
-    # problem: what is the current pressure? or the pressure difference between two conduits?
-    
-    # TODO: visualizing as a function
-    # of the fraction of nodes removed seems not to show the phase transition
-    
-    # comment on both these issues: probably the solution would be to write a separate function for drainage that spreads from a given start conduit instead
-    # of just following the invasion pressure distribution. There's no need to expect phase transition based on invasion pressure distribution alone.
     
     for i, pressure in enumerate(pressure_range):
             

@@ -64,14 +64,14 @@ si_type = 'physiological'
 break_nonfunctional_components = False
 si_length = 1000
 si_tolerance_length = 20
-spreading_probability = 0.1
+spreading_probability = 1
 spreading_threshold = 100 # TODO: set a reasonable value
-start_conduits = 'bottom' # options: 'bottom' (= all conduits with a pore at the first row), 'random' and int
+start_conduits = [85]#'random' # options: 'bottom' (= all conduits with a pore at the first row), 'random' and int
 # contact angle and surface tension values are from OpenPNM tutorial (https://openpnm.org/examples/tutorials/09_simulating_invasion.html)
 air_contact_angle = 120 # degrees
 surface_tension = 0.072 # Newtons/meter
 pressure = 100 # number of pressure steps used by the drainage algorithm
-pressure_diff = 2.5E6 # Pa, the difference between water and air (bubble) pressures, delta P in the Mrad et al. article
+pressure_diff = 2.5e6 # Pa, the difference between water and air (bubble) pressures, delta P in the Mrad et al. article
 
 # visualization parameters
 visualize_simulations = False
