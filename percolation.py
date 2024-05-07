@@ -603,7 +603,7 @@ def run_conduit_si(net, cfg, start_conduits, si_length=1000, spreading_probabili
     start_conduits : str or array-like of ints
         the first conduits to be removed (i.e. the first infected node of the simulation)
         if 'random', a single start conduit is selected at random
-        if 'bottom', all conduits with pores at the inlet row are used as start conduits
+        if 'random_per_component', a single start conduit per network component is selected at random
         if an array-like of ints is given, the ints are used as indices of the start conduits
     si_length : int, optional
         maximum number of time steps used for the simulation (default: 1000)
@@ -633,7 +633,6 @@ def run_conduit_si(net, cfg, start_conduits, si_length=1000, spreading_probabili
 
     """
     # TODO: pick a reasonable default value for si_length and spreading_probability
-    # TODO: Mrad et al. use one random seed per network component; implement this to reproduce their results
     # TODO: repeat the physiological simulation for several pressure_diff values to produce vulnerability curves as in Mrad et al. Most probably this should be through a new function, generate_VC, that takes as argument the desired pressure_diff range and calls run_percolation
     # TODO: for producing the vulnerability curves, add normalization: PLC (percent loss of conductance) = 100% * (1 - conductance(pressure_diff)/conductance(pressure_diff=0))
     assert len(net['pore.diameter']) > 0, 'pore diameters not defined; please define pore diameters before running percolation'
@@ -669,15 +668,19 @@ def run_conduit_si(net, cfg, start_conduits, si_length=1000, spreading_probabili
     if start_conduits == 'random':
         start_conduit = np.random.randint(conduits.shape[0])
         start_conduits = np.array([start_conduit])
-    elif start_conduits == 'bottom':
-        start_conduits = get_inlet_conduits(net, conduits, cec_indicator=cec_indicator, conduit_element_length=conduit_element_length, 
-                                            heartwood_d=heartwood_d, use_cylindrical_coords=use_cylindrical_coords)
+    elif start_conduits == 'random_per_component':
+        _, component_indices, _ = mrad_model.get_components(net)
+        start_conduits = np.zeros(len(component_indices), dtype=int)
+        for i, component_elements in enumerate(component_indices):
+            start_element = np.random.choice(component_elements)
+            start_conduits[i] = np.where((conduits[:, 0] <= start_element) & (start_element <= conduits[:, 1]))[0][0]
     
     embolization_times = np.zeros((conduits.shape[0], 2))
     embolization_times[:, 0] = np.inf
+    embolization_times[:, 1] = 1 # the second column indicates if the conduit is functional
     for start_conduit in start_conduits:
         embolization_times[start_conduit, 0] = 0
-    embolization_times[:, 1] = 1 # the second column indicates if the conduit is functional
+        embolization_times[start_conduit, 1] = 0
     conduit_neighbours = get_conduit_neighbors(net, use_cylindrical_coords, conduit_element_length, heartwood_d, cec_indicator)
     
     perc_net = op.network.Network(conns=net['throat.conns'], coords=net['pore.coords'])
@@ -712,13 +715,19 @@ def run_conduit_si(net, cfg, start_conduits, si_length=1000, spreading_probabili
         if time_step == 0:
             for start_conduit in np.sort(start_conduits)[::-1]:
                 pores_to_remove.extend(list(np.arange(conduits[start_conduit][0], conduits[start_conduit][1] + 1)))
+                conduits[start_conduit +1::, 0:2] = conduits[start_conduit +1::, 0:2] - conduits[start_conduit, 2]
                 conduits[start_conduit, :] = -1
-                conduits[start_conduit::, 0:2] = conduits[start_conduit::, 0:2] - len(pores_to_remove)
         else:
             embolized_conduits = np.where(embolization_times[:, 0] < time_step)[0]
             possible_embolizations = False
             for embolized_conduit in embolized_conduits:
-                neighbour_embolization_times = embolization_times[np.array(conduit_neighbours[embolized_conduit]), 0]
+                try: 
+                    neighbour_embolization_times = embolization_times[np.array(conduit_neighbours[embolized_conduit]), 0]
+                except:
+                    if len(conduit_neighbours[embolized_conduit]) == 0:
+                        continue
+                    else:
+                        raise 
                 if np.any(neighbour_embolization_times > time_step):
                     possible_embolizations = True
                     break
@@ -726,7 +735,7 @@ def run_conduit_si(net, cfg, start_conduits, si_length=1000, spreading_probabili
                 break # no further embolizations are possible and the simulation stops
             
             for conduit in conduit_neighbours.keys():
-                if embolization_times[conduit - 1, 0] < time_step:
+                if embolization_times[conduit, 0] < time_step:
                     continue # conduit is already embolized
                 else:
                     if len(conduit_neighbours[conduit]) > 0:
@@ -751,7 +760,7 @@ def run_conduit_si(net, cfg, start_conduits, si_length=1000, spreading_probabili
                                 pores_to_remove.extend(list(conduit_pores))
                             else: # if a nonfunctional conduit is embolized, nonfunctional component size and volume decrease
                                 nonfunctional_component_size[time_step] -= 1
-                                nonfunctional_component_volume[time_step] -= np.sum(np.pi * 0.5 * net['pore.diameter'][np.arange(orig_conduits[conduit - 1, 0], orig_conduits[conduit - 1, 1] + 1)]**2 * conduit_element_length)
+                                nonfunctional_component_volume[time_step] -= np.sum(np.pi * 0.5 * net['pore.diameter'][np.arange(orig_conduits[conduit, 0], orig_conduits[conduit, 1] + 1)]**2 * conduit_element_length)
             for removed_conduit_index in np.sort(removed_conduit_indices)[::-1]:
                 conduits[removed_conduit_index + 1::, 0:2] = conduits[removed_conduit_index + 1::, 0:2] - conduits[removed_conduit_index, 2]
             conduits[removed_conduit_indices, :] = -1
@@ -799,12 +808,14 @@ def run_conduit_si(net, cfg, start_conduits, si_length=1000, spreading_probabili
                 nonfunctional_component_volume[time_step::] = nonfunctional_component_volume[time_step - 1] + np.sum(np.pi * 0.5 * orig_perc_net['pore.diameter']**2 * conduit_element_length)
                 lcc_size[time_step::] = max_removed_lcc
                 prevalence[time_step::] = 1
+                time_step += 1
                 break
             elif (str(e) == "'throat.conns'") and (len(perc_net['throat.all']) == 0): # this is because all links have been removed from the network by op.topotools.trim
                 nonfunctional_component_size[time_step::] = net['pore.coords'].shape[0] - time_step
                 nonfunctional_component_volume[time_step::] = nonfunctional_component_volume[time_step - 1] + np.sum(np.pi * 0.5 * orig_perc_net['pore.diameter'] * conduit_element_length)
                 lcc_size[time_step::] = max_removed_lcc
                 prevalence[time_step::] = 1
+                time_step += 1
                 break
             else:
                 raise
@@ -982,7 +993,7 @@ def run_physiological_conduit_drainage(net, cfg, start_conduits):
                 conduit_invasion_pressures[embolized_conduit, 1] = 0
             else: # if a nonfunctional conduit is embolized, nonfunctional component size and volume decrease
                 nonfunctional_component_size[i] -= 1
-                nonfunctional_component_volume[i] -= np.sum(np.pi * 0.5 * net['pore.diameter'][np.arange(orig_conduits[embolized_conduit - 1, 0], orig_conduits[embolized_conduit - 1, 1] + 1)]**2 * conduit_element_length)
+                nonfunctional_component_volume[i] -= np.sum(np.pi * 0.5 * net['pore.diameter'][np.arange(orig_conduits[embolized_conduit, 0], orig_conduits[embolized_conduit, 1] + 1)]**2 * conduit_element_length)
         op.topotools.trim(perc_net, pores=pores_to_remove)
         prevalence[i] = n_embolized / conduits.shape[0]
     
@@ -1252,7 +1263,7 @@ def get_n_inlets(net, outlet_row_index, cec_indicator=params.cec_indicator, cond
         
 def get_conduit_indices(conduits, elements):
     """
-    Finds the indices of the conduits (sets of consecutive elements in the row/z direction) to which given elements belong to.
+    Finds the indices of the conduits (sets of consecutive elements in the row/z direction), which given elements belong to.
 
     Parameters
     ----------
@@ -1264,7 +1275,8 @@ def get_conduit_indices(conduits, elements):
     Returns
     -------
     conduit_indices : np.array
-        for each element, the index of the conduit to which the element belongs to
+        the indices of conduits, to which the elements belong. Note that each conduit index is included only once even if
+        there are multiple elements from this conduit, and conduit_indices.shape doesn't match elements.shape.
     """
     conduit_indices = []
     for element in elements:

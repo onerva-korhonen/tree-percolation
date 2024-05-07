@@ -64,9 +64,9 @@ si_type = 'physiological'
 break_nonfunctional_components = False
 si_length = 1000
 si_tolerance_length = 20
-spreading_probability = 1
+spreading_probability = 0.1
 spreading_threshold = 100 # TODO: set a reasonable value
-start_conduits = [85]#'random' # options: 'bottom' (= all conduits with a pore at the first row), 'random' and int
+start_conduits = 'random_per_component' # options: 'random', 'random_per_component' (= one random seed in all network components), int, and 'bottom' (= all conduits with a pore at the first row, allowed only when percolation_type == 'drainage')
 # contact angle and surface tension values are from OpenPNM tutorial (https://openpnm.org/examples/tutorials/09_simulating_invasion.html)
 air_contact_angle = 120 # degrees
 surface_tension = 0.072 # Newtons/meter
