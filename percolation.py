@@ -11,6 +11,8 @@ import numpy as np
 import networkx as nx
 import openpnm as op
 import itertools
+import functools
+from concurrent.futures import ProcessPoolExecutor as Pool
 
 import mrad_model
 import mrad_params as params
@@ -55,6 +57,7 @@ def run_percolation(net, cfg, percolation_type='bond', removal_order='random', b
         start_conduits : array-like of ints, 'random', or 'bottom', index of the first conduit to be removed (i.e. the first infected node of the simulation), if 'random', the start
         conduit is selected at random, if 'bottom', all conduits with an inlet pore are used
         pressure : int or array-like, the frequency steps to investigate (if an int is given, a log-range with the corresponding number of steps is used)
+        si_type : str, 'stochastic' for probability-based spreading, 'physiological' for spreading based on pressure differences (default stochastic)
         weibull_a : float, Weibull distribution scale parameter (used for simulating pressure-difference-based embolism spreading)
         weibull_b : float, Weibull distribution shape parameter (used for simulating pressure-difference-based embolism spreading)
     percolation type : str, optional
@@ -96,7 +99,11 @@ def run_percolation(net, cfg, percolation_type='bond', removal_order='random', b
     if percolation_type == 'conduit':
         effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume = run_physiological_conduit_percolation(net, cfg)
     elif percolation_type == 'si':
-        effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence = run_conduit_si(net, cfg, si_length=cfg['si_length'], start_conduits=cfg['start_conduits'])
+        if cfg['si_type'] == 'stochastic':
+            spreading_param = cfg.get('spreading_probability', 0.1)
+        elif cfg['si_type'] == 'physiological':
+            spreading_param = cfg.get('pressure_diff', 0)
+        effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence = run_conduit_si(net, cfg, spreading_param)
     elif percolation_type == 'drainage':
         effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence = run_physiological_conduit_drainage(net, cfg, start_conduits=cfg['start_conduits'])
     elif break_nonfunctional_components:
@@ -107,6 +114,78 @@ def run_percolation(net, cfg, percolation_type='bond', removal_order='random', b
         prevalence = np.zeros(len(effective_conductances))
     
     return effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence
+
+def construct_vulnerability_curve(net, cfg, x_range, start_conduits, si_length=1000):
+    """
+    Constructs the vulnerability curve (VC) of a network over a parameter range. At each parameter value, SI embolization spreading simulation is performed and effective
+    conductance at the end of the spreading is calculated. The VC shows the percentage of effective conductance lost compared to the maximum value. 
+    
+    Definition of the x_range parameter depend on the SI type: in stochastic SI, the parameter is the spreading probability between a pair of conduits, while in physiological
+    SI the parameter is the pressure difference between bubble (air) and water pressures.
+    
+
+    Parameters
+    ----------
+    net : openpnm.Network()
+        a network object, pores correspond to conduit elements and throats to CECs and ICCs between them.
+    cfg : dict
+        contains:
+        net_size: np.array, size of the network to be created (n_rows x n_columns x n_depths)
+        use_cylindrical_coords: bln, should Mrad model coordinates be interpreted as cylindrical ones in visualizations?
+        Lce: float, length of a conduit element
+        Dc: float, average conduit diameter (m)
+        Dc_cv: float, coefficient of variation of conduit diameter
+        fc: float, average contact fraction between two conduits
+        fpf: float, average pit field fraction between two conduits
+        conduit_diameters: np.array of floats, diameters of the conduits, or 'lognormal'
+        to draw diameters from a lognormal distribution defined by Dc and Dc_cv
+        cec_indicator: int, value used to indicate that the type of a throat is CE
+        tf: float, microfibril strand thickness (m)
+        icc_length: float, length of an ICC throat (m)
+        water_pore_viscosity: float, value of the water viscosity in pores
+        water_throat_viscosity: float, value of the water viscosity in throats
+        water_pore_diffusivity: float, value of the water diffusivity in pores
+        inlet_pressure: float, pressure at the inlet conduit elements (Pa)
+        outlet_pressure: float, pressure at the outlet conduit elements (Pa) 
+        Dp: float, average pit membrane pore diameter (m)
+        Tm: float, average thickness of membranes (m)
+        conduit_element_length : float, length of a single conduit element (m), used only if use_cylindrical_coords == True (default from the Mrad et al. article)
+        heartwood_d : float, diameter of the heartwood (= part of the tree not included in the xylem network) (in conduit elements) used only if use_cylindrical_coords == True (default value from the Mrad et al. article)
+        si_tolerance_length : int, tolerance parameter for defining the end of the simulation: when the prevalence hasn't changed for si_tolerance_length steps, the simulation stops (default 20)
+        si_type : str, 'stochastic' for probability-based spreading, 'physiological' for spreading based on pressure differences (default stochastic)
+        weibull_a : float, Weibull distribution scale parameter (used for simulating pressure-difference-based embolism spreading) (default 20.28E6)
+        weibull_b : float, Weibull distribution shape parameter (used for simulating pressure-difference-based embolism spreading) (default 3.2)
+        average_pit_area : float, the average area of a pit
+        nCPUs : int, number of CPUs used for parallel computing (default 5)
+    x_range : np.array
+        x axis values of the VC; spreading probabilities in case of stochastic SI and pressure differences in case of physiological SI
+    start_conduits : str or array-like of ints
+        the first conduits to be removed (i.e. the first infected node of the simulation)
+        if 'random', a single start conduit is selected at random
+        if 'random_per_component', a single start conduit per network component is selected at random
+        if an array-like of ints is given, the ints are used as indices of the start conduits
+    si_length : int, optional
+        maximum number of time steps used for the simulation (default: 1000)
+
+    Returns
+    -------
+    vc : tuple or np.arrays
+        (x_range, vulnerability value at each x_range value)
+    """    
+    # TODO: should the start conduits be the same over x_range? now they're selected separately at each execution
+    # TODO: add visualization of the VC (in visualization.py?)
+    if x_range[0] > 0:
+        x_range = np.concatenate((np.array([0]), x_range))
+    nCPUs = cfg.get('nCPUs', 5)
+    cfg['start_conduits'] = start_conduits
+    cfg['si_length'] = si_length
+    vulnerability = np.zeros(x_range.shape)
+    pool = Pool(max_workers = nCPUs)
+    output = list(pool.map(run_conduit_si, itertools.repeat(net), itertools.repeat(cfg), x_range)) # simulating embolization spreading with each x_range value in parallel
+    vulnerability = np.array([output_per_param[0][-1] for output_per_param in output]) # reading the last effective conductance value of each spreading simulation 
+    vulnerability = 100 * (1 - vulnerability / vulnerability[0]) # normalization to obtain the percentage of conductance lost compared to the first x_range value
+    vc = (x_range, vulnerability)
+    return vc
 
 def run_graph_theoretical_element_percolation(net, cfg, percolation_type='bond', removal_order='random'):
     """
@@ -560,7 +639,7 @@ def run_physiological_conduit_percolation(net, cfg, removal_order='random'):
                 raise
     return effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume
 
-def run_conduit_si(net, cfg, start_conduits, si_length=1000, spreading_probability=0.1):
+def run_conduit_si(net, cfg, spreading_param=0):
     """
     Starting from a given conduit, simulates an SI (embolism) spreading process on the conduit network. The spreading can be stochastic (at each step, each conduit is
     embolized at a certain probability that depends on if their neighbours have been removed) or physiological (at each step, each conduit is
@@ -593,20 +672,20 @@ def run_conduit_si(net, cfg, start_conduits, si_length=1000, spreading_probabili
         Tm: float, average thickness of membranes (m)
         conduit_element_length : float, length of a single conduit element (m), used only if use_cylindrical_coords == True (default from the Mrad et al. article)
         heartwood_d : float, diameter of the heartwood (= part of the tree not included in the xylem network) (in conduit elements) used only if use_cylindrical_coords == True (default value from the Mrad et al. article)
-        spreading_probability : double, probability at which embolism spreads to neighbouring conduits (default: 0.1)
         si_tolerance_length : int, tolerance parameter for defining the end of the simulation: when the prevalence hasn't changed for si_tolerance_length steps, the simulation stops (default 20)
-        pressure_diff : float, difference between water pressure and vapour-air bubble pressure, delta P in the Mrad et al. article (default 0)
         si_type : str, 'stochastic' for probability-based spreading, 'physiological' for spreading based on pressure differences (default stochastic)
         weibull_a : float, Weibull distribution scale parameter (used for simulating pressure-difference-based embolism spreading) (default 20.28E6)
         weibull_b : float, Weibull distribution shape parameter (used for simulating pressure-difference-based embolism spreading) (default 3.2)
         average_pit_area : float, the average area of a pit
-    start_conduits : str or array-like of ints
-        the first conduits to be removed (i.e. the first infected node of the simulation)
-        if 'random', a single start conduit is selected at random
-        if 'random_per_component', a single start conduit per network component is selected at random
-        if an array-like of ints is given, the ints are used as indices of the start conduits
-    si_length : int, optional
-        maximum number of time steps used for the simulation (default: 1000)
+        start_conduits : str or array-like of ints, the first conduits to be removed (i.e. the first infected node of the simulation)
+            if 'random', a single start conduit is selected at random
+            if 'random_per_component', a single start conduit per network component is selected at random
+            if an array-like of ints is given, the ints are used as indices of the start conduits
+        si_length : int, maximum number of time steps used for the simulation (default: 1000)
+    spreading_param : float
+        parameter that controls the spreading speed, specifically
+        if si_type == 'stochastical', spreading_param is the probability at which embolism spreads to neighbouring conduits (default: 0.1)
+        if si_type == 'physiological', spreading param is difference between water pressure and vapour-air bubble pressure, delta P in the Mrad et al. article (default 0)
     
     Returns:
     --------
@@ -633,18 +712,23 @@ def run_conduit_si(net, cfg, start_conduits, si_length=1000, spreading_probabili
 
     """
     # TODO: pick a reasonable default value for si_length and spreading_probability
-    # TODO: repeat the physiological simulation for several pressure_diff values to produce vulnerability curves as in Mrad et al. Most probably this should be through a new function, generate_VC, that takes as argument the desired pressure_diff range and calls run_percolation
-    # TODO: for producing the vulnerability curves, add normalization: PLC (percent loss of conductance) = 100% * (1 - conductance(pressure_diff)/conductance(pressure_diff=0))
     assert len(net['pore.diameter']) > 0, 'pore diameters not defined; please define pore diameters before running percolation'
     conduit_element_length = cfg.get('conduit_element_length', params.Lce)
     heartwood_d = cfg.get('heartwood_d', params.heartwood_d)
     cec_indicator = cfg.get('cec_indicator', params.cec_indicator)
     use_cylindrical_coords = cfg.get('use_cylindrical_coords', False)
-    spreading_probability = cfg.get('spreading_probability', 0.1)
     si_tolerance_length = cfg.get('si_tolerance_length', 20)
     si_type = cfg.get('si_type', 'stochastic')
+    si_length = cfg.get('si_length', 1000)
     
     assert si_type in ['stochastic', 'physiological'], 'unknown si type, select stochastic or physiological'
+    if si_type == 'stochastic':
+        if spreading_param > 0:
+            spreading_probability = spreading_param
+        else:
+            spreading_probability = 0.1
+    elif si_type == 'physiological':
+        pressure_diff = spreading_param
     
     conns = net['throat.conns']
     assert len(conns) > 0, 'Network has no throats; cannot run percolation analysis'
@@ -665,6 +749,7 @@ def run_conduit_si(net, cfg, start_conduits, si_length=1000, spreading_probabili
     n_outlets = np.zeros(si_length)
     prevalence = np.zeros(si_length)
     
+    start_conduits = cfg['start_conduits']
     if start_conduits == 'random':
         start_conduit = np.random.randint(conduits.shape[0])
         start_conduits = np.array([start_conduit])
@@ -688,7 +773,6 @@ def run_conduit_si(net, cfg, start_conduits, si_length=1000, spreading_probabili
     if 'pore.diameter' in net.keys():
         perc_net['pore.diameter'] = net['pore.diameter']
     if si_type == 'physiological':
-        pressure_diff = cfg.get('pressure_diff', 0)
         bpp = calculate_bpp(perc_net, conduits, 1 - cec_mask, cfg)
         conduit_neighbour_bpp = {}
         for i, conduit in enumerate(conduits):
@@ -821,6 +905,7 @@ def run_conduit_si(net, cfg, start_conduits, si_length=1000, spreading_probabili
                 raise
         if time_step > si_tolerance_length:
             prevalence_diff = np.abs(prevalence[time_step] - prevalence[time_step - si_tolerance_length])
+            
         time_step += 1
     return effective_conductances[0:time_step], lcc_size[0:time_step], functional_lcc_size[0:time_step], nonfunctional_component_size[0:time_step], susceptibility[0:time_step], functional_susceptibility[0:time_step], n_inlets[0:time_step], n_outlets[0:time_step], nonfunctional_component_volume[0:time_step], prevalence[0:time_step]
 
