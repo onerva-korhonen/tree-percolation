@@ -684,7 +684,7 @@ def run_conduit_si(net, cfg, spreading_param=0):
         si_length : int, maximum number of time steps used for the simulation (default: 1000)
     spreading_param : float
         parameter that controls the spreading speed, specifically
-        if si_type == 'stochastical', spreading_param is the probability at which embolism spreads to neighbouring conduits (default: 0.1)
+        if si_type == 'stochastic', spreading_param is the probability at which embolism spreads to neighbouring conduits (default: 0.1)
         if si_type == 'physiological', spreading param is difference between water pressure and vapour-air bubble pressure, delta P in the Mrad et al. article (default 0)
     
     Returns:
