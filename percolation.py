@@ -92,7 +92,6 @@ def run_percolation(net, cfg, percolation_type='bond', removal_order='random', b
     prevalence : np.array
         the fraction of embolized conduits in the network (only calculated if percolation_type == 'si')
     """
-    # TODO: calculate also the percentage of conductance lost to match Mrad's VC plots (although this is a pure scaling: current conductance divided by the original one)
     if 'pore.diameter' in net.keys() and len(net['pore.diameter']) > 0:
         cfg['conduit_diameters'] == 'inherit_from_net'
     assert percolation_type in ['bond', 'site', 'conduit', 'si', 'drainage'], 'percolation type must be bond (removal of throats), site (removal of pores), conduit (removal of conduits), si (removal of conduits as SI spreading process), or drainage (removal of conduits using the openpnm drainage algorithm)'
@@ -172,13 +171,32 @@ def construct_vulnerability_curve(net, cfg, x_range, start_conduits, si_length=1
     vc : tuple or np.arrays
         (x_range, vulnerability value at each x_range value)
     """    
-    # TODO: should the start conduits be the same over x_range? now they're selected separately at each execution
     # TODO: add visualization of the VC (in visualization.py?)
     if x_range[0] > 0:
         x_range = np.concatenate((np.array([0]), x_range))
     nCPUs = cfg.get('nCPUs', 5)
-    cfg['start_conduits'] = start_conduits
     cfg['si_length'] = si_length
+    
+    if start_conduits in ['random', 'random_per_component']:
+        conns = net['throat.conns']
+        assert len(conns) > 0, 'Network has no throats; cannot run percolation analysis'
+        conn_types = net['throat.type']
+        cec_indicator = cfg.get('cec_indicator', params.cec_indicator)
+        cec_mask = conn_types == cec_indicator
+        cec = conns[cec_mask]
+        conduits = mrad_model.get_conduits(cec)
+    
+        if start_conduits == 'random':
+            start_conduit = np.random.randint(conduits.shape[0])
+            start_conduits = np.array([start_conduit])
+        else: # start_conduits == 'random_per_component'
+            _, component_indices, _ = mrad_model.get_components(net)
+            start_conduits = np.zeros(len(component_indices), dtype=int)
+            for i, component_elements in enumerate(component_indices):
+                start_element = np.random.choice(component_elements)
+                start_conduits[i] = np.where((conduits[:, 0] <= start_element) & (start_element <= conduits[:, 1]))[0][0]
+    cfg['start_conduits'] = start_conduits
+            
     vulnerability = np.zeros(x_range.shape)
     pool = Pool(max_workers = nCPUs)
     output = list(pool.map(run_conduit_si, itertools.repeat(net), itertools.repeat(cfg), x_range)) # simulating embolization spreading with each x_range value in parallel
@@ -750,15 +768,16 @@ def run_conduit_si(net, cfg, spreading_param=0):
     prevalence = np.zeros(si_length)
     
     start_conduits = cfg['start_conduits']
-    if start_conduits == 'random':
-        start_conduit = np.random.randint(conduits.shape[0])
-        start_conduits = np.array([start_conduit])
-    elif start_conduits == 'random_per_component':
-        _, component_indices, _ = mrad_model.get_components(net)
-        start_conduits = np.zeros(len(component_indices), dtype=int)
-        for i, component_elements in enumerate(component_indices):
-            start_element = np.random.choice(component_elements)
-            start_conduits[i] = np.where((conduits[:, 0] <= start_element) & (start_element <= conduits[:, 1]))[0][0]
+    if isinstance(start_conduits, str):
+        if start_conduits == 'random':
+            start_conduit = np.random.randint(conduits.shape[0])
+            start_conduits = np.array([start_conduit])
+        elif start_conduits == 'random_per_component':
+            _, component_indices, _ = mrad_model.get_components(net)
+            start_conduits = np.zeros(len(component_indices), dtype=int)
+            for i, component_elements in enumerate(component_indices):
+                start_element = np.random.choice(component_elements)
+                start_conduits[i] = np.where((conduits[:, 0] <= start_element) & (start_element <= conduits[:, 1]))[0][0]
     
     embolization_times = np.zeros((conduits.shape[0], 2))
     embolization_times[:, 0] = np.inf
