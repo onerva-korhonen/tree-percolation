@@ -846,12 +846,13 @@ def run_conduit_si(net, cfg, spreading_param=0):
                     else:
                         neighbour_embolization_times = np.array([])
                     if np.any(neighbour_embolization_times < time_step): # there are embolized neighbours
+                        neighbours = conduit_neighbours[conduit]
+                        embolized_neighbours = np.intersect1d(embolized_conduits, neighbours)
                         embolize = False
                         if si_type == 'stochastic':
-                            embolize =  (np.random.rand() > 1 - spreading_probability)
+                            embolize =  (np.random.rand() > (1 - spreading_probability)**(len(embolized_neighbours)))
+                            #embolize = (np.random.rand() > 1 - spreading_probability)
                         elif si_type == 'physiological':
-                            neighbours = conduit_neighbours[conduit]
-                            embolized_neighbours = np.intersect1d(embolized_conduits, neighbours)
                             neighbour_bpp = np.array([conduit_neighbour_bpp[conduit][neighbour] for neighbour in embolized_neighbours])
                             embolize =  np.any(neighbour_bpp <= pressure_diff)
                         if embolize:
