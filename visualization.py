@@ -162,3 +162,38 @@ def plot_percolation_curve(total_n_nodes, values, colors, labels, alphas, axinde
 
     if len(save_path) > 0:
         plt.savefig(save_path, format='pdf',bbox_inches='tight')
+        
+def plot_vulnerability_curve(vc, color, alpha, vc_type='physiological', save_path=''):
+    """
+    Plots the vulnerability curve (percentage of effective conductance lost as a function of 
+    pressure difference / SI spreading parameter).
+    
+    Parameters
+    ----------
+    vc : tuple
+        vulnerability curve: vc[0] contains the x values and vc[1] the related conductance loss values. output of 
+        percolation.construct_vulnerability_curve().
+    color : str
+        color of the curve
+    alpha : float
+        transparency of the curve
+    vc_type : str
+        'physiological' or 'stochastic' (default 'phsyiological'). used to define x axis label
+    save_path : str
+        path to which save the plt. The default is '', in which case the plot is not saved but only shown.
+
+    Returns
+    -------
+    None.
+    """
+    assert vc_type in ['physiological', 'stochastic'], 'unknown vc type, select physiological or stochastic'
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    ax.plot(vc[0], vc[1], color=color, alpha=alpha)
+    if vc_type == 'physiological':
+        x_label = 'Pressure difference'
+    else:
+        x_label = 'Spreading probability'
+    ax.set_xlabel(x_label)
+    if len(save_path) > 0:
+        plt.savefig(save_path, format='pdf', bbox_inches='tight')

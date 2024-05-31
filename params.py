@@ -57,6 +57,8 @@ ninlet_save_path = '/home/onervak/projects/hidrogat/output/percolation_3D_' + id
 prevalence_save_path = '/home/onervak/projects/hidrogat/output/percolation_3D_' + identifier + '_prevalence.pdf'
 lcc_in_time_save_path = '/home/onervak/projects/hidrogat/output/percolation_3D_' + identifier + '_lcc_in_time.pdf'
 percolation_data_save_path = '/home/onervak/projects/hidrogat/output/percolation_3D_' + identifier + '_data.pkl'
+vc_data_save_path = '/home/onervak/projects/hidrogat/output/vc_data' + identifier + '.pkl'
+vc_plot_save_path = '/home/onervak/projects/hidrogat/output/vc_' + identifier + '.pdf'
 
 # percolation parameters
 percolation_type = 'si'
@@ -92,3 +94,5 @@ percolation_ninlet_label = 'Average n inlets'
 percolation_noutlet_label = 'Average n outlets'
 percolation_ninlet_alpha = 1
 percolation_noutlet_alpha = 1
+vc_color = 'r'
+vc_alpha = 1

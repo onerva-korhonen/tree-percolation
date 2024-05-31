@@ -113,6 +113,10 @@ if construct_VC:
     cfg['conduit_diameters'] = 'inherit_from_net'
     
     vc = percolation.construct_vulnerability_curve(net_cleaned, cfg, params.vulnerability_pressure_range, cfg['start_conduits'], cfg['si_length'])
+    
+    with open(params.vc_data_save_path, 'wb') as f:
+        pickle.dump(vc, f)
+    f.close()
 
 #visualization.plot_percolation_curve(total_n_nodes, percolation_outcome_values,
 #                                     colors=params.percolation_outcome_colors, labels=params.percolation_outcome_labels, 

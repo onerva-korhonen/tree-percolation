@@ -171,7 +171,6 @@ def construct_vulnerability_curve(net, cfg, x_range, start_conduits, si_length=1
     vc : tuple or np.arrays
         (x_range, vulnerability value at each x_range value)
     """    
-    # TODO: add visualization of the VC (in visualization.py?)
     if x_range[0] > 0:
         x_range = np.concatenate((np.array([0]), x_range))
     nCPUs = cfg.get('nCPUs', 5)
