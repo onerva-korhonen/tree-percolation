@@ -195,5 +195,6 @@ def plot_vulnerability_curve(vc, color, alpha, vc_type='physiological', save_pat
     else:
         x_label = 'Spreading probability'
     ax.set_xlabel(x_label)
+    ax.set_ylabel('PLC (%)')
     if len(save_path) > 0:
         plt.savefig(save_path, format='pdf', bbox_inches='tight')

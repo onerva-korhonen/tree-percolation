@@ -59,6 +59,7 @@ lcc_in_time_save_path = '/home/onervak/projects/hidrogat/output/percolation_3D_'
 percolation_data_save_path = '/home/onervak/projects/hidrogat/output/percolation_3D_' + identifier + '_data.pkl'
 vc_data_save_path = '/home/onervak/projects/hidrogat/output/vc_data' + identifier + '.pkl'
 vc_plot_save_path = '/home/onervak/projects/hidrogat/output/vc_' + identifier + '.pdf'
+optimized_spreading_probability_save_path_base = '/home/onervak/projects/hidrogat/output/vc_' + identifier
 
 # percolation parameters
 percolation_type = 'si'
@@ -66,7 +67,7 @@ si_type = 'physiological'
 break_nonfunctional_components = False
 si_length = 1000
 si_tolerance_length = 20
-spreading_probability = 0.1
+spreading_probability = 0.15100000000000002
 start_conduits = 'random_per_component' # options: 'random', 'random_per_component' (= one random seed in all network components), int, and 'bottom' (= all conduits with a pore at the first row, allowed only when percolation_type == 'drainage')
 # contact angle and surface tension values are from OpenPNM tutorial (https://openpnm.org/examples/tutorials/09_simulating_invasion.html)
 air_contact_angle = 120 # degrees
@@ -75,7 +76,9 @@ pressure = 100 # number of pressure steps used by the drainage algorithm
 pressure_diff = 100e6 # Pa, the difference between water and air (bubble) pressures, delta P in the Mrad et al. article
 nCPUs = 5
 vulnerability_pressure_range = np.arange(0, 3.5, step=0.25)*1E6
-vulnerability_probability_range = np.arange(0, 1, step=0.1)
+vulnerability_probability_range = np.arange(0.001, 1, step=0.1)
+optimization_probability_range = np.arange(0.001, 0.4, step=0.05) # spreading probability range used for optimization
+n_iterations = 1 # number of iterations used for optimizing spreading probability
 
 # visualization parameters
 visualize_simulations = False

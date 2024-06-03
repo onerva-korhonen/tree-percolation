@@ -13,6 +13,7 @@ import openpnm as op
 import itertools
 import functools
 from concurrent.futures import ProcessPoolExecutor as Pool
+import pickle
 
 import mrad_model
 import mrad_params as params
@@ -171,7 +172,8 @@ def construct_vulnerability_curve(net, cfg, x_range, start_conduits, si_length=1
     vc : tuple or np.arrays
         (x_range, vulnerability value at each x_range value)
     """    
-    if x_range[0] > 0:
+    si_type = cfg.get('si_type', 'stochastic')
+    if si_type == 'physiological' and x_range[0] > 0:
         x_range = np.concatenate((np.array([0]), x_range))
     nCPUs = cfg.get('nCPUs', 5)
     cfg['si_length'] = si_length
@@ -200,10 +202,110 @@ def construct_vulnerability_curve(net, cfg, x_range, start_conduits, si_length=1
     pool = Pool(max_workers = nCPUs)
     output = list(pool.map(run_conduit_si, itertools.repeat(net), itertools.repeat(cfg), x_range)) # simulating embolization spreading with each x_range value in parallel
     vulnerability = np.array([output_per_param[0][-1] for output_per_param in output]) # reading the last effective conductance value of each spreading simulation 
-    vulnerability = 100 * (1 - vulnerability / vulnerability[0]) # normalization to obtain the percentage of conductance lost compared to the first x_range value
+    if si_type == 'physiological':
+        vulnerability = 100 * (1 - vulnerability / vulnerability[0]) # normalization to obtain the percentage of conductance lost compared to the first x_range value
+    else: # si_type == 'stochastic'
+        vulnerability = 100 * (1 - vulnerability / output[0][0][0]) # normalization by the effective conductance of the intact network
     vc = (x_range, vulnerability)
     return vc
 
+def optimize_spreading_probability(net, cfg, pressure_difference, start_conduits, spreading_probability_range=np.arange(0.001, 1, step=0.1), si_length=1000, n_iterations=1, save_path_base=''):
+    """
+    Finds the SI spreading probability that yields final effective conductance as close as possible to that of physiological embolism spreading with given parameters. Note that
+    only the similarity of final effective conductances is minimized, while the shape of the prevalence curves may be different.
+
+    Parameters
+    ----------
+    net : openpnm.Network()
+        pores correspond to conduit elements, throats to connections between the elements
+    cfg : dict
+        contains:
+        net_size: np.array, size of the network to be created (n_rows x n_columns x n_depths)
+        use_cylindrical_coords: bln, should Mrad model coordinates be interpreted as cylindrical ones in visualizations?
+        Lce: float, length of a conduit element
+        Dc: float, average conduit diameter (m)
+        Dc_cv: float, coefficient of variation of conduit diameter
+        fc: float, average contact fraction between two conduits
+        fpf: float, average pit field fraction between two conduits
+        conduit_diameters: np.array of floats, diameters of the conduits, or 'lognormal'
+        to draw diameters from a lognormal distribution defined by Dc and Dc_cv
+        cec_indicator: int, value used to indicate that the type of a throat is CE
+        tf: float, microfibril strand thickness (m)
+        icc_length: float, length of an ICC throat (m)
+        water_pore_viscosity: float, value of the water viscosity in pores
+        water_throat_viscosity: float, value of the water viscosity in throats
+        water_pore_diffusivity: float, value of the water diffusivity in pores
+        inlet_pressure: float, pressure at the inlet conduit elements (Pa)
+        outlet_pressure: float, pressure at the outlet conduit elements (Pa) 
+        Dp: float, average pit membrane pore diameter (m)
+        Tm: float, average thickness of membranes (m)
+        conduit_element_length : float, length of a single conduit element (m), used only if use_cylindrical_coords == True (default from the Mrad et al. article)
+        heartwood_d : float, diameter of the heartwood (= part of the tree not included in the xylem network) (in conduit elements) used only if use_cylindrical_coords == True (default value from the Mrad et al. article)
+        si_tolerance_length : int, tolerance parameter for defining the end of the simulation: when the prevalence hasn't changed for si_tolerance_length steps, the simulation stops (default 20)
+        weibull_a : float, Weibull distribution scale parameter (used for simulating pressure-difference-based embolism spreading) (default 20.28E6)
+        weibull_b : float, Weibull distribution shape parameter (used for simulating pressure-difference-based embolism spreading) (default 3.2)
+        average_pit_area : float, the average area of a pit
+        nCPUs : int, number of CPUs used for parallel computing (default 5)
+    pressure_difference : float
+        pressure difference between water in conduits and air (bubble)
+    start_conduits : str or array-like of ints
+        the first conduits to be removed (i.e. the first infected node of the simulation)
+        if 'random', a single start conduit is selected at random
+        if 'random_per_component', a single start conduit per network component is selected at random
+        if an array-like of ints is given, the ints are used as indices of the start conduits
+    spreading_probability_range : array-like
+        the spreading probability values, among which the optimal one is selected
+    si_length : int, optional
+        maximum number of time steps used for the simulation. The default is 1000.
+    n_iterations : int, optional
+        number of iterations with different random seeds. The default is 1.
+    save_path_base : str, optional
+        base path to which to save the pressure difference, optimal spreading probability and the effective conductance values corresponding to these. if no save_path_base is
+        given, these values are returned instead.
+
+    Returns
+    -------
+    if save_path_base is given, None
+    else output : dict
+         contains:
+         pressured_difference : float
+         optimal_spreading_probability : float, the spreading probability yielding the effective conductance closest to the physiological value
+         physiological_effective_conductance : float, the effective conductance at the end of the physiological embolism spreading
+         stochastic_effective_conductance : float, the effective conductance at the end of the stochastic embolism spreading
+    """
+    # TODO: should same start conduits be used for all pressure_differences? is so, where and how to define start conduits?
+    # TODO: should this return the whole spreading curves? are they needed later for visualization?
+    #import pdb; pdb.set_trace()
+    
+    cfg['si_length'] = si_length
+    cfg['si_type'] = 'physiological'
+    physiological_effective_conductances = np.zeros(n_iterations)
+    stochastic_effective_conductances = np.zeros((len(spreading_probability_range), n_iterations))
+    for i in np.arange(n_iterations):
+        physiological_effective_conductances[i] = run_conduit_si(net, cfg, pressure_difference)[0][-1]
+    physiological_effective_conductance = np.mean(physiological_effective_conductances)
+    
+    cfg['si_type'] = 'stochastic'
+    # TODO: check if it would make sense to parallelize the iterations with pool
+    for i, spreading_probability in enumerate(spreading_probability_range):
+        for j in np.arange(n_iterations):
+            stochastic_effective_conductances[i, j] = run_conduit_si(net, cfg, spreading_probability)[0][-1]
+    stochastic_effective_conductances = np.mean(stochastic_effective_conductances, axis=1)
+    
+    optimal_spreading_probability_index = np.argmin(np.abs(stochastic_effective_conductances - physiological_effective_conductance))
+    optimal_spreading_probability = spreading_probability_range[optimal_spreading_probability_index]
+    stochastic_effective_conductance = stochastic_effective_conductances[optimal_spreading_probability_index]
+    
+    output = {'pressure_difference':pressure_difference, 'optimal_spreading_probability': optimal_spreading_probability, 'physiological_effective_conductance': physiological_effective_conductance, 'stochastic_effective_conductance': stochastic_effective_conductance}
+    
+    if len(save_path_base) > 0:
+        save_path = save_path_base + '_' + str(pressure_difference) + '.pkl'
+        with open(save_path, 'wb') as f:
+            pickle.dump(f, output)
+        f.close()
+    else:
+        return output
+        
 def run_graph_theoretical_element_percolation(net, cfg, percolation_type='bond', removal_order='random'):
     """
     Removes links (bond percolation) or nodes (site percolation) from an openpnm network object in a given (or random)
@@ -808,6 +910,7 @@ def run_conduit_si(net, cfg, spreading_param=0):
     max_removed_lcc = 0
     time_step = 0
     prevalence_diff = 1
+    last_removed_by_embolism = False
        
     while prevalence_diff > 0:
             
@@ -867,10 +970,12 @@ def run_conduit_si(net, cfg, spreading_param=0):
             for removed_conduit_index in np.sort(removed_conduit_indices)[::-1]:
                 conduits[removed_conduit_index + 1::, 0:2] = conduits[removed_conduit_index + 1::, 0:2] - conduits[removed_conduit_index, 2]
             conduits[removed_conduit_indices, :] = -1
-        op.topotools.trim(perc_net, pores=pores_to_remove)
-        prevalence[time_step] = np.sum(embolization_times[:, 0] <= time_step) / conduits.shape[0]
-
+            if len(pores_to_remove) == perc_net['pore.coords'].shape[0]:
+                last_removed_by_embolism = True
         try:
+            op.topotools.trim(perc_net, pores=pores_to_remove)
+            prevalence[time_step] = np.sum(embolization_times[:, 0] <= time_step) / conduits.shape[0]
+
             lcc_size[time_step], susceptibility[time_step], _ = get_conduit_lcc_size(perc_net, use_cylindrical_coords=use_cylindrical_coords, 
                                                                   conduit_element_length=conduit_element_length, 
                                                                   heartwood_d=heartwood_d, cec_indicator=cec_indicator)
@@ -906,18 +1011,24 @@ def run_conduit_si(net, cfg, spreading_param=0):
             effective_conductances[time_step], pore_pressures = simulations.simulate_water_flow(sim_net, cfg, visualize=False)
             functional_lcc_size[time_step], functional_susceptibility[time_step], _ = get_conduit_lcc_size(perc_net)
         except Exception as e:
-            if str(e) == 'Cannot delete ALL pores': # this is because all remaining nodes belong to non-functional components
-                nonfunctional_component_size[time_step::] = net['pore.coords'].shape[0] - time_step
-                nonfunctional_component_volume[time_step::] = nonfunctional_component_volume[time_step - 1] + np.sum(np.pi * 0.5 * orig_perc_net['pore.diameter']**2 * conduit_element_length)
+            if str(e) == 'Cannot delete ALL pores': # this is because all remaining nodes get embolized or belong to non-functional components
+                nonfunctional_component_size[time_step::] = conduits.shape[0] - np.sum(embolization_times[:, 0] <= time_step) # all conduits that are not embolized are non-functional
+                if last_removed_by_embolism:
+                    nonfunctional_component_volume[time_step::] = nonfunctional_component_volume[time_step - 1]
+                else:
+                    nonfunctional_component_volume[time_step::] = nonfunctional_component_volume[time_step - 1] + np.sum(np.pi * 0.5 * orig_perc_net['pore.diameter']**2 * conduit_element_length)
                 lcc_size[time_step::] = max_removed_lcc
-                prevalence[time_step::] = 1
+                prevalence[time_step::] = np.sum(embolization_times[:, 0] <= time_step) / conduits.shape[0]
                 time_step += 1
                 break
             elif (str(e) == "'throat.conns'") and (len(perc_net['throat.all']) == 0): # this is because all links have been removed from the network by op.topotools.trim
-                nonfunctional_component_size[time_step::] = net['pore.coords'].shape[0] - time_step
-                nonfunctional_component_volume[time_step::] = nonfunctional_component_volume[time_step - 1] + np.sum(np.pi * 0.5 * orig_perc_net['pore.diameter'] * conduit_element_length)
+                nonfunctional_component_size[time_step::] = conduits.shape[0] - np.sum(embolization_times[:, 0] <= time_step)
+                if last_removed_by_embolism:
+                    nonfunctional_component_volume[time_step::] = nonfunctional_component_volume[time_step - 1]
+                else:
+                    nonfunctional_component_volume[time_step::] = nonfunctional_component_volume[time_step - 1] + np.sum(np.pi * 0.5 * orig_perc_net['pore.diameter'] * conduit_element_length)
                 lcc_size[time_step::] = max_removed_lcc
-                prevalence[time_step::] = 1
+                prevalence[time_step::] = conduits.shape[0] - np.sum(embolization_times[:, 0] <= time_step)
                 time_step += 1
                 break
             else:
