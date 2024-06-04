@@ -301,7 +301,7 @@ def optimize_spreading_probability(net, cfg, pressure_difference, start_conduits
     if len(save_path_base) > 0:
         save_path = save_path_base + '_' + str(pressure_difference) + '.pkl'
         with open(save_path, 'wb') as f:
-            pickle.dump(f, output)
+            pickle.dump(output, f)
         f.close()
     else:
         return output
@@ -953,7 +953,6 @@ def run_conduit_si(net, cfg, spreading_param=0):
                         embolize = False
                         if si_type == 'stochastic':
                             embolize =  (np.random.rand() > (1 - spreading_probability)**(len(embolized_neighbours)))
-                            #embolize = (np.random.rand() > 1 - spreading_probability)
                         elif si_type == 'physiological':
                             neighbour_bpp = np.array([conduit_neighbour_bpp[conduit][neighbour] for neighbour in embolized_neighbours])
                             embolize =  np.any(neighbour_bpp <= pressure_diff)
