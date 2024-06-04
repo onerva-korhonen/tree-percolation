@@ -299,7 +299,7 @@ def optimize_spreading_probability(net, cfg, pressure_difference, start_conduits
     output = {'pressure_difference':pressure_difference, 'optimal_spreading_probability': optimal_spreading_probability, 'physiological_effective_conductance': physiological_effective_conductance, 'stochastic_effective_conductance': stochastic_effective_conductance}
     
     if len(save_path_base) > 0:
-        save_path = save_path_base + '_' + str(pressure_difference) + '.pkl'
+        save_path = save_path_base + '_' + str(pressure_difference).replace('.', '_') + '.pkl'
         with open(save_path, 'wb') as f:
             pickle.dump(output, f)
         f.close()
