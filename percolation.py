@@ -275,7 +275,6 @@ def optimize_spreading_probability(net, cfg, pressure_difference, start_conduits
     """
     # TODO: should same start conduits be used for all pressure_differences? is so, where and how to define start conduits?
     # TODO: should this return the whole spreading curves? are they needed later for visualization?
-    #import pdb; pdb.set_trace()
     
     cfg['si_length'] = si_length
     cfg['si_type'] = 'physiological'
@@ -290,13 +289,14 @@ def optimize_spreading_probability(net, cfg, pressure_difference, start_conduits
     for i, spreading_probability in enumerate(spreading_probability_range):
         for j in np.arange(n_iterations):
             stochastic_effective_conductances[i, j] = run_conduit_si(net, cfg, spreading_probability)[0][-1]
+
     stochastic_effective_conductances = np.mean(stochastic_effective_conductances, axis=1)
     
     optimal_spreading_probability_index = np.argmin(np.abs(stochastic_effective_conductances - physiological_effective_conductance))
     optimal_spreading_probability = spreading_probability_range[optimal_spreading_probability_index]
     stochastic_effective_conductance = stochastic_effective_conductances[optimal_spreading_probability_index]
     
-    output = {'pressure_difference':pressure_difference, 'optimal_spreading_probability': optimal_spreading_probability, 'physiological_effective_conductance': physiological_effective_conductance, 'stochastic_effective_conductance': stochastic_effective_conductance}
+    output = {'pressure_difference':pressure_difference, 'optimized_spreading_probability': optimal_spreading_probability, 'physiological_effective_conductance': physiological_effective_conductance, 'stochastic_effective_conductance': stochastic_effective_conductance}
     
     if len(save_path_base) > 0:
         save_path = save_path_base + '_' + str(pressure_difference).replace('.', '_') + '.pkl'

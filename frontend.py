@@ -45,9 +45,9 @@ cfg['fpf'] = mrad_params.fpf
 
 cfg['fixed_random'] = True
 
-simulate_single_param_spreading = True
+simulate_single_param_spreading = False
 construct_VC = False
-optimize_spreading_probability = False
+optimize_spreading_probability = True
 
 print(cfg['net_size'])
 
@@ -131,12 +131,9 @@ if optimize_spreading_probability:
     optimized_spreading_probabilities = np.zeros(len(params.vulnerability_pressure_range))
     physiological_effective_conductances = np.zeros(len(params.vulnerability_pressure_range))
     stochastic_effective_conductances = np.zeros(len(params.vulnerability_pressure_range))
+    
     for i, pressure_diff in enumerate(params.vulnerability_pressure_range):
-        output = percolation.optimize_spreading_probability(net_cleaned, cfg, pressure_diff, cfg['start_conduits'], params.optimization_probability_range, cfg['si_length'])
-        optimized_spreading_probabilities[i] = output['optimal_spreading_probability']
-        physiological_effective_conductances[i] = output['physiological_effective_conductance']
-        stochastic_effective_conductances[i] = output['stochastic_effective_conductance']
-        # TODO: how to visualize these?
+        percolation.optimize_spreading_probability(net_cleaned, cfg, pressure_diff, cfg['start_conduits'], params.optimization_probability_range, si_length=cfg['si_length'], save_path_base=params.optimized_spreading_probability_save_path_base)
         
 
 #visualization.plot_percolation_curve(total_n_nodes, percolation_outcome_values,

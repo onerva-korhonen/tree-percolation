@@ -7,8 +7,9 @@ import pickle
 import numpy as np
 import matplotlib.pylab as plt
 
-visualize_single_param_spreading = True
+visualize_single_param_spreading = False
 visualize_vc = False
+visualize_optimized_vc = True
 
 if visualize_single_param_spreading:
 
@@ -64,4 +65,9 @@ if visualize_vc:
     vc = pickle.load(f)
     f.close()
     
-    visualization.plot_vulnerability_curve(vc, params.vc_color, params.vc_alpha, vc_type=params.si_type, save_path=params.vc_plot_save_path)
+    visualization.plot_vulnerability_curve(vc, params.physiological_vc_color, params.physiological_vc_alpha, vc_type=params.si_type, save_path=params.vc_plot_save_path)
+    
+if visualize_optimized_vc:
+    data_save_folder = params.optimized_spreading_probability_save_path_base.rsplit('/', 1)[0]
+    visualization.plot_optimized_vulnerability_curve(data_save_folder, params.physiological_vc_color, params.stochastic_vc_color, params.physiological_vc_ls, params.stochastic_vc_ls, 
+                                                     params.physiological_vc_alpha, params.stochastic_vc_alpha, params.optimized_vc_plot_save_path)

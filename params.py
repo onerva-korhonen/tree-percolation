@@ -57,9 +57,10 @@ ninlet_save_path = '/home/onervak/projects/hidrogat/output/percolation_3D_' + id
 prevalence_save_path = '/home/onervak/projects/hidrogat/output/percolation_3D_' + identifier + '_prevalence.pdf'
 lcc_in_time_save_path = '/home/onervak/projects/hidrogat/output/percolation_3D_' + identifier + '_lcc_in_time.pdf'
 percolation_data_save_path = '/home/onervak/projects/hidrogat/output/percolation_3D_' + identifier + '_data.pkl'
-vc_data_save_path = '/home/onervak/projects/hidrogat/output/vc_data' + identifier + '.pkl'
+vc_data_save_path = '/home/onervak/projects/hidrogat/output/vc_data_' + identifier + '.pkl'
 vc_plot_save_path = '/home/onervak/projects/hidrogat/output/vc_' + identifier + '.pdf'
-optimized_spreading_probability_save_path_base = '/home/onervak/projects/hidrogat/output/vc_' + identifier
+optimized_spreading_probability_save_path_base = '/home/onervak/projects/hidrogat/output/optimized_spreading_probability/optimized_spreading_probability_' + identifier
+optimized_vc_plot_save_path = '/home/onervak/projects/hidrogat/output/vc_optimized.pdf'
 
 # percolation parameters
 percolation_type = 'si'
@@ -77,7 +78,7 @@ pressure_diff = 100e6 # Pa, the difference between water and air (bubble) pressu
 nCPUs = 5
 vulnerability_pressure_range = np.arange(0, 3.5, step=0.25)*1E6
 vulnerability_probability_range = np.arange(0.001, 1, step=0.1)
-optimization_probability_range = np.arange(0.001, 0.4, step=0.05) # spreading probability range used for optimization
+optimization_probability_range = np.arange(0.0001, 0.1, step=0.01) # spreading probability range used for optimization
 n_iterations = 1 # number of iterations used for optimizing spreading probability
 
 # visualization parameters
@@ -97,5 +98,10 @@ percolation_ninlet_label = 'Average n inlets'
 percolation_noutlet_label = 'Average n outlets'
 percolation_ninlet_alpha = 1
 percolation_noutlet_alpha = 1
-vc_color = 'r'
-vc_alpha = 1
+physiological_vc_color = 'r'
+physiological_vc_ls = '-'
+physiological_vc_alpha = 1
+stochastic_vc_color = 'k'
+stochastic_vc_ls = '--'
+stochastic_vc_alpha = 0.5
+
