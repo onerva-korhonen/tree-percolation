@@ -246,8 +246,7 @@ def plot_optimized_vulnerability_curve(data_save_folder, physiological_color, st
         if not 'optimized_spreading_probability' in data.keys():
             optimized_spreading_probabilities[i] = data['optimal_spreading_probability'] # backward compatibility case, should be removed
         else:
-            optimized_spreading_probabilities[i] = data['optimized_spreading_probabilities']
-    import pdb; pdb.set_trace()
+            optimized_spreading_probabilities[i] = data['optimized_spreading_probability']
     indices = np.argsort(pressure_diffs)
     pressure_diffs = pressure_diffs[indices]
     physiological_effective_conductances = physiological_effective_conductances[indices]
@@ -256,7 +255,6 @@ def plot_optimized_vulnerability_curve(data_save_folder, physiological_color, st
     assert pressure_diffs[0] == 0, 'effective conductance at pressure difference 0 required for calculating percentage of conductance lost; values < 0 are not allowed!'
     physiological_plc = 100 * (1 - physiological_effective_conductances / physiological_effective_conductances[0])
     stochastic_plc = 100 * (1 - stochastic_effective_conductances / stochastic_effective_conductances[0]) # normalized by the effective conductance at the spreading probability optimized for pressure difference 0
-    # TODO: investigate why there are PLC values smaller than zero
     
     fig = plt.figure()
     ax = fig.add_subplot(111)
