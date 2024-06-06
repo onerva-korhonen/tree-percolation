@@ -19,7 +19,7 @@ import numpy as np
 import pickle
 
 cfg = {}
-cfg['net_size'] = mrad_params.net_size#params.net_size
+cfg['net_size'] = params.net_size
 cfg['conduit_diameters'] = 'lognormal'#mrad_params.conduit_diameters
 cfg['Dc'] = params.Dc
 cfg['Dc_cv'] = params.Dc_cv

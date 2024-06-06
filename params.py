@@ -49,22 +49,22 @@ Dc_z = norm.ppf(1 - (1 - Dc_alpha) / 2)
     
 
 # paths for saving
-network_save_file = '/home/onervak/projects/hidrogat/output/netpoints'
-percolation_plot_save_path = '/home/onervak/projects/hidrogat/output/percolation_3D_conduit_si.pdf'
-nonfunctional_component_size_save_path = '/home/onervak/projects/hidrogat/output/percolation_3D_conduit_si_nonfunc_volume.pdf'
-ninlet_save_path = '/home/onervak/projects/hidrogat/output/percolation_3D_conduit_si_ninlet.pdf'
-prevalence_save_path = '/home/onervak/projects/hidrogat/output/percolation_3D_conduit_si_prevalence.pdf'
-lcc_in_time_save_path = '/home/onervak/projects/hidrogat/output/percolation_3D_conduit_si_lcc_in_time.pdf'
-percolation_data_save_path = '/home/onervak/projects/hidrogat/output/percolation_3D_conduit_si_data.pkl'
+network_save_file = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/netpoints'
+percolation_plot_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/percolation_3D_conduit_drainage.pdf'
+nonfunctional_component_size_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/percolation_3D_conduit_drainage_nonfunc_volume.pdf'
+ninlet_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/percolation_3D_conduit_drainage_ninlet.pdf'
+prevalence_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/percolation_3D_conduit_drainage_prevalence.pdf'
+lcc_in_time_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/percolation_3D_conduit_drainage_lcc_in_time.pdf'
+percolation_data_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/percolation_3D_conduit_drainage_data.pkl'
 
 # percolation parameters
-percolation_type = 'si'
+percolation_type = 'drainage'
 break_nonfunctional_components = False
 si_type = 'stochastic'
 si_length = 1000
 spreading_probability = 0.1
 spreading_threshold = 100 # TODO: set a reasonable value
-start_conduits = 'random' # options: 'bottom' (= all conduits with a pore at the first row), 'random' and int
+start_conduits = 'bottom' # options: 'bottom' (= all conduits with a pore at the first row), 'random' and int
 # contact angle and surface tension values are from OpenPNM tutorial (https://openpnm.org/examples/tutorials/09_simulating_invasion.html)
 air_contact_angle = 120 # degrees
 surface_tension = 0.072 # Newtons/meter
