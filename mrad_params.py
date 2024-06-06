@@ -16,11 +16,10 @@ heartwood_d = 10 # diameter of the heartwood (in columns)
 
 # dimensions of conduit elements
 Lce = 0.00288 # length of a conduit element (m)
-Dc = 24.6e-9 # averege conduit diameter (same for all elements of the conduit) (m)
-# NOTE: in the Mrad et al. Matlab code, Dc is 24.6e-6 but the Mrad et al. 2018 article uses 24.6e-9
+Dc = 24.6e-6 # averege conduit diameter (same for all elements of the conduit) (m)
 Dc_cv = 0.12 # coefficient of variation of conduit diameter
 Dp = 32.0e-9 # average pit membrane pore diameter (m)
-Dm = 6.3e-6 # average membrane diameter (m) [CURRENTLY NOT USED IN THE MODEL]
+Dm = 6.3e-6 # average membrane diameter (m)
 fc = 0.31 # average contact fraction between two conduits
 fpf = 0.7 # average pit field fraction between two conduits
 Tm = 234e-9 # average membrane thickness ("Stretching") (m)
@@ -59,6 +58,8 @@ Pc = np.array([0.75, 0.75])
 NPc = np.array([0.75, 0.75])
 Pe_rad = np.array([0.9,0.9])
 Pe_tan = np.array([0.02, 0.02])
+weibull_a = 20.28E6 # Weibull distribution scale parameter, Pa
+weibull_b = 3.2 # Weibull distribution shape parameter
 
 # the numbers used to seed the random number generation for initiating and
 # terminating conduits in the Mrad article
@@ -77,5 +78,5 @@ water_throat_viscosity = 1.002e-3
 water_pore_diffusivity = 1.0e-9
 
 # simulation parameters
-inlet_pressure = 0.1 # Pa
-outlet_pressure = 0 # Pa
+inlet_pressure = 0.1E6 # Pa
+outlet_pressure = 0E6 # Pa

@@ -40,35 +40,45 @@ if fixed_random:
     seed_ICC_tan = 73956
     
 # dimensions of conduit elements
-Dc = 18.18232653752158e-9 # diameter of a conduit element
+Dc = 18.18232653752158e-6 # diameter of a conduit element
 #Dc_ci = [13.3995938309482, 18.4374185582225] # confidence interval of Dc
-Dc_std = 10.76131985221804
+Dc_std = 10.76131985221804e-6
 Dc_cv = Dc_std / Dc
 Dc_alpha = 0.05 # alpha value of Dc_ci
 Dc_z = norm.ppf(1 - (1 - Dc_alpha) / 2)
     
 
 # paths for saving
+identifier = 'physiological_conduit_si'
 network_save_file = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/netpoints'
-percolation_plot_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/percolation_3D_conduit_drainage.pdf'
-nonfunctional_component_size_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/percolation_3D_conduit_drainage_nonfunc_volume.pdf'
-ninlet_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/percolation_3D_conduit_drainage_ninlet.pdf'
-prevalence_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/percolation_3D_conduit_drainage_prevalence.pdf'
-lcc_in_time_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/percolation_3D_conduit_drainage_lcc_in_time.pdf'
-percolation_data_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/percolation_3D_conduit_drainage_data.pkl'
+percolation_plot_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/percolation_3D_' + identifier + '.pdf'
+nonfunctional_component_size_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/percolation_3D_' + identifier + '_nonfunc_volume.pdf'
+ninlet_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/percolation_3D_' + identifier + '_ninlet.pdf'
+prevalence_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/percolation_' + identifier + '_prevalence.pdf'
+lcc_in_time_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/percolation_3D_' + identifier + '_lcc_in_time.pdf'
+percolation_data_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/percolation_3D_' + identifier + '_data.pkl'
+vc_data_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/vc_data_' + identifier + '.pkl'
+vc_plot_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/vc_' + identifier + '.pdf'
+optimized_spreading_probability_save_path_base = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/optimized_spreading_probability/optimized_spreading_probability_' + identifier
 
 # percolation parameters
-percolation_type = 'drainage'
+percolation_type = 'si'
+si_type = 'physiological'
 break_nonfunctional_components = False
-si_type = 'stochastic'
 si_length = 1000
-spreading_probability = 0.1
-spreading_threshold = 100 # TODO: set a reasonable value
-start_conduits = 'bottom' # options: 'bottom' (= all conduits with a pore at the first row), 'random' and int
+si_tolerance_length = 20
+spreading_probability = 0.15100000000000002
+start_conduits = 'random_per_component' # options: 'random', 'random_per_component' (= one random seed in all network components), int, and 'bottom' (= all conduits with a pore at the first row, allowed only when percolation_type == 'drainage')
 # contact angle and surface tension values are from OpenPNM tutorial (https://openpnm.org/examples/tutorials/09_simulating_invasion.html)
 air_contact_angle = 120 # degrees
 surface_tension = 0.072 # Newtons/meter
 pressure = 100 # number of pressure steps used by the drainage algorithm
+pressure_diff = 100e6 # Pa, the difference between water and air (bubble) pressures, delta P in the Mrad et al. article
+nCPUs = 5
+vulnerability_pressure_range = np.arange(0, 3.5, step=0.25)*1E6
+vulnerability_probability_range = np.arange(0.001, 1, step=0.1)
+optimization_probability_range = np.arange(0.0001, 0.1, step=0.01) # spreading probability range used for optimization
+n_iterations = 1 # number of iterations used for optimizing spreading probability
 
 # visualization parameters
 visualize_simulations = False
@@ -87,3 +97,10 @@ percolation_ninlet_label = 'Average n inlets'
 percolation_noutlet_label = 'Average n outlets'
 percolation_ninlet_alpha = 1
 percolation_noutlet_alpha = 1
+physiological_vc_color = 'r'
+physiological_vc_ls = '-'
+physiological_vc_alpha = 1
+stochastic_vc_color = 'k'
+stochastic_vc_ls = '--'
+stochastic_vc_alpha = 0.5
+

@@ -10,6 +10,8 @@ Functions for visualization by Petri Kiuru & Onerva Korhonen
 import matplotlib.pylab as plt
 import numpy as np
 import openpnm as op
+import pickle
+import os
 
 import mrad_params as params
 
@@ -162,3 +164,103 @@ def plot_percolation_curve(total_n_nodes, values, colors, labels, alphas, axinde
 
     if len(save_path) > 0:
         plt.savefig(save_path, format='pdf',bbox_inches='tight')
+        
+def plot_vulnerability_curve(vc, color, alpha, vc_type='physiological', save_path=''):
+    """
+    Plots the vulnerability curve (percentage of effective conductance lost as a function of 
+    pressure difference / SI spreading parameter).
+    
+    Parameters
+    ----------
+    vc : tuple
+        vulnerability curve: vc[0] contains the x values and vc[1] the related conductance loss values. output of 
+        percolation.construct_vulnerability_curve().
+    color : str
+        color of the curve
+    alpha : float
+        transparency of the curve
+    vc_type : str
+        'physiological' or 'stochastic' (default 'phsyiological'). used to define x axis label
+    save_path : str
+        path to which save the plt. The default is '', in which case the plot is not saved but only shown.
+
+    Returns
+    -------
+    None.
+    """
+    assert vc_type in ['physiological', 'stochastic'], 'unknown vc type, select physiological or stochastic'
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    ax.plot(vc[0], vc[1], color=color, alpha=alpha)
+    if vc_type == 'physiological':
+        x_label = 'Pressure difference'
+    else:
+        x_label = 'Spreading probability'
+    ax.set_xlabel(x_label)
+    ax.set_ylabel('PLC (%)')
+    if len(save_path) > 0:
+        plt.savefig(save_path, format='pdf', bbox_inches='tight')
+        
+def plot_optimized_vulnerability_curve(data_save_folder, physiological_color, stochastic_color, physiological_ls, stochastic_ls, physiological_alpha, stochastic_alpha, save_path):
+    """
+    Reads from files the optimized SI spreading probabilities and related effective conductance values for a set of pressure difference values, calculates the percentage of
+    conductance lost (PLC) values (out of effective conductance at pressure difference 0) and plots the vulnerability curves.
+
+    Parameters
+    ----------
+    data_save_folder : str
+        folder to which the data is saved; the folder MUST NOT contain other files
+    physiological_color : str
+        color of the vc curve corresponding to physiological spreading
+    stochastic_color : str
+        color of the vc curve corresponding to stochastic spreading
+    physiological_ls : str
+        line style of the vc curve corresponding to physiological spreading
+    stochastic_ls : str
+        line style of the vc curve corresponding to stochastic spreading
+    physiological_alpha : float
+        transparency of the vc curve corresponding to physiological spreading
+    stochastic_alpha : float
+        transparency of the vc curve corresponidng to stochastic spreading
+    save_path : str
+        path to which to save the plot
+
+    Returns
+    -------
+    None
+    """
+    data_files = [os.path.join(data_save_folder, file) for file in os.listdir(data_save_folder) if os.path.isfile(os.path.join(data_save_folder, file))]
+    pressure_diffs = np.zeros(len(data_files))
+    physiological_effective_conductances = np.zeros(len(data_files))
+    stochastic_effective_conductances = np.zeros(len(data_files))
+    
+    optimized_spreading_probabilities = np.zeros(len(data_files))
+    
+    for i, file in enumerate(data_files):
+        with open(file, 'rb') as f:
+            data = pickle.load(f)
+            f.close()
+        pressure_diffs[i] = data['pressure_difference']
+        physiological_effective_conductances[i] = data['physiological_effective_conductance']
+        stochastic_effective_conductances[i] = data['stochastic_effective_conductance']
+        if not 'optimized_spreading_probability' in data.keys():
+            optimized_spreading_probabilities[i] = data['optimal_spreading_probability'] # backward compatibility case, should be removed
+        else:
+            optimized_spreading_probabilities[i] = data['optimized_spreading_probability']
+    indices = np.argsort(pressure_diffs)
+    pressure_diffs = pressure_diffs[indices]
+    physiological_effective_conductances = physiological_effective_conductances[indices]
+    stochastic_effective_conductances = stochastic_effective_conductances[indices]
+    optimized_spreading_probabilities = optimized_spreading_probabilities[indices]
+    assert pressure_diffs[0] == 0, 'effective conductance at pressure difference 0 required for calculating percentage of conductance lost; values < 0 are not allowed!'
+    physiological_plc = 100 * (1 - physiological_effective_conductances / physiological_effective_conductances[0])
+    stochastic_plc = 100 * (1 - stochastic_effective_conductances / stochastic_effective_conductances[0]) # normalized by the effective conductance at the spreading probability optimized for pressure difference 0
+    
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    ax.plot(pressure_diffs, physiological_plc, color=physiological_color, alpha=physiological_alpha, ls=physiological_ls, label='physiological')
+    ax.plot(pressure_diffs, stochastic_plc, color=stochastic_color, alpha=stochastic_alpha, ls=stochastic_ls, label='stochastic')
+    ax.set_xlabel('Pressure difference')
+    ax.set_ylabel('PLC (%)')
+    ax.legend()
+    plt.savefig(save_path, format='pdf', bbox_inches='tight')
