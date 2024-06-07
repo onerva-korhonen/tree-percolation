@@ -78,7 +78,7 @@ nCPUs = 5
 vulnerability_pressure_range = np.arange(0, 3.5, step=0.25)*1E6
 vulnerability_probability_range = np.arange(0.001, 1, step=0.1)
 optimization_probability_range = np.arange(0.0001, 0.1, step=0.01) # spreading probability range used for optimization
-n_iterations = 1 # number of iterations used for optimizing spreading probability
+n_iterations = 100 # number of iterations used for optimizing spreading probability
 
 # visualization parameters
 visualize_simulations = False
