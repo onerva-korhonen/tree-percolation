@@ -954,7 +954,7 @@ def get_effective_pore_volume(net, throat_volume_key='throat.volume', pore_volum
     effective_pore_volumes : np.array 
         effective volumes of pores
     """
-    effective_pore_volumes = net[pore_volume_key].copy()
+    effective_pore_volumes = net[pore_volume_key].copy().astype(float) # this may contain integer zeros, and apparently in some numpy versions, add.at can't add floats to ints
     throat_volumes = net[throat_volume_key].copy()
     total_volume = effective_pore_volumes.sum() + throat_volumes.sum()
     np.add.at(effective_pore_volumes, net[conn_key][:, 0], net[throat_volume_key]/2)
