@@ -17,9 +17,10 @@ import simulations
 import openpnm as op
 import numpy as np
 import pickle
+import sys
 
 cfg = {}
-cfg['net_size'] = params.net_size
+cfg['net_size'] = mrad_params.net_size#params.net_size
 cfg['conduit_diameters'] = 'lognormal'#mrad_params.conduit_diameters
 cfg['Dc'] = params.Dc
 cfg['Dc_cv'] = params.Dc_cv
@@ -51,7 +52,6 @@ optimize_spreading_probability = True
 
 #print(cfg['net_size'])
 if __name__=='__main__':
-
     conduit_elements, conns = mrad_model.create_mrad_network(cfg) # if no params are given, the function uses the default params of the Mrad model
     net = mrad_model.mrad_to_openpnm(conduit_elements, conns)
     #visualization.visualize_network_with_openpnm(net)
@@ -59,7 +59,6 @@ if __name__=='__main__':
     #visualization.visualize_network_with_openpnm(net_cleaned)
 
     #mrad_model.save_network(net_cleaned, params.network_save_file)
-
     sim_net = mrad_model.prepare_simulation_network(net_cleaned, cfg)
     #visualization.visualize_pores(sim_net)
     #visualization.visualize_network_with_openpnm(sim_net, params.use_cylindrical_coordinates, mrad_params.Lce, 'pore.coords')

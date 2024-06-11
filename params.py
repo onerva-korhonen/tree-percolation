@@ -49,17 +49,31 @@ Dc_z = norm.ppf(1 - (1 - Dc_alpha) / 2)
     
 
 # paths for saving
+triton = False
 identifier = 'physiological_conduit_si'
-network_save_file = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/netpoints'
-percolation_plot_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/percolation_3D_' + identifier + '.pdf'
-nonfunctional_component_size_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/percolation_3D_' + identifier + '_nonfunc_volume.pdf'
-ninlet_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/percolation_3D_' + identifier + '_ninlet.pdf'
-prevalence_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/percolation_' + identifier + '_prevalence.pdf'
-lcc_in_time_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/percolation_3D_' + identifier + '_lcc_in_time.pdf'
-percolation_data_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/percolation_3D_' + identifier + '_data.pkl'
-vc_data_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/vc_data_' + identifier + '.pkl'
-vc_plot_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/vc_' + identifier + '.pdf'
-optimized_spreading_probability_save_path_base = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/optimized_spreading_probability/optimized_spreading_probability_' + identifier
+
+if triton:
+    network_save_file = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/netpoints'
+    percolation_plot_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/percolation_3D_' + identifier + '.pdf'
+    nonfunctional_component_size_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/percolation_3D_' + identifier + '_nonfunc_volume.pdf'
+    ninlet_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/percolation_3D_' + identifier + '_ninlet.pdf'
+    prevalence_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/percolation_' + identifier + '_prevalence.pdf'
+    lcc_in_time_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/percolation_3D_' + identifier + '_lcc_in_time.pdf'
+    percolation_data_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/percolation_3D_' + identifier + '_data.pkl'
+    vc_data_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/vc_data_' + identifier + '.pkl'
+    vc_plot_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/vc_' + identifier + '.pdf'
+    optimized_spreading_probability_save_path_base = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/optimized_spreading_probability/optimized_spreading_probability_' + identifier
+else:
+    network_save_file = '/home/onervak/projects/hidrogat/output/netpoints'
+    percolation_plot_save_path = '/home/onervak/projects/hidrogat/output/percolation_3D_' + identifier + '.pdf'
+    nonfunctional_component_size_save_path = '/home/onervak/projects/hidrogat/output/percolation_3D_' + identifier + '_nonfunc_volume.pdf'
+    ninlet_save_path = '/home/onervak/projects/hidrogat/output/percolation_3D_' + identifier + '_ninlet.pdf'
+    prevalence_save_path = '/home/onervak/projects/hidrogat/output/percolation_' + identifier + '_prevalence.pdf'
+    lcc_in_time_save_path = '/home/onervak/projects/hidrogat/output/percolation_3D_' + identifier + '_lcc_in_time.pdf'
+    percolation_data_save_path = '/home/onervak/projects/hidrogat/output/percolation_3D_' + identifier + '_data.pkl'
+    vc_data_save_path = '/home/onervak/projects/hidrogat/output/vc_data_' + identifier + '.pkl'
+    vc_plot_save_path = '/home/onervak/projects/hidrogat/output/vc_' + identifier + '.pdf'
+    optimized_spreading_probability_save_path_base = '/home/onervak/projects/hidrogat/output/optimized_spreading_probability/optimized_spreading_probability_' + identifier
 
 # percolation parameters
 percolation_type = 'si'
@@ -78,7 +92,7 @@ nCPUs = 5
 vulnerability_pressure_range = np.arange(0, 3.5, step=0.25)*1E6
 vulnerability_probability_range = np.arange(0.001, 1, step=0.1)
 optimization_probability_range = np.arange(0.0001, 0.1, step=0.01) # spreading probability range used for optimization
-n_iterations = 100 # number of iterations used for optimizing spreading probability
+n_iterations = 1 # number of iterations used for optimizing spreading probability
 
 # visualization parameters
 visualize_simulations = False
