@@ -17,6 +17,7 @@ import simulations
 import openpnm as op
 import numpy as np
 import pickle
+import sys
 
 cfg = {}
 cfg['net_size'] = params.net_size
