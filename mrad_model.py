@@ -32,7 +32,7 @@ def create_mrad_network(cfg):
         net_size: np.array, size of the network to be created (n_rows x n_columns x n_depths). Note the directions:
             rows: vertical, columns: radial, depth: tangential
         NPc: np.array, propabilities of initiating a conduit at the location closest to the pith (first element)
-            and fartest away from it (second element); probabilities for other locations are interpolated from
+            and furthest away from it (second element); probabilities for other locations are interpolated from
             these two values
         Pc: np.array, probabilities for terminating an existing conduit, first and second element defined similarly
              as in NPc
@@ -135,7 +135,7 @@ def create_mrad_network(cfg):
     # constructing the conduit array
     start_and_end_indices = np.where(conduit_map)
     start_and_end_coords = np.array([start_and_end_indices[0], start_and_end_indices[1], start_and_end_indices[2]]).T
-    start_and_end_coords_sorted = pd.DataFrame(start_and_end_coords, columns = ['A','B','C']).sort_values(by=['C', 'B']).to_numpy()
+    start_and_end_coords_sorted = start_and_end_coords[np.lexsort((start_and_end_coords[:,1], start_and_end_coords[:,2]))]
     
     conduit_elements = []
     conduit_index = 0
@@ -144,12 +144,12 @@ def create_mrad_network(cfg):
     for i in range(0, len(start_and_end_coords_sorted), 2):
         start_row = start_and_end_coords_sorted[i, 0]
         end_row = start_and_end_coords_sorted[i + 1, 0]
-        conduit_element = np.zeros((end_row - start_row + 1, 5))
-        conduit_element[:, 0] = np.linspace(start_row, end_row, end_row - start_row + 1).astype(int)
+        conduit_element = np.zeros((end_row - start_row + 1, 5), dtype=int)
+        conduit_element[:, 0] = np.linspace(start_row, end_row, end_row - start_row + 1)
         conduit_element[:, 1] = start_and_end_coords_sorted[i, 1]
         conduit_element[:, 2] = start_and_end_coords_sorted[i, 2]
         conduit_element[:, 3] = conduit_index
-        conduit_element[:, 4] = conduit_element_index + np.linspace(0, end_row - start_row, end_row - start_row + 1).astype(int)
+        conduit_element[:, 4] = conduit_element_index + np.linspace(0, end_row - start_row, end_row - start_row + 1)
         conduit_index += 1
         conduit_element_index += end_row - start_row + 1 
         conduit_elements.append(conduit_element)
@@ -184,18 +184,21 @@ def create_mrad_network(cfg):
         node_index = conduit_element[4]
         if ((row == 0) or (row == outlet_row_index)):
             continue # no pit connections in the first and last rows
+            
+        column_distances = np.abs(conduit_elements[:, 1] - column)[i+1:]
+        depth_distances = np.abs(conduit_elements[:, 2] - depth)[i+1:]
         
         # check if there is an adjacent element in radial (= column) or tangential (= depth) direction
         # that belongs to another conduit (adjacent elements in the vertical (=row) direction belong to the same conduit by default). 
         # The maximal number of potential connections in a 3D networks is 8 for each element (sides and corners).
-        for conduit_element_2 in conduit_elements[i + 1:]:
+        for conduit_element_2, column_distance, depth_distance in zip(conduit_elements[i + 1:], column_distances, depth_distances):
             row2 = conduit_element_2[0]
             column2 = conduit_element_2[1]
             depth2 = conduit_element_2[2]
             conduit2_index = conduit_element_2[3]
             node2_index = conduit_element_2[4]
             
-            if ((abs(column2 - column) > 1) and (abs(depth2 - depth) > 1) and (depth2 != max_depth) and (depth != 0)):
+            if (column_distance > 1) and (depth_distance > 1) and (depth2 != max_depth) and (depth != 0):
                 break # there are no potential connections between the current conduit_element_2 and the following instances of conduit_element_2 are even further away (the array is sorted), so let's break the loop
             
             if (row2 == row):
@@ -255,7 +258,7 @@ def create_mrad_network(cfg):
     # matching dimensions
         
     conns = np.concatenate([CEC_conns, ICC_conns])
-    conns = pd.DataFrame(conns, columns = ['A','B','C','D','E']).sort_values(by=['A', 'B']).to_numpy()
+    conns = conns[np.lexsort((conns[:, 1], conns[:, 0]))]
     
     return conduit_elements, conns
             
