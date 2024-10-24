@@ -73,6 +73,9 @@ def create_mrad_network(cfg):
     # Reading data
     fixed_random = cfg.get('fixed_random', True)
     net_size = cfg.get('net_size', params.net_size)
+    n_rows = net_size[0]
+    n_columns = net_size[1]
+    n_depth =  net_size[2]
     Pc = cfg.get('Pc', params.Pc)
     NPc = cfg.get('NPc', params.NPc)
     Pe_rad = cfg.get('Pe_rad', params.Pe_rad)
@@ -80,54 +83,32 @@ def create_mrad_network(cfg):
     cec_indicator = cfg.get('cec_indicator', params.cec_indicator)
     icc_indicator = cfg.get('icc_indicator', params.icc_indicator)
     
-    rad_dist = np.ones(net_size[1])
+    rad_dist = np.ones(n_columns)
     
     if fixed_random:
         seeds_NPc = cfg.get('seeds_NPc', params.seeds_NPc)
         seeds_Pc = cfg.get('seeds_Pc', params.seeds_Pc)
         seed_ICC_rad = cfg.get('seed_ICC_rad', params.seed_ICC_rad)
         seed_ICC_tan = cfg.get('seed_ICC_tan', params.seed_ICC_tan)
+    else:
+        seeds_NPc = [None for j in range(n_columns)]
+        seeds_Pc = [None for j in range(n_columns)]
     
     # Obtaining random locations for conduit start and end points based on NPc and Pc
-    NPc_rad = (rad_dist*NPc[0] + (1 - rad_dist)*NPc[1]) # obtaining NPc values at different radial distances by interpolation 
-    # NOTE: because of the definition of rad_dist, this gives the same NPc for each location
-    cond_start = []
-    for i in range(net_size[1]): # looping in the column direction
-        if fixed_random:
-            np.random.seed(seeds_NPc[i])
-        cond_start.append(np.random.rand(net_size[0] + 100, 1, net_size[2]) > (1 - NPc_rad[i]))
-    cond_start = np.concatenate(cond_start, axis=1)
     
-    Pc_rad = (rad_dist*Pc[0] + (1 - rad_dist)*Pc[1])
-    cond_end = []
-    for i in range(net_size[1]):
-        if fixed_random:
-            np.random.seed(seeds_Pc[i])
-        cond_end.append(np.random.rand(net_size[0] + 100, 1, net_size[2]) > (1 - Pc_rad[i]))
-    cond_end = np.concatenate(cond_end, axis=1)
-    
-    temp_start = np.zeros([1, net_size[1], net_size[2]])
-    for j in range(net_size[2]): # looping in the tangential (depth) direction
-        for i in range(net_size[1]): # looping in the column direction
-            # construct a conduit at the first row of this column if there is
-            # a 1 among the first 50 entires of the cond_start matrix at this column
-            # and the corresponding entries of the cond_end are matrix all 0.
-            if (np.where(cond_start[0:50, i, j])[0].size > 0) and (np.where(cond_end[0:50, i, j])[0].size == 0):
-                temp_start[0, i, j] = 1 
-            # construct a conduit at the first row of this column if the last 
-            # 1 among the 50 first entries of the cond_start matrix is at a more
-            # advanced postition than the last 1 among the 50 entries of the cond_end matrix
-            if (np.where(cond_start[0:50, i, j])[0].size > 0) and (np.where(cond_end[0:50, i, j])[0][-1] < np.where(cond_start[0:50, i, j])[0][-1]):
-                temp_start[0, i, j] = 1
-    
-    # Cleaning up the obtained start and end points
-    cond_start = cond_start[50:-50, :, :] # removing the extra elements
-    cond_start[0, :, :] = temp_start 
-    cond_start[-1, :, :] = 0 # no conduit can start at the last row
-    
-    cond_end = cond_end[50:-50, : , :]
-    cond_end[0, :, :] = 0 # no conduit can end at the first row
-    cond_end[-1, :, :] = 1 # all existing conduits must end at the last row
+    # obtaining NPc and Pc values at different radial distances by interpolation 
+    # NOTE: because of the definition of rad_dist, this gives the same NPc and Pc for each location
+    NPcs_rad = (rad_dist*NPc[0] + (1 - rad_dist)*NPc[1]) 
+    Pcs_rad = (rad_dist*Pc[0] + (1 - rad_dist)*Pc[1])
+
+    test_cond_start = []
+    test_cond_end = []
+    for NPc_rad, Pc_rad, seed_NPc, seed_Pc in zip(NPcs_rad, Pcs_rad, seeds_NPc, seeds_Pc):
+        conduit_map_column = create_conduit_map_column(n_rows, n_depth, NPc_rad, Pc_rad, seed_NPc, seed_Pc)
+        test_cond_start.append(conduit_map_column[0])
+        test_cond_end.append(conduit_map_column[1])
+    cond_start = np.concatenate(test_cond_start, axis=1)
+    cond_end = np.concatenate(test_cond_end, axis=1)
     
     conduit_map = trim_conduit_map(cond_start + cond_end*-1)
     conduit_map = clean_conduit_map(conduit_map)
@@ -174,7 +155,7 @@ def create_mrad_network(cfg):
     max_depth = int(np.max(conduit_elements[:, 2]))
     pot_conx_rad = []
     pot_conx_tan = []
-    outlet_row_index = net_size[0] - 1
+    outlet_row_index = n_rows - 1
     
     for i, conduit_element in enumerate(conduit_elements):
         row = conduit_element[0]
@@ -641,6 +622,62 @@ def read_network(net_path, coord_key='pore.coords', conn_key='throat.conns', typ
     
         
 # Other accessories:
+    
+def create_conduit_map_column(n_rows, n_depth, NPc_rad, Pc_rad, seed_NPc=None, seed_Pc=None):
+    """
+    TODO: write documentation
+
+    Parameters
+    ----------
+    n_rows : TYPE
+        DESCRIPTION
+    n_depth : TYPE
+        DESCRIPTION.
+    NPc_rad : TYPE
+        DESCRIPTION
+    Pc_rad : TYPE
+        DESCRIPTION
+    seed_NPc : TYPE, optional
+        DESCRIPTION. The default is None.
+    seed_Pc : TYPE, optional
+        DESCRIPTION. The default is None.
+
+    Returns
+    -------
+    None.
+
+    """
+    if not seed_Pc is None:
+        np.random.seed(seed_NPc)
+    cond_start = np.random.rand(n_rows + 100, 1, n_depth) > (1 - NPc_rad)
+    
+    if not seed_NPc is None:
+        np.random.seed(seed_Pc)
+    cond_end = np.random.rand(n_rows + 100, 1, n_depth) > (1 - Pc_rad)
+    
+    temp_start = np.zeros((1, 1, n_depth))
+    for j in range(n_depth):
+        # construct a conduit at the first row of this column if there is
+        # a 1 among the first 50 entires of the cond_start matrix at this column
+        # and the corresponding entries of the cond_end are matrix all 0.
+        if (np.where(cond_start[0:50, 0, j])[0].size > 0) and (np.where(cond_end[0:50, 0, j])[0].size == 0):
+            temp_start[0, 0, j] = 1
+        # construct a conduit at the first row of this column if the last 
+        # 1 among the 50 first entries of the cond_start matrix is at a more
+        # advanced postition than the last 1 among the 50 entries of the cond_end matrix
+        if (np.where(cond_start[0:50, 0, j])[0].size > 0) and (np.where(cond_end[0:50, 0, j])[0][-1] < np.where(cond_start[0:50, 0, j])[0][-1]):
+            temp_start[0, 0, j] = 1
+            
+    # Cleaning up the obtained start and end points
+    cond_start = cond_start[50:-50, :, :] # removing the extra elements
+    cond_start[0, :, :] = temp_start 
+    cond_start[-1, :, :] = 0 # no conduit can start at the last row
+    
+    cond_end = cond_end[50:-50, : , :]
+    cond_end[0, :, :] = 0 # no conduit can end at the first row
+    cond_end[-1, :, :] = 1 # all existing conduits must end at the last row
+    
+    return cond_start, cond_end
 
 def get_conduit_degree(conduit_elements, throat_conduits, outlet_row_index):
     """
