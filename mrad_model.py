@@ -475,7 +475,7 @@ def mrad_to_openpnm(conduit_elements, conns):
     
     return pn
     
-def clean_network(net, conduit_elements, outlet_row_index, remove_dead_ends=True):
+def clean_network(net, conduit_elements, outlet_row_index, remove_dead_ends=True, removed_components=[]):
     """
     Cleans an OpenPNM network object by removing
     conduits that don't have a connection to the inlet (first) or outlet (last) row through
@@ -499,6 +499,10 @@ def clean_network(net, conduit_elements, outlet_row_index, remove_dead_ends=True
     remove_dead_ends : bln, optional
         should the conduits that have degree 1 and aren't connected to inlet or outlet
         be removed? (default: True)
+    removed_components : list of lists, optional
+        components to be removed; each element corresponds to a 
+        removed component and contains the indices of the pores in the removed component.
+        Default: [], in which case the components to be removed are found within this function.
 
     Returns
     -------
@@ -513,22 +517,16 @@ def clean_network(net, conduit_elements, outlet_row_index, remove_dead_ends=True
     sorted_indices = np.argsort(component_sizes)[::-1]
     for sorted_index in sorted_indices:
         sorted_components.append(component_indices[sorted_index])
+        
+    # Find components that don't extend through the domain in axial direction
+    if len(removed_components) == 0:
+        removed_components= get_removed_components(net, conduit_elements, outlet_row_index)
     
-    # Remove components that don't extend through the domain in axial direction
-    pores_to_remove = []
-    for component in sorted_components:
-        in_btm = np.sum(conduit_elements[component, 0] == 0) # number of conduit elements belonging to this component at the inlet row
-        in_top = np.sum(conduit_elements[component, 0] == outlet_row_index) # number of conduit elements belonging to this component at the outlet row
-        if (in_btm == 0) or (in_top == 0):
-            pores_to_remove.append(component)
-    if len(pores_to_remove) > 0:
-        removed_components = pores_to_remove
-        pores_to_remove = np.concatenate(pores_to_remove)
-    
+    # Remove the found components
+    if len(removed_components) > 0:
+        pores_to_remove = np.concatenate(removed_components)
         conduit_elements = np.delete(conduit_elements, pores_to_remove, 0)
         op.topotools.trim(net, pores=pores_to_remove)
-    else:
-        removed_components = []
         
     if remove_dead_ends:
         # Remoce any remaining conduits that are not connected to the inlet or outlet
@@ -570,6 +568,47 @@ def clean_network(net, conduit_elements, outlet_row_index, remove_dead_ends=True
             conduits_to_remove = conduit_indices[np.where(conduit_degree_info[:, 3] == 1)]
         
     return net, removed_components
+
+def get_removed_components(net, conduit_elements, outlet_row_index):
+    """
+    Finds from an OpenPNM Network object conduits that don't have a connection to the inlet (first) or outlet (last) row through
+    the cluster to which they belong.
+
+    Parameters
+    ----------
+    net : openpnm.Network()
+        network object
+    conduit_elements : np.array
+        has one row for each element belonging to a conduit and 5 columns:
+        1) the row index of the element
+        2) the column index of the element
+        3) the radial (depth) index of the element
+        4) the index of the conduit the element belongs to (from 0 to n_conduits)
+        5) the index of the element (from 0 to n_conduit_elements - 1)
+    outlet_row_index : int
+        index of the last row of the network (= n_rows - 1)
+
+    Returns
+    -------
+    removed_components : list of lists
+        components removed because they are not connected to the inlet or to the outlet; each element corresponds to a 
+        removed component and contains the indices of the pores in the removed component
+    """
+    _, component_indices, component_sizes = get_components(net)
+    sorted_components = []
+    sorted_indices = np.argsort(component_sizes)[::-1]
+    for sorted_index in sorted_indices:
+        sorted_components.append(component_indices[sorted_index])
+    
+    # Find components that don't extend through the domain in axial direction
+    removed_components = []
+    for component in sorted_components:
+        in_btm = np.sum(conduit_elements[component, 0] == 0) # number of conduit elements belonging to this component at the inlet row
+        in_top = np.sum(conduit_elements[component, 0] == outlet_row_index) # number of conduit elements belonging to this component at the outlet row
+        if (in_btm == 0) or (in_top == 0):
+            removed_components.append(component)
+        
+    return removed_components
         
 def save_network(net, save_path):
     """

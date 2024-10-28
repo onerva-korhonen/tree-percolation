@@ -912,7 +912,7 @@ def run_conduit_si(net, cfg, spreading_param=0):
     prevalence_diff = 1
     last_removed_by_embolism = False
        
-    while prevalence_diff > 0:
+    while (prevalence_diff > 0) & (time_step < si_length):
             
         pores_to_remove = []
         removed_conduit_indices = []
@@ -980,14 +980,12 @@ def run_conduit_si(net, cfg, spreading_param=0):
                                                                   heartwood_d=heartwood_d, cec_indicator=cec_indicator)
             conduit_elements = mrad_model.get_conduit_elements(perc_net, cec_indicator=cec_indicator, 
                                                                conduit_element_length=conduit_element_length, heartwood_d=heartwood_d, use_cylindrical_coords=use_cylindrical_coords)
-            orig_perc_net = op.network.Network(coords=perc_net['pore.coords'], conns=perc_net['throat.conns']) # orig_perc_net is needed for calculating measures related to non-functional components (these are removed from perc_net before the simulations)
-            orig_perc_net['throat.type'] = perc_net['throat.type']
-            orig_perc_net['pore.diameter'] = perc_net['pore.diameter']
-            perc_net, removed_components = mrad_model.clean_network(perc_net, conduit_elements, cfg['net_size'][0] - 1, remove_dead_ends=False)
+            
+            removed_components = mrad_model.get_removed_components(perc_net, conduit_elements, cfg['net_size'][0] - 1)
             removed_elements = list(itertools.chain.from_iterable(removed_components)) # calculating the size of the largest removed component in conduits
-            nonfunctional_component_volume[time_step] += nonfunctional_component_volume[time_step - 1] + np.sum(np.pi * 0.5 * orig_perc_net['pore.diameter'][removed_elements]**2 * conduit_element_length)
+            nonfunctional_component_volume[time_step] += nonfunctional_component_volume[time_step - 1] + np.sum(np.pi * 0.5 * perc_net['pore.diameter'][removed_elements]**2 * conduit_element_length)
             if len(removed_elements) > 0:
-                removed_net = get_induced_subnet(orig_perc_net, removed_elements)
+                removed_net = get_induced_subnet(perc_net, removed_elements)
                 removed_lcc, _, n_nonfunctional_conduits = get_conduit_lcc_size(removed_net, use_cylindrical_coords=use_cylindrical_coords, 
                                                                        conduit_element_length=conduit_element_length, 
                                                                        heartwood_d=heartwood_d, cec_indicator=cec_indicator)
@@ -1003,6 +1001,9 @@ def run_conduit_si(net, cfg, spreading_param=0):
                 nonfunctional_component_size[time_step] = nonfunctional_component_size[time_step] + nonfunctional_component_size[time_step - 1]
             if max_removed_lcc > lcc_size[time_step]: # checking if the largest removed component is larger than the largest functional one
                 lcc_size[time_step] = max_removed_lcc
+                
+            perc_net, _ = mrad_model.clean_network(perc_net, conduit_elements, cfg['net_size'][0] - 1, remove_dead_ends=False, removed_components=removed_components)
+                
             n_inlets[time_step], n_outlets[time_step] = get_n_inlets(perc_net, cfg['net_size'][0] - 1, cec_indicator=cec_indicator, 
                                                      conduit_element_length=conduit_element_length, heartwood_d=heartwood_d,
                                                      use_cylindrical_coords=use_cylindrical_coords)
@@ -1015,7 +1016,7 @@ def run_conduit_si(net, cfg, spreading_param=0):
                 if last_removed_by_embolism:
                     nonfunctional_component_volume[time_step::] = nonfunctional_component_volume[time_step - 1]
                 else:
-                    nonfunctional_component_volume[time_step::] = nonfunctional_component_volume[time_step - 1] + np.sum(np.pi * 0.5 * orig_perc_net['pore.diameter']**2 * conduit_element_length)
+                    nonfunctional_component_volume[time_step::] = nonfunctional_component_volume[time_step - 1] + np.sum(np.pi * 0.5 * perc_net['pore.diameter']**2 * conduit_element_length)
                 lcc_size[time_step::] = max_removed_lcc
                 prevalence[time_step::] = np.sum(embolization_times[:, 0] <= time_step) / conduits.shape[0]
                 time_step += 1
@@ -1025,7 +1026,7 @@ def run_conduit_si(net, cfg, spreading_param=0):
                 if last_removed_by_embolism:
                     nonfunctional_component_volume[time_step::] = nonfunctional_component_volume[time_step - 1]
                 else:
-                    nonfunctional_component_volume[time_step::] = nonfunctional_component_volume[time_step - 1] + np.sum(np.pi * 0.5 * orig_perc_net['pore.diameter'] * conduit_element_length)
+                    nonfunctional_component_volume[time_step::] = nonfunctional_component_volume[time_step - 1] + np.sum(np.pi * 0.5 * perc_net['pore.diameter'] * conduit_element_length)
                 lcc_size[time_step::] = max_removed_lcc
                 prevalence[time_step::] = conduits.shape[0] - np.sum(embolization_times[:, 0] <= time_step)
                 time_step += 1
@@ -1580,9 +1581,10 @@ def calculate_bpp(net, conduits, icc_mask, cfg):
     bpp = np.zeros(iccs.shape[0])
     for i, icc in enumerate(iccs):
         start_conduit = np.where((conduits[:, 0] <= icc[0]) & (icc[0] <= conduits[:, 1]))[0][0]
-        end_conduit = np.where((conduits[:, 0] <= icc[1]) & (icc[1] <= conduits[:, 1]))[0][0]
+        end_conduit = np.where((conduits[:, 0] <= icc[1]) & (icc[1] <= conduits[:, 1]))[0][0] 
         Am = 0.5 * (conduit_areas[start_conduit] / icc_count[start_conduit] + conduit_areas[end_conduit] / icc_count[end_conduit]) * fc * fpf
         pit_count = Am / average_pit_area
         bpp[i] = (weibull_a / pit_count**(1 / weibull_b)) * np.random.weibull(weibull_b)
         
     return bpp
+
