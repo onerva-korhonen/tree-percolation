@@ -243,7 +243,7 @@ def create_mrad_network(cfg):
     
     return conduit_elements, conns
             
-def prepare_simulation_network(net, cfg):
+def prepare_simulation_network(net, cfg, update_coords=True):
     """
     Modifies the properties of an OpenPNM network object to prepare it for Stokes flow and advenction-diffusion simulations.
     
@@ -255,8 +255,6 @@ def prepare_simulation_network(net, cfg):
         contains (all default values match the Mrad et al. article):
             use_cylindrical_coords: bln, should Mrad model coordinates be interpreted as cylindrical ones in visualizations?
             Lce: float, length of a conduit element
-            Dc: float, average conduit diameter (m)
-            Dc_cv: float, coefficient of variation of conduit diameter
             fc: float, average contact fraction between two conduits
             fpf: float, average pit field fraction between two conduits
             conduit_diameters: np.array of floats, diameters of the conduits OR
@@ -265,11 +263,11 @@ def prepare_simulation_network(net, cfg):
             cec_indicator: int, value used to indicate that the type of a throat is CE
             tf: float, microfibril strand thickness (m)
             icc_length: float, length of an ICC throat (m)
+    update_coords : bln, should the net pore coordinates be modified for simulation? default: True
 
     Returns
     -------
-    sim_net : openpnm.Networks
-        network ready for performing simulations
+    no direct output, modifies net in-place
 
     """
     #-----------------------------------------------------------------------------------------------------------------------------------------------
@@ -278,8 +276,6 @@ def prepare_simulation_network(net, cfg):
     
     use_cylindrical_coords = cfg.get('use_cylindrical_coords', True)
     Lce = cfg.get('Lce', params.Lce)
-    Dc = cfg.get('Dc', params.Dc)
-    Dc_cv = cfg.get('Dc_cv', params.Dc_cv)
     Dp = cfg.get('Dp', params.Dp)
     fc = cfg.get('fc', params.fc)
     fpf = cfg.get('fpf', params.fpf)
@@ -292,10 +288,13 @@ def prepare_simulation_network(net, cfg):
     conns = net['throat.conns']
     conn_types = net['throat.type']
     
-    if use_cylindrical_coords:
-        pore_coords = mrad_to_cartesian(coords, Lce)
+    if update_coords:
+        if use_cylindrical_coords:
+            pore_coords = mrad_to_cartesian(coords, Lce)
+        else:
+            pore_coords = Lce * coords
     else:
-        pore_coords = Lce * coords
+        pore_coords = coords
     
     # finding throats that belong to each conduit and conduit and pore diameters
     
@@ -321,46 +320,44 @@ def prepare_simulation_network(net, cfg):
     #----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
     # Generating an openpnm network for the simulations
     #----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-    sim_net = op.network.Network(coords=pore_coords, conns=conns)
-    sim_net['throat.type'] = conn_types
-    sim_net.regenerate_models()
-    sim_net['pore.diameter'] = pore_diameters
-    sim_net['pore.volume'] = 0 # here, pores are 2D horizontal surfaces with zero volumes
+
+    net['pore.coords'] = pore_coords
+    net.regenerate_models()
+    net['pore.diameter'] = pore_diameters
+    net['pore.volume'] = 0 # here, pores are 2D horizontal surfaces with zero volumes
     # throat diameters equal to the diameters of the adjacent pores
-    sim_net.add_model(propname='throat.max_size', model=op.models.misc.from_neighbor_pores, 
+    net.add_model(propname='throat.max_size', model=op.models.misc.from_neighbor_pores, 
                  mode='min', prop='pore.diameter') 
-    sim_net.add_model(propname='throat.diameter', model=op.models.misc.scaled, factor=1., prop='throat.max_size')
-    sim_net.add_model(propname='throat.length', model=op.models.geometry.throat_length.spheres_and_cylinders,
+    net.add_model(propname='throat.diameter', model=op.models.misc.scaled, factor=1., prop='throat.max_size')
+    net.add_model(propname='throat.length', model=op.models.geometry.throat_length.spheres_and_cylinders,
                       pore_diameter='pore.diameter', throat_diameter='throat.diameter')
     
     # changing the length of the ICC throats
-    sim_net['throat.length'][~cec_mask] = icc_length
+    net['throat.length'][~cec_mask] = icc_length
     
-    sim_net.add_model(propname='throat.surface_area',
+    net.add_model(propname='throat.surface_area',
                       model=op.models.geometry.throat_surface_area.cylinder,
                       throat_diameter='throat.diameter',
                       throat_length='throat.length')
-    sim_net.add_model(propname='throat.volume', 
+    net.add_model(propname='throat.volume', 
                       model=op.models.geometry.throat_volume.cylinder,
                       throat_diameter='throat.diameter',
                       throat_length='throat.length')
-    sim_net.add_model(propname='throat.area',
+    net.add_model(propname='throat.area',
                       model=op.models.geometry.throat_cross_sectional_area.cylinder,
                       throat_diameter='throat.diameter')
-    sim_net.add_model(propname='throat.diffusive_size_factors', 
+    net.add_model(propname='throat.diffusive_size_factors', 
                       model=op.models.geometry.diffusive_size_factors.spheres_and_cylinders)
-    sim_net.add_model(propname='throat.hydraulic_size_factors', 
+    net.add_model(propname='throat.hydraulic_size_factors', 
                       model=op.models.geometry.hydraulic_size_factors.spheres_and_cylinders)
-    sim_net.add_model(propname='pore.effective_volume', model=get_effective_pore_volume)
-    sim_net['pore.effective_sidearea'] = 4 * sim_net['pore.effective_volume'] / sim_net['pore.diameter'] #The effective lateral surface area of the pore is calculated from the effective pore volume (A_l = dV/dr for a cylinder)
-    sim_net['throat.area_m'] = 0.5 * (sim_net['pore.effective_sidearea'][conns[:, 0]] + sim_net['pore.effective_sidearea'][conns[:, 1]]) * fc * fpf # membrane area calculated from OpenPNM pore geometry
-    sim_net['throat.area_m_mrad'] = 0.5 * (conduit_areas[conduit_indices[conns[:, 0]] - 1] / \
+    net.add_model(propname='pore.effective_volume', model=get_effective_pore_volume)
+    net['pore.effective_sidearea'] = 4 * net['pore.effective_volume'] / net['pore.diameter'] #The effective lateral surface area of the pore is calculated from the effective pore volume (A_l = dV/dr for a cylinder)
+    net['throat.area_m'] = 0.5 * (net['pore.effective_sidearea'][conns[:, 0]] + net['pore.effective_sidearea'][conns[:, 1]]) * fc * fpf # membrane area calculated from OpenPNM pore geometry
+    net['throat.area_m_mrad'] = 0.5 * (conduit_areas[conduit_indices[conns[:, 0]] - 1] / \
         conduit_icc_count[conduit_indices[conns[:, 0]] - 1] + conduit_areas[conduit_indices[conns[:, 1]] - 1] / \
         conduit_icc_count[conduit_indices[conns[:, 1]] - 1]) * fc * fpf # membrane area calculated from the Mrad geometry
     pore_area = (Dp + tf)**2 # area of a single pore (m^2)
-    sim_net['throat.npore'] = np.floor(sim_net['throat.area_m_mrad'] / pore_area).astype(int)
-    
-    return sim_net
+    net['throat.npore'] = np.floor(net['throat.area_m_mrad'] / pore_area).astype(int)
     
 # Conduit map operations
     

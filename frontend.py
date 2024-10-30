@@ -44,6 +44,7 @@ cfg['conduit_element_length'] = mrad_params.Lce
 cfg['fc'] = mrad_params.fc
 cfg['fpf'] = mrad_params.fpf
 
+cfg['use_cylindrical_coords'] = False
 cfg['fixed_random'] = True
 
 simulate_single_param_spreading = False
@@ -58,25 +59,28 @@ if __name__=='__main__':
     #visualization.visualize_network_with_openpnm(net)
     net_cleaned, _ = mrad_model.clean_network(net, conduit_elements, cfg['net_size'][0] - 1)
     #visualization.visualize_network_with_openpnm(net_cleaned)
+    orig_n_conns = net_cleaned['throat.conns'].shape[0] + 1
+    orig_n_pores = net_cleaned['pore.coords'].shape[0] + 1
 
     #mrad_model.save_network(net_cleaned, params.network_save_file)
 
-    sim_net = mrad_model.prepare_simulation_network(net_cleaned, cfg)
+    mrad_model.prepare_simulation_network(net_cleaned, cfg, update_coords=True)
     #visualization.visualize_pores(sim_net)
     #visualization.visualize_network_with_openpnm(sim_net, params.use_cylindrical_coordinates, mrad_params.Lce, 'pore.coords')
 
     if simulate_single_param_spreading:
+        
         cfg['spreading_probability'] = params.spreading_probability
         cfg['pressure_diff'] = params.pressure_diff
-        effective_conductance, _ = simulations.simulate_water_flow(sim_net, cfg, visualize=params.visualize_simulations)
+        effective_conductance, _ = simulations.simulate_water_flow(net_cleaned, cfg, visualize=params.visualize_simulations)
+    
         if params.percolation_type in ['conduit', 'si']:
-            lcc_size, susceptibility, _ = percolation.get_conduit_lcc_size(sim_net)
+            lcc_size, susceptibility, _ = percolation.get_conduit_lcc_size(net_cleaned)
         else:
-            lcc_size, susceptibility = percolation.get_lcc_size(sim_net)
-        n_inlet, n_outlet = percolation.get_n_inlets(sim_net, cfg['net_size'][0] - 1, use_cylindrical_coords=True)
+            lcc_size, susceptibility = percolation.get_lcc_size(net_cleaned)
+        n_inlet, n_outlet = percolation.get_n_inlets(net_cleaned, (cfg['net_size'][0] - 1)*cfg['conduit_element_length'], use_cylindrical_coords=False)
     
         cfg['use_cylindrical_coords'] = False
-        net_cleaned['pore.diameter'] = sim_net['pore.diameter']
         cfg['conduit_diameters'] = 'inherit_from_net'
     
         effective_conductances, lcc_sizes, functional_lcc_sizes, nonfunctional_component_size, susceptibilities, functional_susceptibilities, n_inlets, n_outlets, nonfunctional_component_volume, prevalence = percolation.run_percolation(net_cleaned, cfg, percolation_type=params.percolation_type, removal_order='random', break_nonfunctional_components=params.break_nonfunctional_components)
@@ -111,8 +115,6 @@ if __name__=='__main__':
         f.close()
     
     if construct_VC:
-        cfg['use_cylindrical_coords'] = False
-        net_cleaned['pore.diameter'] = sim_net['pore.diameter']
         cfg['conduit_diameters'] = 'inherit_from_net'
     
         if cfg['si_type'] == 'physiological':
@@ -129,14 +131,12 @@ if __name__=='__main__':
         index = int(sys.argv[1])
         pressure_diff = params.vulnerability_pressure_range[index]
 
-        cfg['use_cylindrical_coords'] = False
-        net_cleaned['pore.diameter'] = sim_net['pore.diameter']
         cfg['conduit_diameters'] = 'inherit_from_net'
     
         optimized_spreading_probabilities = np.zeros(len(params.vulnerability_pressure_range))
         physiological_effective_conductances = np.zeros(len(params.vulnerability_pressure_range))
         stochastic_effective_conductances = np.zeros(len(params.vulnerability_pressure_range))
-    
+
         percolation.optimize_spreading_probability(net_cleaned, cfg, pressure_diff, cfg['start_conduits'], params.optimization_probability_range, si_length=cfg['si_length'], n_iterations=params.n_iterations, save_path_base=params.optimized_spreading_probability_save_path_base)
         
 
