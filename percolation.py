@@ -1010,7 +1010,11 @@ def run_conduit_si(net, cfg, spreading_param=0):
                                                      conduit_element_length=conduit_element_length, heartwood_d=heartwood_d,
                                                      use_cylindrical_coords=use_cylindrical_coords)
             mrad_model.prepare_simulation_network(net, cfg, update_coords=False)
-            effective_conductances[time_step], pore_pressures = simulations.simulate_water_flow(net, cfg, visualize=False) 
+            if time_step == 0:
+                water, effective_conductances[time_step], pore_pressures = simulations.simulate_water_flow(net, cfg, visualize=False, return_water=True) 
+            else:
+                effective_conductances[time_step], pore_pressures = simulations.simulate_water_flow(net, cfg, visualize=False, water=water, return_water=False)
+                
             functional_lcc_size[time_step], functional_susceptibility[time_step], _ = get_conduit_lcc_size(net=net)
         except Exception as e:
             if str(e) == 'Cannot delete ALL pores': # this is because all remaining nodes get embolized or belong to non-functional components
