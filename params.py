@@ -16,6 +16,7 @@ fixed_random = True
 if fixed_random:
     #seeds_NPc = [205, 9699, 8324, 2123, 1818, 1834, 3042, 5247, 4319, 2912]
     #seeds_Pc = [6118, 1394, 2921, 3663, 4560, 7851, 1996, 5142, 5924,  464]
+    #TODO: consider replacing these with random number generators
     seeds_NPc = [935, 1219,  359, 2762, 1200, 2777, 8909, 1385, 6697, 8561,  826,
                  7712, 4203,  267, 1774, 1368, 2996, 2116, 4868, 5330,  327, 2744,
                  2061, 6479, 2606, 8865, 8599, 7404, 9719, 1753, 8624, 8651, 2650,
@@ -49,7 +50,7 @@ Dc_z = norm.ppf(1 - (1 - Dc_alpha) / 2)
     
 
 # paths for saving
-triton = False
+triton = True
 identifier = 'physiological_conduit_si'
 
 if triton:
