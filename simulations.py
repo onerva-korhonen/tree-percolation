@@ -44,6 +44,7 @@ def simulate_water_flow(sim_net, cfg, visualize=False):
     pore_pressure : np.array of floats
         water pressure at each pore of sim_net
     """
+    
     water_pore_viscosity = cfg.get('water_pore_viscosity', mrad_params.water_pore_viscosity)
     water_throat_viscosity = cfg.get('water_throat_viscosity', mrad_params.water_throat_viscosity)
     water_pore_diffusivity = cfg.get('water_pore_diffusivity', mrad_params.water_pore_diffusivity)

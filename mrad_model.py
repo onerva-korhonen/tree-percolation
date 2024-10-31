@@ -465,7 +465,7 @@ def mrad_to_openpnm(conduit_elements, conns):
     ws = op.Workspace()
     ws.clear()
     
-    proj = ws.new_project('name = diffpornetwork')
+    proj = ws.new_project('diffpornetwork')
     
     pn = op.network.Network(project=proj, coords=conduit_elements[:, 0:3], conns=conns[:, 0:2].astype(int))
     pn['throat.type'] = conns[:, 2].astype(int)
@@ -880,15 +880,24 @@ def get_conduits(cecs):
     conduits = np.asarray(conduits)
     return conduits
 
-def get_conduit_elements(net, use_cylindrical_coords=False, conduit_element_length=params.Lce, 
+def get_conduit_elements(net=None, pore_coords=[], conns=[], conn_types=[], use_cylindrical_coords=False, conduit_element_length=params.Lce, 
                          heartwood_d=params.heartwood_d, cec_indicator=params.cec_indicator):
     """
     Constructs the conduit elements array describing a given network.
 
     Parameters
     ----------
-    net : openpnm.Network()
-        pores correspond to conduit elements, throats to connections between them
+    net : openpnm.Network(), optional
+        pores correspond to conduit elements, throats to connections between them (default: None, in which case
+        pore_coords, conns, and conn_types arrays are used to read network information)
+    pore_coords : np.array(), optional
+        pore coordinates of net (default: [], in which case coordinates are read from net). Note that if net is not None, pore_coords
+        is not used.
+    conns : np.array(), optional
+        throats of net, each row containing the indices of the start and end pores of a throat (default: [], in which case throat info is read from net).
+        Note that if net is not None, conns is not used.
+    conn_types : np.array(), optional
+        types of the throats (default: [], in which case throat info is read from net). Note that if net is not None, conn_types is not used.
     use_cylindrical_coords : bln, optional
         have the net['pore.coords'] been defined by interpreting the Mrad model coordinates as cylindrical ones?
     conduit_element_length : float, optional
@@ -909,11 +918,14 @@ def get_conduit_elements(net, use_cylindrical_coords=False, conduit_element_leng
         4) the index of the conduit the element belongs to (from 0 to n_conduits - 1)
         5) the index of the element (from 0 to n_conduit_elements - 1)
     """
-    pore_coords = net['pore.coords']
-    conns = net.get('throat.conns', [])
-    conn_types = net.get('throat.type', [])
+    assert (not net is None) or (len(pore_coords) > 0), 'You must give either the net object or the pore_coords array'
     
-    conduit_elements = np.zeros((len(net['pore.coords']), 5))
+    if not net is None:
+        pore_coords = net['pore.coords']
+        conns = net.get('throat.conns', [])
+        conn_types = net.get('throat.type', [])
+    
+    conduit_elements = np.zeros((len(pore_coords), 5))
     
     if use_cylindrical_coords:
         coords = cartesian_to_mrad(pore_coords, max_depth=np.amax(pore_coords[2]), conduit_element_length=conduit_element_length,

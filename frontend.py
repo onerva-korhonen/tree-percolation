@@ -75,7 +75,7 @@ if __name__=='__main__':
         effective_conductance, _ = simulations.simulate_water_flow(net_cleaned, cfg, visualize=params.visualize_simulations)
     
         if params.percolation_type in ['conduit', 'si']:
-            lcc_size, susceptibility, _ = percolation.get_conduit_lcc_size(net_cleaned)
+            lcc_size, susceptibility, _ = percolation.get_conduit_lcc_size(net=net_cleaned)
         else:
             lcc_size, susceptibility = percolation.get_lcc_size(net_cleaned)
         n_inlet, n_outlet = percolation.get_n_inlets(net_cleaned, (cfg['net_size'][0] - 1)*cfg['conduit_element_length'], use_cylindrical_coords=False)
