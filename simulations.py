@@ -14,7 +14,7 @@ import mrad_params
 import params
 import visualization
 
-def simulate_water_flow(sim_net, cfg, visualize=False):
+def simulate_water_flow(sim_net, cfg, visualize=False, water=None, return_water=False):
     """
     Using OpenPNM tools, performs Stokes flow simulation and a simple advection-diffusion simulation
     and calculates the effective conductance based on the Stokes flow simulation.
@@ -36,6 +36,10 @@ def simulate_water_flow(sim_net, cfg, visualize=False):
         use_cylindrical_coords: bln, should Mrad model coordinates be interpreted as cylindrical ones in visualizations?
     visualize : bln, optional
         if True, the pressure and concentration at pores is visualized in form of scatter plots.
+    water : op.Water(), optional
+        the Water() object used to simulate the flow. default: None, in which case a new object is created.
+    return_water : bln, optional
+        if True, the created Water() object is returned. default: False
 
     Returns
     -------
@@ -54,13 +58,20 @@ def simulate_water_flow(sim_net, cfg, visualize=False):
     cec_indicator = cfg.get('cec_indicator', mrad_params.cec_indicator)
     use_cylindrical_coords = cfg.get('use_cylindrical_coords', True)
     
+    n_pores = sim_net['pore.coords'].shape[0]
     conn_types = sim_net['throat.type']
+    n_throats = conn_types.shape[0]
     cec_mask = conn_types == cec_indicator # cec_mask == 1 if the corresponding throat is a connection between two elements in the same conduit
     
-    water = op.phase.Water(network=sim_net)
-    water['pore.viscosity'] = water_pore_viscosity
-    water['throat.viscosity'] = water_throat_viscosity
-    water['pore.diffusivity'] = water_pore_diffusivity
+    if water is None:
+        water = op.phase.Water(network=sim_net)
+        water['pore.viscosity'] = water_pore_viscosity
+        water['throat.viscosity'] = water_throat_viscosity
+        water['pore.diffusivity'] = water_pore_diffusivity
+    else:
+        water['pore.viscosity'] = np.ones(n_pores) * water_pore_viscosity
+        water['throat.viscosity'] = np.ones(n_throats) * water_throat_viscosity
+        water['pore.diffusivity'] = np.ones(n_pores) * water_pore_diffusivity
     
     water.add_model(propname='throat.diffusive_conductance',
                     model=op.models.physics.diffusive_conductance.ordinary_diffusion)
@@ -111,7 +122,10 @@ def simulate_water_flow(sim_net, cfg, visualize=False):
     
     pore_pressure = stokes_flow['pore.pressure']
     
-    return effective_conductance, pore_pressure
+    if return_water:
+        return water, effective_conductance, pore_pressure
+    else:
+        return effective_conductance, pore_pressure
 
 def simulate_drainage(sim_net, start_pores, cfg):
     """

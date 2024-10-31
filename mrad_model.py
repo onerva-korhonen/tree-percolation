@@ -243,7 +243,7 @@ def create_mrad_network(cfg):
     
     return conduit_elements, conns
             
-def prepare_simulation_network(net, cfg):
+def prepare_simulation_network(net, cfg, update_coords=True):
     """
     Modifies the properties of an OpenPNM network object to prepare it for Stokes flow and advenction-diffusion simulations.
     
@@ -255,8 +255,6 @@ def prepare_simulation_network(net, cfg):
         contains (all default values match the Mrad et al. article):
             use_cylindrical_coords: bln, should Mrad model coordinates be interpreted as cylindrical ones in visualizations?
             Lce: float, length of a conduit element
-            Dc: float, average conduit diameter (m)
-            Dc_cv: float, coefficient of variation of conduit diameter
             fc: float, average contact fraction between two conduits
             fpf: float, average pit field fraction between two conduits
             conduit_diameters: np.array of floats, diameters of the conduits OR
@@ -265,11 +263,11 @@ def prepare_simulation_network(net, cfg):
             cec_indicator: int, value used to indicate that the type of a throat is CE
             tf: float, microfibril strand thickness (m)
             icc_length: float, length of an ICC throat (m)
+    update_coords : bln, should the net pore coordinates be modified for simulation? default: True
 
     Returns
     -------
-    sim_net : openpnm.Networks
-        network ready for performing simulations
+    no direct output, modifies net in-place
 
     """
     #-----------------------------------------------------------------------------------------------------------------------------------------------
@@ -278,8 +276,6 @@ def prepare_simulation_network(net, cfg):
     
     use_cylindrical_coords = cfg.get('use_cylindrical_coords', True)
     Lce = cfg.get('Lce', params.Lce)
-    Dc = cfg.get('Dc', params.Dc)
-    Dc_cv = cfg.get('Dc_cv', params.Dc_cv)
     Dp = cfg.get('Dp', params.Dp)
     fc = cfg.get('fc', params.fc)
     fpf = cfg.get('fpf', params.fpf)
@@ -292,10 +288,13 @@ def prepare_simulation_network(net, cfg):
     conns = net['throat.conns']
     conn_types = net['throat.type']
     
-    if use_cylindrical_coords:
-        pore_coords = mrad_to_cartesian(coords, Lce)
+    if update_coords:
+        if use_cylindrical_coords:
+            pore_coords = mrad_to_cartesian(coords, Lce)
+        else:
+            pore_coords = Lce * coords
     else:
-        pore_coords = Lce * coords
+        pore_coords = coords
     
     # finding throats that belong to each conduit and conduit and pore diameters
     
@@ -321,46 +320,44 @@ def prepare_simulation_network(net, cfg):
     #----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
     # Generating an openpnm network for the simulations
     #----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-    sim_net = op.network.Network(coords=pore_coords, conns=conns)
-    sim_net['throat.type'] = conn_types
-    sim_net.regenerate_models()
-    sim_net['pore.diameter'] = pore_diameters
-    sim_net['pore.volume'] = 0 # here, pores are 2D horizontal surfaces with zero volumes
+
+    net['pore.coords'] = pore_coords
+    net.regenerate_models()
+    net['pore.diameter'] = pore_diameters
+    net['pore.volume'] = 0 # here, pores are 2D horizontal surfaces with zero volumes
     # throat diameters equal to the diameters of the adjacent pores
-    sim_net.add_model(propname='throat.max_size', model=op.models.misc.from_neighbor_pores, 
+    net.add_model(propname='throat.max_size', model=op.models.misc.from_neighbor_pores, 
                  mode='min', prop='pore.diameter') 
-    sim_net.add_model(propname='throat.diameter', model=op.models.misc.scaled, factor=1., prop='throat.max_size')
-    sim_net.add_model(propname='throat.length', model=op.models.geometry.throat_length.spheres_and_cylinders,
+    net.add_model(propname='throat.diameter', model=op.models.misc.scaled, factor=1., prop='throat.max_size')
+    net.add_model(propname='throat.length', model=op.models.geometry.throat_length.spheres_and_cylinders,
                       pore_diameter='pore.diameter', throat_diameter='throat.diameter')
     
     # changing the length of the ICC throats
-    sim_net['throat.length'][~cec_mask] = icc_length
+    net['throat.length'][~cec_mask] = icc_length
     
-    sim_net.add_model(propname='throat.surface_area',
+    net.add_model(propname='throat.surface_area',
                       model=op.models.geometry.throat_surface_area.cylinder,
                       throat_diameter='throat.diameter',
                       throat_length='throat.length')
-    sim_net.add_model(propname='throat.volume', 
+    net.add_model(propname='throat.volume', 
                       model=op.models.geometry.throat_volume.cylinder,
                       throat_diameter='throat.diameter',
                       throat_length='throat.length')
-    sim_net.add_model(propname='throat.area',
+    net.add_model(propname='throat.area',
                       model=op.models.geometry.throat_cross_sectional_area.cylinder,
                       throat_diameter='throat.diameter')
-    sim_net.add_model(propname='throat.diffusive_size_factors', 
+    net.add_model(propname='throat.diffusive_size_factors', 
                       model=op.models.geometry.diffusive_size_factors.spheres_and_cylinders)
-    sim_net.add_model(propname='throat.hydraulic_size_factors', 
+    net.add_model(propname='throat.hydraulic_size_factors', 
                       model=op.models.geometry.hydraulic_size_factors.spheres_and_cylinders)
-    sim_net.add_model(propname='pore.effective_volume', model=get_effective_pore_volume)
-    sim_net['pore.effective_sidearea'] = 4 * sim_net['pore.effective_volume'] / sim_net['pore.diameter'] #The effective lateral surface area of the pore is calculated from the effective pore volume (A_l = dV/dr for a cylinder)
-    sim_net['throat.area_m'] = 0.5 * (sim_net['pore.effective_sidearea'][conns[:, 0]] + sim_net['pore.effective_sidearea'][conns[:, 1]]) * fc * fpf # membrane area calculated from OpenPNM pore geometry
-    sim_net['throat.area_m_mrad'] = 0.5 * (conduit_areas[conduit_indices[conns[:, 0]] - 1] / \
+    net.add_model(propname='pore.effective_volume', model=get_effective_pore_volume)
+    net['pore.effective_sidearea'] = 4 * net['pore.effective_volume'] / net['pore.diameter'] #The effective lateral surface area of the pore is calculated from the effective pore volume (A_l = dV/dr for a cylinder)
+    net['throat.area_m'] = 0.5 * (net['pore.effective_sidearea'][conns[:, 0]] + net['pore.effective_sidearea'][conns[:, 1]]) * fc * fpf # membrane area calculated from OpenPNM pore geometry
+    net['throat.area_m_mrad'] = 0.5 * (conduit_areas[conduit_indices[conns[:, 0]] - 1] / \
         conduit_icc_count[conduit_indices[conns[:, 0]] - 1] + conduit_areas[conduit_indices[conns[:, 1]] - 1] / \
         conduit_icc_count[conduit_indices[conns[:, 1]] - 1]) * fc * fpf # membrane area calculated from the Mrad geometry
     pore_area = (Dp + tf)**2 # area of a single pore (m^2)
-    sim_net['throat.npore'] = np.floor(sim_net['throat.area_m_mrad'] / pore_area).astype(int)
-    
-    return sim_net
+    net['throat.npore'] = np.floor(net['throat.area_m_mrad'] / pore_area).astype(int)
     
 # Conduit map operations
     
@@ -468,14 +465,14 @@ def mrad_to_openpnm(conduit_elements, conns):
     ws = op.Workspace()
     ws.clear()
     
-    proj = ws.new_project('name = diffpornetwork')
+    proj = ws.new_project('diffpornetwork')
     
     pn = op.network.Network(project=proj, coords=conduit_elements[:, 0:3], conns=conns[:, 0:2].astype(int))
     pn['throat.type'] = conns[:, 2].astype(int)
     
     return pn
     
-def clean_network(net, conduit_elements, outlet_row_index, remove_dead_ends=True):
+def clean_network(net, conduit_elements, outlet_row_index, remove_dead_ends=True, removed_components=[]):
     """
     Cleans an OpenPNM network object by removing
     conduits that don't have a connection to the inlet (first) or outlet (last) row through
@@ -499,6 +496,10 @@ def clean_network(net, conduit_elements, outlet_row_index, remove_dead_ends=True
     remove_dead_ends : bln, optional
         should the conduits that have degree 1 and aren't connected to inlet or outlet
         be removed? (default: True)
+    removed_components : list of lists, optional
+        components to be removed; each element corresponds to a 
+        removed component and contains the indices of the pores in the removed component.
+        Default: [], in which case the components to be removed are found within this function.
 
     Returns
     -------
@@ -513,22 +514,16 @@ def clean_network(net, conduit_elements, outlet_row_index, remove_dead_ends=True
     sorted_indices = np.argsort(component_sizes)[::-1]
     for sorted_index in sorted_indices:
         sorted_components.append(component_indices[sorted_index])
+        
+    # Find components that don't extend through the domain in axial direction
+    if len(removed_components) == 0:
+        removed_components= get_removed_components(net, conduit_elements, outlet_row_index)
     
-    # Remove components that don't extend through the domain in axial direction
-    pores_to_remove = []
-    for component in sorted_components:
-        in_btm = np.sum(conduit_elements[component, 0] == 0) # number of conduit elements belonging to this component at the inlet row
-        in_top = np.sum(conduit_elements[component, 0] == outlet_row_index) # number of conduit elements belonging to this component at the outlet row
-        if (in_btm == 0) or (in_top == 0):
-            pores_to_remove.append(component)
-    if len(pores_to_remove) > 0:
-        removed_components = pores_to_remove
-        pores_to_remove = np.concatenate(pores_to_remove)
-    
+    # Remove the found components
+    if len(removed_components) > 0:
+        pores_to_remove = np.concatenate(removed_components)
         conduit_elements = np.delete(conduit_elements, pores_to_remove, 0)
         op.topotools.trim(net, pores=pores_to_remove)
-    else:
-        removed_components = []
         
     if remove_dead_ends:
         # Remoce any remaining conduits that are not connected to the inlet or outlet
@@ -570,6 +565,47 @@ def clean_network(net, conduit_elements, outlet_row_index, remove_dead_ends=True
             conduits_to_remove = conduit_indices[np.where(conduit_degree_info[:, 3] == 1)]
         
     return net, removed_components
+
+def get_removed_components(net, conduit_elements, outlet_row_index):
+    """
+    Finds from an OpenPNM Network object conduits that don't have a connection to the inlet (first) or outlet (last) row through
+    the cluster to which they belong.
+
+    Parameters
+    ----------
+    net : openpnm.Network()
+        network object
+    conduit_elements : np.array
+        has one row for each element belonging to a conduit and 5 columns:
+        1) the row index of the element
+        2) the column index of the element
+        3) the radial (depth) index of the element
+        4) the index of the conduit the element belongs to (from 0 to n_conduits)
+        5) the index of the element (from 0 to n_conduit_elements - 1)
+    outlet_row_index : int
+        index of the last row of the network (= n_rows - 1)
+
+    Returns
+    -------
+    removed_components : list of lists
+        components removed because they are not connected to the inlet or to the outlet; each element corresponds to a 
+        removed component and contains the indices of the pores in the removed component
+    """
+    _, component_indices, component_sizes = get_components(net)
+    sorted_components = []
+    sorted_indices = np.argsort(component_sizes)[::-1]
+    for sorted_index in sorted_indices:
+        sorted_components.append(component_indices[sorted_index])
+    
+    # Find components that don't extend through the domain in axial direction
+    removed_components = []
+    for component in sorted_components:
+        in_btm = np.sum(conduit_elements[component, 0] == 0) # number of conduit elements belonging to this component at the inlet row
+        in_top = np.sum(conduit_elements[component, 0] == outlet_row_index) # number of conduit elements belonging to this component at the outlet row
+        if (in_btm == 0) or (in_top == 0):
+            removed_components.append(component)
+        
+    return removed_components
         
 def save_network(net, save_path):
     """
@@ -844,15 +880,24 @@ def get_conduits(cecs):
     conduits = np.asarray(conduits)
     return conduits
 
-def get_conduit_elements(net, use_cylindrical_coords=False, conduit_element_length=params.Lce, 
+def get_conduit_elements(net=None, pore_coords=[], conns=[], conn_types=[], use_cylindrical_coords=False, conduit_element_length=params.Lce, 
                          heartwood_d=params.heartwood_d, cec_indicator=params.cec_indicator):
     """
     Constructs the conduit elements array describing a given network.
 
     Parameters
     ----------
-    net : openpnm.Network()
-        pores correspond to conduit elements, throats to connections between them
+    net : openpnm.Network(), optional
+        pores correspond to conduit elements, throats to connections between them (default: None, in which case
+        pore_coords, conns, and conn_types arrays are used to read network information)
+    pore_coords : np.array(), optional
+        pore coordinates of net (default: [], in which case coordinates are read from net). Note that if net is not None, pore_coords
+        is not used.
+    conns : np.array(), optional
+        throats of net, each row containing the indices of the start and end pores of a throat (default: [], in which case throat info is read from net).
+        Note that if net is not None, conns is not used.
+    conn_types : np.array(), optional
+        types of the throats (default: [], in which case throat info is read from net). Note that if net is not None, conn_types is not used.
     use_cylindrical_coords : bln, optional
         have the net['pore.coords'] been defined by interpreting the Mrad model coordinates as cylindrical ones?
     conduit_element_length : float, optional
@@ -873,11 +918,14 @@ def get_conduit_elements(net, use_cylindrical_coords=False, conduit_element_leng
         4) the index of the conduit the element belongs to (from 0 to n_conduits - 1)
         5) the index of the element (from 0 to n_conduit_elements - 1)
     """
-    pore_coords = net['pore.coords']
-    conns = net.get('throat.conns', [])
-    conn_types = net.get('throat.type', [])
+    assert (not net is None) or (len(pore_coords) > 0), 'You must give either the net object or the pore_coords array'
     
-    conduit_elements = np.zeros((len(net['pore.coords']), 5))
+    if not net is None:
+        pore_coords = net['pore.coords']
+        conns = net.get('throat.conns', [])
+        conn_types = net.get('throat.type', [])
+    
+    conduit_elements = np.zeros((len(pore_coords), 5))
     
     if use_cylindrical_coords:
         coords = cartesian_to_mrad(pore_coords, max_depth=np.amax(pore_coords[2]), conduit_element_length=conduit_element_length,

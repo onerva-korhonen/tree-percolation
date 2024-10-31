@@ -11,7 +11,7 @@ import numpy as np
 from scipy.stats import norm
 
 # params for network creation
-net_size = np.array([110,100,56])
+net_size = np.array([11,10,56])
 fixed_random = True
 if fixed_random:
     #seeds_NPc = [205, 9699, 8324, 2123, 1818, 1834, 3042, 5247, 4319, 2912]
@@ -64,6 +64,7 @@ if triton:
     vc_data_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/vc_data_' + identifier + '.pkl'
     vc_plot_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/vc_' + identifier + '.pdf'
     optimized_spreading_probability_save_path_base = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/optimized_spreading_probability/optimized_spreading_probability_' + identifier
+    optimized_vc_plot_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/optimized_spreading_probability/optimized_spreading_probability_vc_' + identifier
 else:
     network_save_file = '/home/onervak/projects/hidrogat/output/netpoints'
     percolation_plot_save_path = '/home/onervak/projects/hidrogat/output/percolation_3D_' + identifier + '.pdf'
@@ -75,6 +76,7 @@ else:
     vc_data_save_path = '/home/onervak/projects/hidrogat/output/vc_data_' + identifier + '.pkl'
     vc_plot_save_path = '/home/onervak/projects/hidrogat/output/vc_' + identifier + '.pdf'
     optimized_spreading_probability_save_path_base = '/home/onervak/projects/hidrogat/output/optimized_spreading_probability/optimized_spreading_probability_' + identifier
+    optimized_vc_plot_save_path = '/home/onervak/projects/hidrogat/output/optimized_spreading_probability/optimized_spreading_probability_vc_' + identifier
 
 # percolation parameters
 percolation_type = 'si'
