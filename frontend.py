@@ -50,6 +50,7 @@ cfg['fixed_random'] = True
 simulate_single_param_spreading = False
 construct_VC = False
 optimize_spreading_probability = True
+time = False
 
 #print(cfg['net_size'])
 if __name__=='__main__':
@@ -59,7 +60,7 @@ if __name__=='__main__':
     #visualization.visualize_network_with_openpnm(net)
     net_cleaned, _ = mrad_model.clean_network(net, conduit_elements, cfg['net_size'][0] - 1)
     #visualization.visualize_network_with_openpnm(net_cleaned)
-    orig_n_conns = net_cleaned['throat.conns'].shape[0] + 1
+    orig_n_throats = net_cleaned['throat.conns'].shape[0] + 1
     orig_n_pores = net_cleaned['pore.coords'].shape[0] + 1
 
     #mrad_model.save_network(net_cleaned, params.network_save_file)
@@ -99,9 +100,9 @@ if __name__=='__main__':
         if params.percolation_type in ['conduit', 'si', 'drainage']:
             total_n_nodes = len(effective_conductances)
         elif params.percolation_type == 'bond':
-            total_n_nodes = net_cleaned['throat.conns'].shape[0] + 1
+            total_n_nodes = orig_n_pores
         elif params.percolation_type == 'site':
-            total_n_nodes = net_cleaned['pore.coords'].shape[0] + 1
+            total_n_nodes = orig_n_throats
         else:
             raise Exception('Unknown percolation type; percolation type must be bond, site, conduit, si or drainage')
         if params.percolation_type in ['si', 'drainage']:
@@ -138,6 +139,82 @@ if __name__=='__main__':
         stochastic_effective_conductances = np.zeros(len(params.vulnerability_pressure_range))
 
         percolation.optimize_spreading_probability(net_cleaned, cfg, pressure_diff, cfg['start_conduits'], params.optimization_probability_range, si_length=cfg['si_length'], n_iterations=params.n_iterations, save_path_base=params.optimized_spreading_probability_save_path_base)
+    
+    if time:
+        import timeit
+        
+        setup = """
+        
+import mrad_model
+import mrad_params
+import params
+from percolation import calculate_bpp, get_conduit_neighbors
+
+import openpnm as op
+import numpy as np
+
+cfg = {}
+cfg['net_size'] = params.net_size
+cfg['conduit_diameters'] = 'lognormal'#mrad_params.conduit_diameters
+cfg['Dc'] = params.Dc
+cfg['Dc_cv'] = params.Dc_cv
+cfg['seeds_NPc'] = params.seeds_NPc
+cfg['seeds_Pc'] = params.seeds_Pc
+cfg['seed_ICC_rad'] = params.seed_ICC_rad
+cfg['seed_ICC_tan'] = params.seed_ICC_tan
+cfg['si_length'] = params.si_length
+cfg['si_tolerance_length'] = params.si_tolerance_length
+cfg['si_type'] = params.si_type
+cfg['start_conduits'] = params.start_conduits
+cfg['air_contact_angle'] = params.air_contact_angle
+cfg['surface_tension'] = params.surface_tension
+cfg['pressure'] = params.pressure
+cfg['nCPUs'] = params.nCPUs
+# TODO: check that the followig params match the physiology of betula pendula
+cfg['weibull_a'] = mrad_params.weibull_a
+cfg['weibull_b'] = mrad_params.weibull_b
+cfg['average_pit_area'] = mrad_params.Dm**2
+cfg['conduit_element_length'] = mrad_params.Lce
+cfg['fc'] = mrad_params.fc
+cfg['fpf'] = mrad_params.fpf
+
+heartwood_d = cfg.get('heartwood_d', mrad_params.heartwood_d)
+
+cfg['use_cylindrical_coords'] = False
+cfg['fixed_random'] = True
+
+conduit_elements, conns = mrad_model.create_mrad_network(cfg) # if no params are given, the function uses the default params of the Mrad model
+net = mrad_model.mrad_to_openpnm(conduit_elements, conns)
+net_cleaned, _ = mrad_model.clean_network(net, conduit_elements, cfg['net_size'][0] - 1)
+mrad_model.prepare_simulation_network(net_cleaned, cfg, update_coords=True)
+        
+cec_indicator = cfg.get('cec_indicator', mrad_params.cec_indicator)
+throats = net_cleaned['throat.conns']
+throat_types = net_cleaned['throat.type']
+cec_mask = throat_types == cec_indicator
+cec = throats[cec_mask]
+conduits = mrad_model.get_conduits(cec)
+conduit_neighbours = get_conduit_neighbors(net_cleaned, cfg['use_cylindrical_coords'], cfg['conduit_element_length'], heartwood_d, cec_indicator)
+"""
+
+        code_to_time = """
+bpp = calculate_bpp(net_cleaned, conduits, 1 - cec_mask, cfg)
+conduit_neighbour_bpp = {}
+for i, conduit in enumerate(conduits):
+    iccs = throats[np.where(1 - cec_mask)]
+    conduit_iccs = np.where(((conduit[0] <= iccs[:, 0]) & (iccs[:, 0] <= conduit[1])) | ((conduit[0] <= iccs[:, 1]) & (iccs[:, 1] <= conduit[1])))[0]
+    neighbours = conduit_neighbours[i]
+    neighbour_bpps = {}
+    for neighbour in neighbours:
+        neighbour_iccs = np.where(((conduits[neighbour, 0] <= iccs[:, 0]) & (iccs[:, 0] <= conduits[neighbour, 1])) | ((conduits[neighbour, 0] <= iccs[:, 1]) & (iccs[:, 1] <= conduits[neighbour, 1])))[0]
+        shared_iccs = np.intersect1d(conduit_iccs, neighbour_iccs)
+        shared_bpp = bpp[shared_iccs]
+        neighbour_bpps[neighbour] = np.amin(shared_bpp)
+    conduit_neighbour_bpp[i] = neighbour_bpps
+"""
+        
+        exec_time = timeit.timeit(setup=setup, stmt=code_to_time,number=1000000) * 10**3
+        print(f"The time of execution of extracting bpp's between conduit pairs' : {exec_time:.03f}ms")
         
 
 #visualization.plot_percolation_curve(total_n_nodes, percolation_outcome_values,
