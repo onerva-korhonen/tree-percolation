@@ -14,6 +14,7 @@ import itertools
 import functools
 from concurrent.futures import ProcessPoolExecutor as Pool
 import pickle
+import os
 
 import mrad_model
 import mrad_params as params
@@ -322,6 +323,9 @@ def optimize_spreading_probability(net, cfg, pressure_difference, start_conduits
     output = {'pressure_difference':pressure_difference, 'optimized_spreading_probability': optimal_spreading_probability, 'physiological_effective_conductance': physiological_effective_conductance, 'stochastic_effective_conductance': stochastic_effective_conductance}
     
     if len(save_path_base) > 0:
+        save_folder = save_path_base.rsplit('/', 1)[0]
+        if not os.path.exists(save_folder):
+            os.mkdir(save_folder)
         save_path = save_path_base + '_' + str(pressure_difference).replace('.', '_') + '.pkl'
         with open(save_path, 'wb') as f:
             pickle.dump(output, f)

@@ -51,7 +51,7 @@ Dc_z = norm.ppf(1 - (1 - Dc_alpha) / 2)
 
 # paths for saving
 triton = True
-identifier = 'physiological_conduit_si'
+identifier = 'stochastic_vs_physiological'
 
 if triton:
     network_save_file = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/netpoints'
@@ -63,7 +63,7 @@ if triton:
     percolation_data_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/percolation_3D_' + identifier + '_data.pkl'
     vc_data_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/vc_data_' + identifier + '.pkl'
     vc_plot_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/vc_' + identifier + '.pdf'
-    optimized_spreading_probability_save_path_base = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/optimized_spreading_probability/optimized_spreading_probability_' + identifier
+    optimized_spreading_probability_save_path_base = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/optimized_spreading_probability/' + identifier + '/optimized_spreading_probability_' + identifier
     optimized_vc_plot_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/vc_optimized_spreading_probability_' + identifier + '.pdf'
 else:
     network_save_file = '/home/onervak/projects/hidrogat/output/netpoints'
@@ -75,7 +75,7 @@ else:
     percolation_data_save_path = '/home/onervak/projects/hidrogat/output/percolation_3D_' + identifier + '_data.pkl'
     vc_data_save_path = '/home/onervak/projects/hidrogat/output/vc_data_' + identifier + '.pkl'
     vc_plot_save_path = '/home/onervak/projects/hidrogat/output/vc_' + identifier + '.pdf'
-    optimized_spreading_probability_save_path_base = '/home/onervak/projects/hidrogat/output/optimized_spreading_probability/optimized_spreading_probability_' + identifier
+    optimized_spreading_probability_save_path_base = '/home/onervak/projects/hidrogat/output/optimized_spreading_probability/' + identifier + '/optimized_spreading_probability_' + identifier
     optimized_vc_plot_save_path = '/home/onervak/projects/hidrogat/output/vc_optimized_spreading_probability_' + identifier + '.pdf'
 
 # percolation parameters
