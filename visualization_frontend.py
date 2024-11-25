@@ -7,9 +7,9 @@ import pickle
 import numpy as np
 import matplotlib.pylab as plt
 
-visualize_single_param_spreading = True
+visualize_single_param_spreading = False
 visualize_vc = False
-visualize_optimized_vc = False
+visualize_optimized_vc = True
 
 if visualize_single_param_spreading:
 

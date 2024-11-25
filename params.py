@@ -53,8 +53,8 @@ target_conduit_density = 630.817129361309 # 1/mm^2; conduit density in large bra
     
 
 # paths for saving
-triton = False
-identifier = 'physiological_conduit_si_returned_percnet_test'
+triton = True
+identifier = 'with_percnet_test_small_net'#with_old_code_log_space'
 
 if triton:
     network_save_file = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/netpoints'
@@ -66,7 +66,7 @@ if triton:
     percolation_data_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/percolation_3D_' + identifier + '_data.pkl'
     vc_data_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/vc_data_' + identifier + '.pkl'
     vc_plot_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/vc_' + identifier + '.pdf'
-    optimized_spreading_probability_save_path_base = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/optimized_spreading_probability/optimized_spreading_probability_' + identifier
+    optimized_spreading_probability_save_path_base = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/optimized_spreading_probability/' + identifier + '/optimized_spreading_probability_' + identifier
     optimized_vc_plot_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/vc_optimized_spreading_probability_' + identifier + '.pdf'
 else:
     network_save_file = '/home/onervak/projects/hidrogat/output/netpoints'
@@ -78,7 +78,7 @@ else:
     percolation_data_save_path = '/home/onervak/projects/hidrogat/output/percolation_3D_' + identifier + '_data.pkl'
     vc_data_save_path = '/home/onervak/projects/hidrogat/output/vc_data_' + identifier + '.pkl'
     vc_plot_save_path = '/home/onervak/projects/hidrogat/output/vc_' + identifier + '.pdf'
-    optimized_spreading_probability_save_path_base = '/home/onervak/projects/hidrogat/output/optimized_spreading_probability/optimized_spreading_probability_' + identifier
+    optimized_spreading_probability_save_path_base = '/home/onervak/projects/hidrogat/output/optimized_spreading_probability/' + identifier + '/optimized_spreading_probability_' + identifier
     optimized_vc_plot_save_path = '/home/onervak/projects/hidrogat/output/vc_optimized_spreading_probability_' + identifier + '.pdf'
 
 # percolation parameters
@@ -97,7 +97,7 @@ pressure_diff = 3.5e6 # Pa, the difference between water and air (bubble) pressu
 nCPUs = 5
 vulnerability_pressure_range = np.arange(0, 3.5, step=0.25)*1E6
 vulnerability_probability_range = np.arange(0.001, 1, step=0.1)
-optimization_probability_range = np.arange(0.0001, 0.1, step=0.01) # spreading probability range used for optimization
+optimization_probability_range = np.arange(0.001, 0.02, step=0.0015)#np.logspace(np.log10(0.0001), np.log10(0.02), 15) # spreading probability range used for optimization
 n_iterations = 1 # number of iterations used for optimizing spreading probability
 
 # visualization parameters
