@@ -68,10 +68,6 @@ def simulate_water_flow(sim_net, cfg, visualize=False, water=None, return_water=
         water['pore.viscosity'] = water_pore_viscosity
         water['throat.viscosity'] = water_throat_viscosity
         water['pore.diffusivity'] = water_pore_diffusivity
-    else:
-        water['pore.viscosity'] = np.ones(n_pores) * water_pore_viscosity
-        water['throat.viscosity'] = np.ones(n_throats) * water_throat_viscosity
-        water['pore.diffusivity'] = np.ones(n_pores) * water_pore_diffusivity
     
     water.add_model(propname='throat.diffusive_conductance',
                     model=op.models.physics.diffusive_conductance.ordinary_diffusion)
