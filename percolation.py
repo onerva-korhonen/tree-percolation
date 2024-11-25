@@ -280,20 +280,8 @@ def optimize_spreading_probability(net, cfg, pressure_difference, start_conduits
     
     cfg['si_length'] = si_length
     cfg['si_type'] = 'physiological'
-    nCPUs = cfg.get('nCPUs', 5)
     physiological_effective_conductances = np.zeros(n_iterations)
     stochastic_effective_conductances = np.zeros((len(spreading_probability_range), n_iterations))
-    
-    net_proj = {}
-    for obj in net.project:
-        props = {}
-        for prop in obj.keys():
-            props[prop] = obj[prop]
-        net_proj[obj.name] = props
- 
-    nets = [net for j in range(n_iterations)]
-    cfgs = [cfg for j in range(n_iterations)]
-    pressure_differences = [pressure_difference for j in range(n_iterations)]
     
     for i in np.arange(n_iterations):
         physiological_effective_conductances[i] = run_conduit_si(net, cfg, pressure_difference)[0][-1]
