@@ -873,6 +873,8 @@ def run_conduit_si(net, cfg, spreading_param=0):
     n_outlets = np.zeros(si_length)
     prevalence = np.zeros(si_length)
     
+    np.random.seed() # this is to ensure that different parallel calls produce different start conduits
+
     start_conduits = cfg['start_conduits']
     if isinstance(start_conduits, str):
         if start_conduits == 'random':
