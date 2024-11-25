@@ -276,7 +276,6 @@ def optimize_spreading_probability(net, cfg, pressure_difference, start_conduits
     """
     # TODO: should same start conduits be used for all pressure_differences? is so, where and how to define start conduits?
     # TODO: should this return the whole spreading curves? are they needed later for visualization?
-    #import pdb; pdb.set_trace()
     
     cfg['si_length'] = si_length
     cfg['si_type'] = 'physiological'
@@ -295,9 +294,10 @@ def optimize_spreading_probability(net, cfg, pressure_difference, start_conduits
     cfgs = [cfg for j in range(n_iterations)]
     pressure_differences = [pressure_difference for j in range(n_iterations)]
     
-    if False:
+    if True:
         for i in np.arange(n_iterations):
-            physiological_effective_conductances[i] = run_conduit_si_repeatedly(net, net_proj, cfg, pressure_difference)[0][-1]
+            #physiological_effective_conductances[i] = run_conduit_si_repeatedly(net, net_proj, cfg, pressure_difference)[0][-1]
+            physiological_effective_conductances[i] = run_conduit_si(net, cfg, pressure_difference)[0][-1]
     else:
         pool = Pool(max_workers=nCPUs)
         output = list(pool.map(run_conduit_si, nets, cfgs, pressure_differences))
@@ -306,14 +306,17 @@ def optimize_spreading_probability(net, cfg, pressure_difference, start_conduits
     
     cfg['si_type'] = 'stochastic'
     for i, spreading_probability in enumerate(spreading_probability_range):
-        if False:
+        if True:
             for j in np.arange(n_iterations):
-                stochastic_effective_conductances[i, j] = run_conduit_si_repeatedly(net, net_proj, cfg, spreading_probability)[0][-1]
+                #stochastic_effective_conductances[i, j] = run_conduit_si_repeatedly(net, net_proj, cfg, spreading_probability)[0][-1]
+                stochastic_effective_conductances[i, j] = run_conduit_si(net, cfg, spreading_probability)[0][-1]
         else:
             pool = Pool(max_workers=nCPUs)
             output = list(pool.map(run_conduit_si, itertools.repeat(net, n_iterations), itertools.repeat(cfg, n_iterations), itertools.repeat(spreading_probability, n_iterations)))
             stochastic_effective_conductances[i, :] = np.array([output_per_param[0][-1] for output_per_param in output])
     stochastic_effective_conductances = np.mean(stochastic_effective_conductances, axis=1)
+    
+    import pdb; pdb.set_trace()
     
     optimal_spreading_probability_index = np.argmin(np.abs(stochastic_effective_conductances - physiological_effective_conductance))
     optimal_spreading_probability = spreading_probability_range[optimal_spreading_probability_index]
@@ -1001,6 +1004,8 @@ def run_conduit_si(in_net, cfg, spreading_param=0):
         embolization_times[start_conduit, 1] = 0
     conduit_neighbours = get_conduit_neighbors(net, use_cylindrical_coords, conduit_element_length, heartwood_d, cec_indicator)
 
+    import pdb; pdb.set_trace()
+
     orig_pore_diameter = np.copy(net['pore.diameter'])
     if si_type == 'physiological':
         bpp = calculate_bpp(net, conduits, 1 - cec_mask, cfg)
@@ -1022,7 +1027,6 @@ def run_conduit_si(in_net, cfg, spreading_param=0):
     prevalence_diff = 1
     last_removed_by_embolism = False
        
-    #import pdb; pdb.set_trace()
     while (prevalence_diff > 0) & (time_step < si_length):
             
         pores_to_remove = []
@@ -1032,7 +1036,7 @@ def run_conduit_si(in_net, cfg, spreading_param=0):
             for start_conduit in np.sort(start_conduits)[::-1]:
                 pores_to_remove.extend(list(np.arange(conduits[start_conduit][0], conduits[start_conduit][1] + 1)))
                 conduits[start_conduit +1::, 0:2] = conduits[start_conduit +1::, 0:2] - conduits[start_conduit, 2]
-                conduits[start_conduit, :] = -1
+            conduits[start_conduits, :] = -1
         else:
             embolized_conduits = np.where(embolization_times[:, 0] < time_step)[0]
             possible_embolizations = False

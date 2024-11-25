@@ -79,7 +79,7 @@ def create_mrad_network(cfg):
     Pc = cfg.get('Pc', params.Pc)
     NPc = cfg.get('NPc', params.NPc)
     Pe_rad = cfg.get('Pe_rad', params.Pe_rad)
-    Pe_tan = cfg.get('Pe_ran', params.Pe_tan)
+    Pe_tan = cfg.get('Pe_tan', params.Pe_tan)
     cec_indicator = cfg.get('cec_indicator', params.cec_indicator)
     icc_indicator = cfg.get('icc_indicator', params.icc_indicator)
     
@@ -135,111 +135,119 @@ def create_mrad_network(cfg):
         conduit_element_index += end_row - start_row + 1 
         conduit_elements.append(conduit_element)
         
-    conduit_elements = np.concatenate(conduit_elements)
-    # conduit contain one row for each element belonging to a conduit and 5 columns:
-    # 1) the row index of the element
-    # 2) the column index of the element
-    # 3) the radial (depth) index of the element
-    # 4) the index of the conduit the element belongs to (from 0 to n_conduits)
-    # 5) the index of the element (from 0 to n_conduit_elements)
-    
-    # finding axial nodes (= pairs of consequtive, in the row direction, elements that belong to the same conduit)
-    conx_axi = []
-    
-    for i in range(1, len(conduit_elements)):
-        if (conduit_elements[i - 1, 3] == conduit_elements[i, 3]):
-            conx_axi.append(np.array([conduit_elements[i - 1, :], conduit_elements[i, :]]))
+    if len(conduit_elements) > 0: # if any conduits have been created
         
-    # finding potential pit connections between conduit elements
-    
-    max_depth = int(np.max(conduit_elements[:, 2]))
-    pot_conx_rad = []
-    pot_conx_tan = []
-    outlet_row_index = n_rows - 1
-    
-    for i, conduit_element in enumerate(conduit_elements):
-        row = conduit_element[0]
-        column = conduit_element[1]
-        depth = conduit_element[2]
-        conduit_index = conduit_element[3]
-        node_index = conduit_element[4]
-        if ((row == 0) or (row == outlet_row_index)):
-            continue # no pit connections in the first and last rows
-            
-        column_distances = np.abs(conduit_elements[:, 1] - column)[i+1:]
-        depth_distances = np.abs(conduit_elements[:, 2] - depth)[i+1:]
+        conduit_elements = np.concatenate(conduit_elements)
+        # conduit contain one row for each element belonging to a conduit and 5 columns:
+        # 1) the row index of the element
+        # 2) the column index of the element
+        # 3) the radial (depth) index of the element
+        # 4) the index of the conduit the element belongs to (from 0 to n_conduits)
+        # 5) the index of the element (from 0 to n_conduit_elements)
         
-        # check if there is an adjacent element in radial (= column) or tangential (= depth) direction
-        # that belongs to another conduit (adjacent elements in the vertical (=row) direction belong to the same conduit by default). 
-        # The maximal number of potential connections in a 3D networks is 8 for each element (sides and corners).
-        for conduit_element_2, column_distance, depth_distance in zip(conduit_elements[i + 1:], column_distances, depth_distances):
-            row2 = conduit_element_2[0]
-            column2 = conduit_element_2[1]
-            depth2 = conduit_element_2[2]
-            conduit2_index = conduit_element_2[3]
-            node2_index = conduit_element_2[4]
+        # finding axial nodes (= pairs of consequtive, in the row direction, elements that belong to the same conduit)
+        conx_axi = []
+        
+        for i in range(1, len(conduit_elements)):
+            if (conduit_elements[i - 1, 3] == conduit_elements[i, 3]):
+                conx_axi.append(np.array([conduit_elements[i - 1, :], conduit_elements[i, :]]))
             
-            if (column_distance > 1) and (depth_distance > 1) and (depth2 != max_depth) and (depth != 0):
-                break # there are no potential connections between the current conduit_element_2 and the following instances of conduit_element_2 are even further away (the array is sorted), so let's break the loop
-            
-            if (row2 == row):
-                if (column2 - column == 1) and (depth2 == depth):
-                    pot_conx_rad.append(np.array([[row, column, depth, conduit_index, node_index],
-                                                 [row2, column2, depth2, conduit2_index, node2_index]]))
-                elif (((column2 - column == 1) and (depth2 - depth == 1)) or \
-                     ((depth2 - depth == 1) and (column2 - column <= 1) and (column2 - column >= 0)) or \
-                     ((depth == 0) and (depth2 == max_depth) and (column2 - column <= 1) and (column2 - column >= 0))):  
-                    pot_conx_tan.append(np.array([[row, column, depth, conduit_index, node_index],
-                                                 [row2, column2, depth2, conduit2_index, node2_index]]))
-                    
-    # picking the actual pit connections
-
-    Pe_rad_rad = (rad_dist*Pe_rad[0] + (1 - rad_dist)*Pe_rad[1])
-    Pe_tan_rad = (rad_dist*Pe_tan[0] + (1 - rad_dist)*Pe_tan[1])
-    
-    if fixed_random:
-        np.random.seed(seed_ICC_rad)
-    prob_rad = np.random.rand(len(pot_conx_rad), 1)
-    if fixed_random:
-        np.random.seed(seed_ICC_tan)
-    prob_tan = np.random.rand(len(pot_conx_tan), 1)
-    
-    conx = []
-    
-    for pot_con, p in zip(pot_conx_rad, prob_rad):
-        if (p >= (1 - np.mean(Pe_rad_rad[pot_con[:,1].astype(int)]))):
-            conx.append(pot_con)
-            
-    for pot_con, p in zip(pot_conx_tan, prob_tan):
-        if (p >= (1 - np.mean(Pe_tan_rad[pot_con[:,1].astype(int)]))):
-            conx.append(pot_con)
+        # finding potential pit connections between conduit elements
+        
+        max_depth = int(np.max(conduit_elements[:, 2]))
+        pot_conx_rad = []
+        pot_conx_tan = []
+        outlet_row_index = n_rows - 1
+        
+        for i, conduit_element in enumerate(conduit_elements):
+            row = conduit_element[0]
+            column = conduit_element[1]
+            depth = conduit_element[2]
+            conduit_index = conduit_element[3]
+            node_index = conduit_element[4]
+            if ((row == 0) or (row == outlet_row_index)):
+                continue # no pit connections in the first and last rows
                 
-    ICC_conns = np.zeros((len(conx), 5))
-    for i, con in enumerate(conx):
-        ICC_conns[i, 0] = con[0][4].astype(int)
-        ICC_conns[i, 1] = con[1][4].astype(int)
-        ICC_conns[i, 2] = icc_indicator
-        ICC_conns[i, 3] = conduit_elements[con[0][4].astype(int), 3]
-        ICC_conns[i, 4] = conduit_elements[con[1][4].astype(int), 3]
+            column_distances = np.abs(conduit_elements[:, 1] - column)[i+1:]
+            depth_distances = np.abs(conduit_elements[:, 2] - depth)[i+1:]
+            
+            # check if there is an adjacent element in radial (= column) or tangential (= depth) direction
+            # that belongs to another conduit (adjacent elements in the vertical (=row) direction belong to the same conduit by default). 
+            # The maximal number of potential connections in a 3D networks is 8 for each element (sides and corners).
+            for conduit_element_2, column_distance, depth_distance in zip(conduit_elements[i + 1:], column_distances, depth_distances):
+                row2 = conduit_element_2[0]
+                column2 = conduit_element_2[1]
+                depth2 = conduit_element_2[2]
+                conduit2_index = conduit_element_2[3]
+                node2_index = conduit_element_2[4]
+                
+                if (column_distance > 1) and (depth_distance > 1) and (depth2 != max_depth) and (depth != 0):
+                    break # there are no potential connections between the current conduit_element_2 and the following instances of conduit_element_2 are even further away (the array is sorted), so let's break the loop
+                
+                if (row2 == row):
+                    if (column2 - column == 1) and (depth2 == depth):
+                        pot_conx_rad.append(np.array([[row, column, depth, conduit_index, node_index],
+                                                     [row2, column2, depth2, conduit2_index, node2_index]]))
+                    elif (((column2 - column == 1) and (depth2 - depth == 1)) or \
+                         ((depth2 - depth == 1) and (column2 - column <= 1) and (column2 - column >= 0)) or \
+                         ((depth == 0) and (depth2 == max_depth) and (column2 - column <= 1) and (column2 - column >= 0))):  
+                        pot_conx_tan.append(np.array([[row, column, depth, conduit_index, node_index],
+                                                     [row2, column2, depth2, conduit2_index, node2_index]]))
+                        
+        # picking the actual pit connections
+        try:
+            Pe_rad_rad = (rad_dist*Pe_rad[0] + (1 - rad_dist)*Pe_rad[1])
+        except:
+            import pdb; pdb.set_trace()
+        Pe_tan_rad = (rad_dist*Pe_tan[0] + (1 - rad_dist)*Pe_tan[1])
         
-    # ICC_conns has for each ICC one row and five columns, containing
-    # 1) index of the first conduit element of the ICC
-    # 2) index of the second conduit element of the ICC
-    # 3) constant indicating connection (throat) type
-    # 4) index of the first conduit of the ICC
-    # 5) index of the second conduit of the ICC
-    
-    CEC_conns = np.zeros((len(conx_axi), 5))
-    for i, con in enumerate(conx_axi):
-        CEC_conns[i, 0] = con[0][4].astype(int)
-        CEC_conns[i, 1] = con[1][4].astype(int)
-        CEC_conns[i, 2] = cec_indicator
+        if fixed_random:
+            np.random.seed(seed_ICC_rad)
+        prob_rad = np.random.rand(len(pot_conx_rad), 1)
+        if fixed_random:
+            np.random.seed(seed_ICC_tan)
+        prob_tan = np.random.rand(len(pot_conx_tan), 1)
         
-    # The three first columns are defined as in ICC_conns. The last two columns are all zeros and added only for getting
-    # matching dimensions
+        conx = []
         
-    conns = np.concatenate([CEC_conns, ICC_conns])
-    conns = conns[np.lexsort((conns[:, 1], conns[:, 0]))]
+        for pot_con, p in zip(pot_conx_rad, prob_rad):
+            if (p >= (1 - np.mean(Pe_rad_rad[pot_con[:,1].astype(int)]))):
+                conx.append(pot_con)
+                
+        for pot_con, p in zip(pot_conx_tan, prob_tan):
+            if (p >= (1 - np.mean(Pe_tan_rad[pot_con[:,1].astype(int)]))):
+                conx.append(pot_con)
+                    
+        ICC_conns = np.zeros((len(conx), 5))
+        for i, con in enumerate(conx):
+            ICC_conns[i, 0] = con[0][4].astype(int)
+            ICC_conns[i, 1] = con[1][4].astype(int)
+            ICC_conns[i, 2] = icc_indicator
+            ICC_conns[i, 3] = conduit_elements[con[0][4].astype(int), 3]
+            ICC_conns[i, 4] = conduit_elements[con[1][4].astype(int), 3]
+            
+        # ICC_conns has for each ICC one row and five columns, containing
+        # 1) index of the first conduit element of the ICC
+        # 2) index of the second conduit element of the ICC
+        # 3) constant indicating connection (throat) type
+        # 4) index of the first conduit of the ICC
+        # 5) index of the second conduit of the ICC
+        
+        CEC_conns = np.zeros((len(conx_axi), 5))
+        for i, con in enumerate(conx_axi):
+            CEC_conns[i, 0] = con[0][4].astype(int)
+            CEC_conns[i, 1] = con[1][4].astype(int)
+            CEC_conns[i, 2] = cec_indicator
+            
+        # The three first columns are defined as in ICC_conns. The last two columns are all zeros and added only for getting
+        # matching dimensions
+            
+        conns = np.concatenate([CEC_conns, ICC_conns])
+        conns = conns[np.lexsort((conns[:, 1], conns[:, 0]))]
+        
+    else: # no conduits were created
+        conduit_elements = np.array([])
+        conns = np.array([])
     
     return conduit_elements, conns
             
@@ -467,8 +475,13 @@ def mrad_to_openpnm(conduit_elements, conns):
     
     proj = ws.new_project('diffpornetwork')
     
-    pn = op.network.Network(project=proj, coords=conduit_elements[:, 0:3], conns=conns[:, 0:2].astype(int))
-    pn['throat.type'] = conns[:, 2].astype(int)
+    if (conduit_elements.shape[0] > 0) & (conns.shape[0] > 0):
+        pn = op.network.Network(project=proj, coords=conduit_elements[:, 0:3], conns=conns[:, 0:2].astype(int))
+        pn['throat.type'] = conns[:, 2].astype(int)
+    elif conduit_elements.shape[0] > 0:
+        pn = op.network.Network(project=proj, coords=conduit_elements[:, 0:3])
+    else:
+        pn = op.network.Network(project=proj)
     
     return pn
     
@@ -509,62 +522,65 @@ def clean_network(net, conduit_elements, outlet_row_index, remove_dead_ends=True
         components removed because they are not connected to the inlet or to the outlet; each element corresponds to a 
         removed component and contains the indices of the pores in the removed component
     """    
-    _, component_indices, component_sizes = get_components(net)
-    sorted_components = []
-    sorted_indices = np.argsort(component_sizes)[::-1]
-    for sorted_index in sorted_indices:
-        sorted_components.append(component_indices[sorted_index])
-        
-    # Find components that don't extend through the domain in axial direction
-    if len(removed_components) == 0:
-        removed_components= get_removed_components(net, conduit_elements, outlet_row_index)
-    
-    # Remove the found components
-    if len(removed_components) > 0:
-        pores_to_remove = np.concatenate(removed_components)
-        conduit_elements = np.delete(conduit_elements, pores_to_remove, 0)
-        op.topotools.trim(net, pores=pores_to_remove)
-        
-    if remove_dead_ends:
-        # Remoce any remaining conduits that are not connected to the inlet or outlet
-        # and are connected to only one other conduit
-    
-        throats_trimmed = net['throat.conns'] # each row of throats_trimmed contain the indices of the start and end conduit elements of a connection
-    
-        # Tabulate the indices of the conduits connected by each throat (based on the
-        # original number of conduits before removing the clusters not connected to the inlet or to the outlet)
-    
-        throat_conduits = np.zeros((len(throats_trimmed), 2)) # each row of throat_conduits will contain the indices of the start and end conduit of a connection
-    
-        for i, throat in enumerate(throats_trimmed):
-            throat_conduits[i, 0] = conduit_elements[throat[0], 3]
-            throat_conduits[i, 1] = conduit_elements[throat[1], 3]
-        
-        conduit_indices = np.unique(throat_conduits)
-        conduit_degree_info = get_conduit_degree(conduit_elements, throat_conduits, outlet_row_index) 
-    
-        conduits_to_remove = conduit_indices[np.where(conduit_degree_info[:, 3] == 1)]
-        while (conduits_to_remove.shape[0] > 0):
-            conduit_elements_to_remove = []
-            throats_to_remove = []
-            for conduit_to_remove in conduits_to_remove:
-                conduit_elements_to_remove.append(np.where(conduit_elements[:, 3] == conduit_to_remove)[0])
-                throats_to_remove.append(np.where(throat_conduits[:, 0] == conduit_to_remove)[0])
-                throats_to_remove.append(np.where(throat_conduits[:, 1] == conduit_to_remove)[0])
-            conduit_elements_to_remove = np.concatenate(conduit_elements_to_remove)
-            throats_to_remove = np.unique(np.concatenate(throats_to_remove))
-        
-            for conduit_to_remove in conduits_to_remove:
-                conduit_indices = np.delete(conduit_indices, np.where(conduit_indices == conduit_to_remove))
+    if not 'pore.coords' in net.keys():
+        return net, [] # there are no pores (= nodes) in the network
+    else:
+        _, component_indices, component_sizes = get_components(net)
+        sorted_components = []
+        sorted_indices = np.argsort(component_sizes)[::-1]
+        for sorted_index in sorted_indices:
+            sorted_components.append(component_indices[sorted_index])
             
-            conduit_elements = np.delete(conduit_elements, conduit_elements_to_remove, 0)
-            throat_conduits = np.delete(throat_conduits, throats_to_remove, 0)
-            op.topotools.trim(network=net, pores=conduit_elements_to_remove)
+        # Find components that don't extend through the domain in axial direction
+        if len(removed_components) == 0:
+            removed_components= get_removed_components(net, conduit_elements, outlet_row_index)
         
-            conduit_degree_info = get_conduit_degree(conduit_elements, throat_conduits, outlet_row_index)
+        # Remove the found components
+        if len(removed_components) > 0:
+            pores_to_remove = np.concatenate(removed_components)
+            conduit_elements = np.delete(conduit_elements, pores_to_remove, 0)
+            op.topotools.trim(net, pores=pores_to_remove)
+            
+        if remove_dead_ends:
+            # Remoce any remaining conduits that are not connected to the inlet or outlet
+            # and are connected to only one other conduit
+        
+            throats_trimmed = net['throat.conns'] # each row of throats_trimmed contain the indices of the start and end conduit elements of a connection
+        
+            # Tabulate the indices of the conduits connected by each throat (based on the
+            # original number of conduits before removing the clusters not connected to the inlet or to the outlet)
+        
+            throat_conduits = np.zeros((len(throats_trimmed), 2)) # each row of throat_conduits will contain the indices of the start and end conduit of a connection
+        
+            for i, throat in enumerate(throats_trimmed):
+                throat_conduits[i, 0] = conduit_elements[throat[0], 3]
+                throat_conduits[i, 1] = conduit_elements[throat[1], 3]
+            
+            conduit_indices = np.unique(throat_conduits)
+            conduit_degree_info = get_conduit_degree(conduit_elements, throat_conduits, outlet_row_index) 
+        
             conduits_to_remove = conduit_indices[np.where(conduit_degree_info[:, 3] == 1)]
-        
-    return net, removed_components
+            while (conduits_to_remove.shape[0] > 0):
+                conduit_elements_to_remove = []
+                throats_to_remove = []
+                for conduit_to_remove in conduits_to_remove:
+                    conduit_elements_to_remove.append(np.where(conduit_elements[:, 3] == conduit_to_remove)[0])
+                    throats_to_remove.append(np.where(throat_conduits[:, 0] == conduit_to_remove)[0])
+                    throats_to_remove.append(np.where(throat_conduits[:, 1] == conduit_to_remove)[0])
+                conduit_elements_to_remove = np.concatenate(conduit_elements_to_remove)
+                throats_to_remove = np.unique(np.concatenate(throats_to_remove))
+            
+                for conduit_to_remove in conduits_to_remove:
+                    conduit_indices = np.delete(conduit_indices, np.where(conduit_indices == conduit_to_remove))
+                
+                conduit_elements = np.delete(conduit_elements, conduit_elements_to_remove, 0)
+                throat_conduits = np.delete(throat_conduits, throats_to_remove, 0)
+                op.topotools.trim(network=net, pores=conduit_elements_to_remove)
+            
+                conduit_degree_info = get_conduit_degree(conduit_elements, throat_conduits, outlet_row_index)
+                conduits_to_remove = conduit_indices[np.where(conduit_degree_info[:, 3] == 1)]
+            
+        return net, removed_components
 
 def get_removed_components(net, conduit_elements, outlet_row_index):
     """
@@ -659,40 +675,53 @@ def read_network(net_path, coord_key='pore.coords', conn_key='throat.conns', typ
         
 # Other accessories:
     
-def create_conduit_map_column(n_rows, n_depth, NPc_rad, Pc_rad, seed_NPc=None, seed_Pc=None):
+def create_conduit_map_column(n_rows, n_depth, NPc, Pc, seed_NPc=None, seed_Pc=None):
     """
-    TODO: write documentation
+    Creates a column (i.e. n_rows x n_depths plane) of the conduit map that indicates cells
+    where a column begins or ends.
 
     Parameters
     ----------
-    n_rows : TYPE
-        DESCRIPTION
-    n_depth : TYPE
-        DESCRIPTION.
-    NPc_rad : TYPE
-        DESCRIPTION
-    Pc_rad : TYPE
-        DESCRIPTION
-    seed_NPc : TYPE, optional
-        DESCRIPTION. The default is None.
-    seed_Pc : TYPE, optional
-        DESCRIPTION. The default is None.
+    n_rows : int
+        number of rows in the column map
+    n_depth : int
+        number of depths in the column map
+    NPc : float
+        probability to start a conduit
+    Pc : float 
+        probability to end a conduit
+    seed_NPc : int, optional
+        random number generator seed for picking cells that start a conduit. The default is None.
+    seed_Pc : int, optional
+        random number generator seed for picking cells that end a conduit. The default is None.
 
     Returns
     -------
-    None.
+    cond_start : np.array of blns
+        the value at each cell indicates if a conduit starts at this cell
+    cond_end : np.array of blns
+        the value at each cell indicates if a conduit ends at this cell (i.e. if this cell is the last one belonging
+        to a conduit)
 
     """
     if not seed_Pc is None:
         np.random.seed(seed_NPc)
-    cond_start = np.random.rand(n_rows + 100, 1, n_depth) > (1 - NPc_rad)
+    cond_start = np.random.rand(n_rows + 100, 1, n_depth) > (1 - NPc)
     
     if not seed_NPc is None:
         np.random.seed(seed_Pc)
-    cond_end = np.random.rand(n_rows + 100, 1, n_depth) > (1 - Pc_rad)
+    cond_end = np.random.rand(n_rows + 100, 1, n_depth) > (1 - Pc)
     
-    temp_start = np.zeros((1, 1, n_depth))
+    temp_start = np.zeros((1, 1, n_depth)) # finding first row cells that start a conduit
     for j in range(n_depth):
+        if np.sum(cond_start[0:50, 0, j]) == 0: # no conduit starts at the first row of this depth
+            last_start = np.inf
+        else:
+            last_start = np.where(cond_start[0:50, 0, j])[0][-1]  
+        if np.sum(cond_end[0:50, 0, j]) == 0: # no conduit ends at the first row of this depth
+            last_end = np.inf
+        else:
+            last_end = np.where(cond_end[0:50, 0, j])[0][-1]
         # construct a conduit at the first row of this column if there is
         # a 1 among the first 50 entires of the cond_start matrix at this column
         # and the corresponding entries of the cond_end are matrix all 0.
@@ -701,7 +730,7 @@ def create_conduit_map_column(n_rows, n_depth, NPc_rad, Pc_rad, seed_NPc=None, s
         # construct a conduit at the first row of this column if the last 
         # 1 among the 50 first entries of the cond_start matrix is at a more
         # advanced postition than the last 1 among the 50 entries of the cond_end matrix
-        if (np.where(cond_start[0:50, 0, j])[0].size > 0) and (np.where(cond_end[0:50, 0, j])[0][-1] < np.where(cond_start[0:50, 0, j])[0][-1]):
+        if (np.where(cond_start[0:50, 0, j])[0].size > 0) and (last_start < last_end):
             temp_start[0, 0, j] = 1
             
     # Cleaning up the obtained start and end points

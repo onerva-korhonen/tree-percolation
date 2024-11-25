@@ -228,7 +228,7 @@ def plot_optimized_vulnerability_curve(data_save_folder, physiological_color, st
     Returns
     -------
     None
-    """
+    """    
     data_files = [os.path.join(data_save_folder, file) for file in os.listdir(data_save_folder) if os.path.isfile(os.path.join(data_save_folder, file))]
     pressure_diffs = np.zeros(len(data_files))
     physiological_effective_conductances = np.zeros(len(data_files))
