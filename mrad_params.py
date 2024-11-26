@@ -78,5 +78,5 @@ water_throat_viscosity = 1.002e-3
 water_pore_diffusivity = 1.0e-9
 
 # simulation parameters
-inlet_pressure = 0.1E6 # Pa
+inlet_pressure = 0.1E6 # Pa 
 outlet_pressure = 0E6 # Pa

@@ -36,6 +36,7 @@ cfg['air_contact_angle'] = params.air_contact_angle
 cfg['surface_tension'] = params.surface_tension
 cfg['pressure'] = params.pressure
 cfg['nCPUs'] = params.nCPUs
+cfg['spontaneous_embolism'] = params.spontaneous_embolism
 # TODO: check that the followig params match the physiology of betula pendula
 cfg['weibull_a'] = mrad_params.weibull_a
 cfg['weibull_b'] = mrad_params.weibull_b

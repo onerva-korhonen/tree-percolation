@@ -85,6 +85,7 @@ else:
 percolation_type = 'si'
 si_type = 'physiological'
 break_nonfunctional_components = False
+spontaneous_embolism = True
 si_length = 1000
 si_tolerance_length = 20
 spreading_probability = 0.15100000000000002
