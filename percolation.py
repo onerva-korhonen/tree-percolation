@@ -19,7 +19,7 @@ import os
 import mrad_model
 import mrad_params as params
 import simulations
-import bubble_formation
+import bubble_expansion
 
 def run_percolation(net, cfg, percolation_type='bond', removal_order='random', break_nonfunctional_components=True):
     """
@@ -885,7 +885,8 @@ def run_conduit_si(net, cfg, spreading_param=0):
             if 'random_per_component', a single start conduit per network component is selected at random
             if an array-like of ints is given, the ints are used as indices of the start conduits
         si_length : int, maximum number of time steps used for the simulation (default: 1000)
-        spontaneous_embolism : bln, is spontaneous embolism through bubble formation allowed (default: False)
+        spontaneous_embolism : bln, is spontaneous embolism through bubble expansion allowed (default: False)
+        spontaneous_embolism_probabilities : dic where keys are pressure values and values probabilities for spontaneous embolism
     spreading_param : float
         parameter that controls the spreading speed, specifically
         if si_type == 'stochastic', spreading_param is the probability at which embolism spreads to neighbouring conduits (default: 0.1)
@@ -926,6 +927,8 @@ def run_conduit_si(net, cfg, spreading_param=0):
     si_type = cfg.get('si_type', 'stochastic')
     si_length = cfg.get('si_length', 1000)
     spontaneous_embolism = cfg.get('spontaneous_embolism', False)
+    if spontaneous_embolism:
+        spontaneous_embolism_probabilities = cfg['spontaneous_embolism_probabilities']
     
     conns = net['throat.conns']
     assert len(conns) > 0, 'Network has no throats; cannot run percolation analysis'
@@ -1014,15 +1017,14 @@ def run_conduit_si(net, cfg, spreading_param=0):
                 conduits[start_conduit +1::, 0:2] = conduits[start_conduit +1::, 0:2] - conduits[start_conduit, 2]
             conduits[start_conduits, :] = -1
         else: # TODO: now spontaneous embolisms are not possible in non-functional conduits since their pores are not included in water['pore.pressure'] and in conduits
-            # spontaneous embolism due to bubble formation
+            # spontaneous embolism due to bubble expansion
             if spontaneous_embolism:
-                try:
-                    pore_pressures = water['pore.pressure']
-                    spontaneously_embolised_pores = get_spontaneously_embolised_pores(pore_pressures) # TODO: write a function for detecting the pores where spontaenous embolism happens (output should be an iterable of pore indices)
-                except NameError:
-                    spontaneously_embolised_pores = [] # the Water object has not yet been created (most probably because time_step == 0), pore pressures haven't been calculated, and calculating spontaneous embolism probability isn't possible
+                spontaneous_embolism_probability = spontaneous_embolism_probabilities[pressure_diff]
+                test = np.random.rand(perc_net['pore.coords'].shape[0])
+                embolisation = test < spontaneous_embolism_probability
+                spontaneously_embolised_pores = np.where(embolisation)[0]
                 for spontaneously_embolised_pore in spontaneously_embolised_pores:
-                    spontaneously_embolised_conduit = np.where((conduits[:, 0] <= spontaneously_embolised_pore) & (spontaneously_embolised_pore <= conduits[:, 1]))
+                    spontaneously_embolised_conduit = np.where((conduits[:, 0] <= spontaneously_embolised_pore) & (spontaneously_embolised_pore <= conduits[:, 1]))[0][0]
                     if embolization_times[spontaneously_embolised_conduit, 1] > 0: # the spontaneously embolised conduit is functional and will be removed from the network
                         pores_to_remove.extend(list(np.arange(conduits[spontaneously_embolised_conduit, 0], conduits[spontaneously_embolised_conduit, 1] + 1)))
                         removed_conduit_indices.append(spontaneously_embolised_conduit)
@@ -1074,7 +1076,7 @@ def run_conduit_si(net, cfg, spreading_param=0):
                             else: # if a nonfunctional conduit is embolized, nonfunctional component size and volume decrease
                                 nonfunctional_component_size[time_step] -= 1
                                 nonfunctional_component_volume[time_step] -= np.sum(np.pi * 0.5 * orig_pore_diameter[np.arange(orig_conduits[conduit, 0], orig_conduits[conduit, 1] + 1)]**2 * conduit_element_length)
-            for removed_conduit_index in np.sort(removed_conduit_indices)[::-1]:
+            for removed_conduit_index in np.sort(np.unique(removed_conduit_indices))[::-1]:
                 conduits[removed_conduit_index + 1::, 0:2] = conduits[removed_conduit_index + 1::, 0:2] - conduits[removed_conduit_index, 2]
             conduits[removed_conduit_indices, :] = -1
             if len(pores_to_remove) == perc_net['pore.coords'].shape[0]:
@@ -1734,19 +1736,22 @@ def calculate_bpp(net, conduits, icc_mask, cfg):
         
     return bpp
 
-def get_spontaneously_embolised_pores(pore_pressures):
+def get_spontaneous_embolism_probability(pressures):
     """
-    Using the bubble formation formalism of Ingram et al. 2024, finds the pores that get embolised spontaneously due to bubble formation.
+    Using the formalism of Ingram et al. 2024, calculates the probability of spontaneous embolism,
+    that is, the probability of a nanobubble to expand filling its entire conduit. Probabilities are
+    calculated for a set of bubble surface pressures, i.e., pressure differences between the water
+    outside the bubble and air inside the bubble.
 
     Parameters
     ----------
-    pore_pressures : iterable of floats
-        pressure at network pores in Ps
+    pressures : iterable of floats
+        pressure, at which to calculate the probability
 
     Returns
     -------
-    spontaneously_embolised_pores : list of ints
-        indices of pores that get spontaneously embolised (indices refer to the pore_pressures iterable)
+    spontaneous_embolism_probabilities : dic where keys are pressure values, values probabilities (floats between 0 and 1)
+        probabilities of spontaneous embolism
     """
     T = 300.0 # K
     apl = 0.6 # 'equilibrium' area per lipid, nm^-2
@@ -1766,16 +1771,11 @@ def get_spontaneously_embolised_pores(pore_pressures):
         num=500
         )
     
-    unique_pressures = np.unique(pore_pressures)
-    embolisation_probabilities = np.zeros(len(pore_pressures))
+    unique_pressures = np.unique(pressures)
+    embolisation_probabilities = {}
     for pressure in unique_pressures:
-        pressure_map = np.where(pore_pressures == pressure)
-        embolisation_probability = bubble_formation.probability(-pressure, T, mu, sigma, apl, r_range/1e9, n_bubble)
-        embolisation_probabilities[pressure_map] = embolisation_probability
+        embolisation_probability = bubble_expansion.probability(-pressure, T, mu, sigma, apl, r_range/1e9, n_bubble)
+        embolisation_probabilities[pressure] = embolisation_probability
         
-    test = np.random.rand(len(pore_pressures))
-    embolisation = test < embolisation_probabilities
-    spontaneously_embolised_pores = np.where(embolisation)
-    
-    return spontaneously_embolised_pores
+    return embolisation_probabilities
 

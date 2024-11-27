@@ -130,8 +130,13 @@ if __name__=='__main__':
         f.close()
     
     if optimize_spreading_probability:
+        if params.spontaneous_embolism:
+            spontaneous_embolism_probabilities = percolation.get_spontaneous_embolism_probability(params.vulnerability_pressure_range)
+            
         index = int(sys.argv[1])
         pressure_diff = params.vulnerability_pressure_range[index]
+        if params.spontaneous_embolism:
+            cfg['spontaneous_embolism_probabilities'] = spontaneous_embolism_probabilities
 
         cfg['conduit_diameters'] = 'inherit_from_net'
     

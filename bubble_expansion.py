@@ -1,5 +1,5 @@
 """
-Functions for estimating the probability of spontaneous embolism due to bubble formation. For details of the formalism, see Ingram, Reischl, Vesala & Vehkamäki 2024,
+Functions for estimating the probability of spontaneous embolism due to bubble expansion. For details of the formalism, see Ingram, Reischl, Vesala & Vehkamäki 2024,
 https://pubs.rsc.org/en/content/articlehtml/2024/na/d4na00316k
 
 Code written by Stephen Ingram
