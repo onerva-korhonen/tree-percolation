@@ -94,16 +94,17 @@ def make_colored_pore_scatter(net, pore_values, title='', cmap=plt.cm.jet):
     fig.colorbar(p, ax=ax)
     plt.title(title)
     
-def plot_percolation_curve(total_n_nodes, values, colors, labels, alphas, axindex=[], y_labels=[], save_path='', x=[]):
+def plot_percolation_curve(total_n_nodes, values, colors, labels, alphas, axindex=[], y_labels=[], save_path='', xs=[], param_linestyles=[], param_labels=[]):
     """
     Plots the percolation analysis outcomes (e.g. largest connected component size and effective conductance) as a function
-    of the fraction of nodes removed.
+    of the fraction of nodes removed; outcomes from several sets of analysis parameters can be plotted in a single image
 
     Parameters
     ----------
-    total_n_nodes : int
-        number of nodes in the network subject to percolation analysis (used for constructing x axis)
-    values : np.array
+    total_n_nodes : list of int
+        list number of nodes in the network subject to percolation analysis (used for constructing x axis); one element per parameter set
+    values : list of np.arrays
+        one array per parameter set;
         each row corresponds to a set of percolation outcome values to be plotted against the fraction of
         removed pores. if values.shape[1] < total_n_nodes + 1, the assumption is that only total_n_nodes + 1 - len(effective_conductance)
         nodes have been removed
@@ -119,47 +120,59 @@ def plot_percolation_curve(total_n_nodes, values, colors, labels, alphas, axinde
         labels of the first and secondary y axis. only used if the secondary y axis is used, in which case len(y_labels) should be 2
     save_path : str, optional
         if len(save_path) > 0, the figure will be saved as .pdf to the given path
-    x : np.array, optional
+    xs : list of np.array, optional
+        one array per parameter set;
         the x axis, against which to plot the percolation outcomes; if x is not given, the x axis is constructed as linspace
         assuming that one node/edge is removed at each step
+    param_linestyles : list of strs, optional
+        linestyles corresponding to the outcomes from different parameter sets to be visualized    
+    param_labels : list of strs, optional
+        labels corresponding to the outcomes from different parameter sets to be visualized
         
-
     Returns
     -------
     None.
 
     """
-    n_percolation_steps = values.shape[1]
-    assert n_percolation_steps > 1, 'only the values calculated for the full network given for plotting percolation curves'
-    if len(x) > 0:
-        assert len(x) == n_percolation_steps, "length of the given x axis does not match the number of percolation outcomes"
-    else:
-        if n_percolation_steps < total_n_nodes - 1:
-            print('Warning: number of effective conductance values from percolation analysis does not match the number of nodes')
-            x = np.linspace(0, 100 * (n_percolation_steps / total_n_nodes), n_percolation_steps)
-        else:
-            x = np.linspace(0, 100, total_n_nodes)
-    
     fig = plt.figure()
     ax = fig.add_subplot(111)
-    
-    if len(np.unique(axindex)) > 1: #secondary y axis will be used 
+    secondary_ax = len(np.unique(axindex)) > 1
+    if secondary_ax: # a secondary y axis will be used 
         ax2 = ax.twinx()
         axis = [ax, ax2]
-        for value, color, label, alpha, axind in zip(values, colors, labels, alphas, axindex):
-            axis[axind].plot(x, value, color=color, label=label, alpha=alpha)
+    
+    for total_n_nodes, value_array, x, param_ls, param_label in zip(total_n_nodes, values, xs, param_linestyles, param_labels):
+        n_percolation_steps = values.shape[1]
+        assert n_percolation_steps > 1, 'only the values calculated for the full network given for plotting percolation curves'
+        if len(x) > 0:
+            assert len(x) == n_percolation_steps, "length of the given x axis does not match the number of percolation outcomes"
+        else:
+            if n_percolation_steps < total_n_nodes - 1:
+                print('Warning: number of effective conductance values from percolation analysis does not match the number of nodes')
+                x = np.linspace(0, 100 * (n_percolation_steps / total_n_nodes), n_percolation_steps)
+            else:
+                x = np.linspace(0, 100, total_n_nodes)
+    
+        if secondary_ax: #secondary y axis will be used 
+            ax2 = ax.twinx()
+            axis = [ax, ax2]
+            for value, color, label, alpha, axind in zip(values, colors, labels, alphas, axindex):
+                axis[axind].plot(x, value, color=color, label=label + ', ' + param_label, alpha=alpha, ls=param_ls)
+        else:    
+            for value, color, label, alpha in zip(values, colors, labels, alphas):
+                ax.plot(x, value, color=color, label=label + ', ' + param_label, alpha=alpha, ls=param_ls)
+            
+    
+    if secondary_ax:
         ax.set_ylabel(y_labels[0])
         ax2.set_ylabel(y_labels[1])
         
         lines, labels = ax.get_legend_handles_labels()
         lines2, labels2 = ax2.get_legend_handles_labels()
         ax2.legend(lines + lines2, labels + labels2, loc=0)
-    else:    
-        for value, color, label, alpha in zip(values, colors, labels, alphas):
-            ax.plot(x, value, color=color, label=label, alpha=alpha)
-            ax.set_ylabel('Percolation outcome')
-            ax.legend()
-    
+    else:
+        ax.set_ylabel('Percolation outcome')
+        ax.legend()
     ax.set_xlabel('Fraction of edges/nodes removed')
 
     if len(save_path) > 0:
@@ -201,15 +214,15 @@ def plot_vulnerability_curve(vc, color, alpha, vc_type='physiological', save_pat
     if len(save_path) > 0:
         plt.savefig(save_path, format='pdf', bbox_inches='tight')
         
-def plot_optimized_vulnerability_curve(data_save_folder, physiological_color, stochastic_color, physiological_ls, stochastic_ls, physiological_alpha, stochastic_alpha, save_path):
+def plot_optimized_vulnerability_curve(data_save_folders, physiological_color, stochastic_color, physiological_alpha, stochastic_alpha, line_styles, labels, save_path):
     """
     Reads from files the optimized SI spreading probabilities and related effective conductance values for a set of pressure difference values, calculates the percentage of
     conductance lost (PLC) values (out of effective conductance at pressure difference 0) and plots the vulnerability curves.
 
     Parameters
     ----------
-    data_save_folder : str
-        folder to which the data is saved; the folder MUST NOT contain other files
+    data_save_folders : list of str
+        folders in which the data is saved; the folders MUST NOT contain other files
     physiological_color : str
         color of the vc curve corresponding to physiological spreading
     stochastic_color : str
@@ -222,44 +235,50 @@ def plot_optimized_vulnerability_curve(data_save_folder, physiological_color, st
         transparency of the vc curve corresponding to physiological spreading
     stochastic_alpha : float
         transparency of the vc curve corresponidng to stochastic spreading
+    line_styles : list of strs
+        line styles of the vc curve; one style per data_save_folder
+    labels : list of strs
+        labels of the vc curbes; one label per data_save_folder
     save_path : str
         path to which to save the plot
 
     Returns
     -------
     None
-    """    
-    data_files = [os.path.join(data_save_folder, file) for file in os.listdir(data_save_folder) if os.path.isfile(os.path.join(data_save_folder, file))]
-    pressure_diffs = np.zeros(len(data_files))
-    physiological_effective_conductances = np.zeros(len(data_files))
-    stochastic_effective_conductances = np.zeros(len(data_files))
-    
-    optimized_spreading_probabilities = np.zeros(len(data_files))
-    
-    for i, file in enumerate(data_files):
-        with open(file, 'rb') as f:
-            data = pickle.load(f)
-            f.close()
-        pressure_diffs[i] = data['pressure_difference']
-        physiological_effective_conductances[i] = data['physiological_effective_conductance']
-        stochastic_effective_conductances[i] = data['stochastic_effective_conductance']
-        if not 'optimized_spreading_probability' in data.keys():
-            optimized_spreading_probabilities[i] = data['optimal_spreading_probability'] # backward compatibility case, should be removed
-        else:
-            optimized_spreading_probabilities[i] = data['optimized_spreading_probability']
-    indices = np.argsort(pressure_diffs)
-    pressure_diffs = pressure_diffs[indices]
-    physiological_effective_conductances = physiological_effective_conductances[indices]
-    stochastic_effective_conductances = stochastic_effective_conductances[indices]
-    optimized_spreading_probabilities = optimized_spreading_probabilities[indices]
-    assert pressure_diffs[0] == 0, 'effective conductance at pressure difference 0 required for calculating percentage of conductance lost; values < 0 are not allowed!'
-    physiological_plc = 100 * (1 - physiological_effective_conductances / physiological_effective_conductances[0])
-    stochastic_plc = 100 * (1 - stochastic_effective_conductances / stochastic_effective_conductances[0]) # normalized by the effective conductance at the spreading probability optimized for pressure difference 0
-    
+    """
     fig = plt.figure()
     ax = fig.add_subplot(111)
-    ax.plot(pressure_diffs, physiological_plc, color=physiological_color, alpha=physiological_alpha, ls=physiological_ls, label='physiological')
-    ax.plot(pressure_diffs, stochastic_plc, color=stochastic_color, alpha=stochastic_alpha, ls=stochastic_ls, label='stochastic')
+    
+    for data_save_folder, line_style, label in zip(data_save_folders, line_styles, labels):    
+        data_files = [os.path.join(data_save_folder, file) for file in os.listdir(data_save_folder) if os.path.isfile(os.path.join(data_save_folder, file))]
+        pressure_diffs = np.zeros(len(data_files))
+        physiological_effective_conductances = np.zeros(len(data_files))
+        stochastic_effective_conductances = np.zeros(len(data_files))
+    
+        optimized_spreading_probabilities = np.zeros(len(data_files))
+    
+        for i, file in enumerate(data_files):
+            with open(file, 'rb') as f:
+                data = pickle.load(f)
+                f.close()
+            pressure_diffs[i] = data['pressure_difference']
+            physiological_effective_conductances[i] = data['physiological_effective_conductance']
+            stochastic_effective_conductances[i] = data['stochastic_effective_conductance']
+            if not 'optimized_spreading_probability' in data.keys():
+                optimized_spreading_probabilities[i] = data['optimal_spreading_probability'] # backward compatibility case, should be removed
+            else:
+                optimized_spreading_probabilities[i] = data['optimized_spreading_probability']
+        indices = np.argsort(pressure_diffs)
+        pressure_diffs = pressure_diffs[indices]
+        physiological_effective_conductances = physiological_effective_conductances[indices]
+        stochastic_effective_conductances = stochastic_effective_conductances[indices]
+        optimized_spreading_probabilities = optimized_spreading_probabilities[indices]
+        assert pressure_diffs[0] == 0, 'effective conductance at pressure difference 0 required for calculating percentage of conductance lost; values < 0 are not allowed!'
+        physiological_plc = 100 * (1 - physiological_effective_conductances / physiological_effective_conductances[0])
+        stochastic_plc = 100 * (1 - stochastic_effective_conductances / stochastic_effective_conductances[0]) # normalized by the effective conductance at the spreading probability optimized for pressure difference 0
+
+        ax.plot(pressure_diffs, physiological_plc, color=physiological_color, alpha=physiological_alpha, ls=line_style, label='physiological ' + label)
+        ax.plot(pressure_diffs, stochastic_plc, color=stochastic_color, alpha=stochastic_alpha, ls=line_style, label='stochastic ' + label)
     ax.set_xlabel('Pressure difference')
     ax.set_ylabel('PLC (%)')
     ax.legend()
