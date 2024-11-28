@@ -249,6 +249,8 @@ def optimize_spreading_probability(net, cfg, pressure_difference, start_conduits
         weibull_b : float, Weibull distribution shape parameter (used for simulating pressure-difference-based embolism spreading) (default 3.2)
         average_pit_area : float, the average area of a pit
         nCPUs : int, number of CPUs used for parallel computing (default 5)
+        spontaneous_embolism : bln, is spontaneous embolism through bubble expansion allowed (default: False)
+        spontaneous_embolism_probabilities : dic where keys are pressure values and values probabilities for spontaneous embolism
     pressure_difference : float
         pressure difference between water in conduits and air (bubble)
     start_conduits : str or array-like of ints
@@ -283,6 +285,10 @@ def optimize_spreading_probability(net, cfg, pressure_difference, start_conduits
     cfg['si_type'] = 'physiological'
     physiological_effective_conductances = np.zeros(n_iterations)
     stochastic_effective_conductances = np.zeros((len(spreading_probability_range), n_iterations))
+
+    spontaneous_embolism = cfg.get('spontaneous_embolism', False)
+    if spontaneous_embolism:
+        cfg['spontaneous_embolism_probability'] = cfg['spontaneous_embolism_probabilities'][pressure_difference]
     
     for i in np.arange(n_iterations):
         physiological_effective_conductances[i] = run_conduit_si(net, cfg, pressure_difference)[0][-1]
@@ -886,7 +892,7 @@ def run_conduit_si(net, cfg, spreading_param=0):
             if an array-like of ints is given, the ints are used as indices of the start conduits
         si_length : int, maximum number of time steps used for the simulation (default: 1000)
         spontaneous_embolism : bln, is spontaneous embolism through bubble expansion allowed (default: False)
-        spontaneous_embolism_probabilities : dic where keys are pressure values and values probabilities for spontaneous embolism
+        spontaneous_embolism_probability : float, probability of spontaneous embolism
     spreading_param : float
         parameter that controls the spreading speed, specifically
         if si_type == 'stochastic', spreading_param is the probability at which embolism spreads to neighbouring conduits (default: 0.1)
@@ -928,8 +934,8 @@ def run_conduit_si(net, cfg, spreading_param=0):
     si_length = cfg.get('si_length', 1000)
     spontaneous_embolism = cfg.get('spontaneous_embolism', False)
     if spontaneous_embolism:
-        spontaneous_embolism_probabilities = cfg['spontaneous_embolism_probabilities']
-    
+        spontaneous_embolism_probability = cfg['spontaneous_embolism_probability']
+        assert 0 <= spontaneous_embolism_probability <= 1, 'spontaneous embolism probability must be between 0 and 1'
     conns = net['throat.conns']
     assert len(conns) > 0, 'Network has no throats; cannot run percolation analysis'
     conn_types = net['throat.type']
@@ -1019,7 +1025,6 @@ def run_conduit_si(net, cfg, spreading_param=0):
         else: # TODO: now spontaneous embolisms are not possible in non-functional conduits since their pores are not included in water['pore.pressure'] and in conduits
             # spontaneous embolism due to bubble expansion
             if spontaneous_embolism:
-                spontaneous_embolism_probability = spontaneous_embolism_probabilities[pressure_diff]
                 test = np.random.rand(perc_net['pore.coords'].shape[0])
                 embolisation = test < spontaneous_embolism_probability
                 spontaneously_embolised_pores = np.where(embolisation)[0]

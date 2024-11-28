@@ -11,7 +11,7 @@ import numpy as np
 from scipy.stats import norm
 
 # params for network creation
-net_size = np.array([11,10,56])
+net_size = np.array([110,100,56])
 fixed_random = True
 if fixed_random:
     if net_size[1] == 10:
@@ -54,7 +54,7 @@ target_conduit_density = 630.817129361309 # 1/mm^2; conduit density in large bra
 
 # paths for saving
 triton = True
-identifier = 'with_percnet_test_small_net'#with_old_code_log_space'
+identifier = 'linspace_with_spontaneous_embolism'
 
 if triton:
     network_save_file = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/netpoints'
