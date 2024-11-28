@@ -51,7 +51,8 @@ cfg['fixed_random'] = True
 simulate_single_param_spreading = False
 construct_VC = False
 optimize_spreading_probability = False
-create_optimization_data = True
+create_optimization_data = False
+combine_optimization_data = True
 time = False
 
 #print(cfg['net_size'])
@@ -153,6 +154,11 @@ if __name__=='__main__':
         save_path = params.optimized_spreading_probability_save_path_base + '_' + str(index) + '.pkl'
         percolation.run_spreading_iteration(net, cfg, params.vulnerability_pressure_range, cfg['start_conduits'], save_path, 
                                             spreading_probability_range=params.optimization_probability_range, si_length=cfg['si_length'])
+    if combine_optimization_data:
+        simulation_data_save_folder = params.optimized_spreading_probability_save_path_base.rsplit('/', 1)[0]
+        simulation_data_save_name_base = params.optimized_spreading_probability_save_path_base.rsplit('/', 1)[1]
+        pooled_data_save_path = simulation_data_save_folder + '/' + params.pooled_optimized_spreading_probability_save_name
+        percolation.optimize_spreadig_probability_from_data(simulation_data_save_folder, simulation_data_save_name_base, pooled_data_save_path)
     
     if time:
         import timeit

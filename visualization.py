@@ -214,10 +214,10 @@ def plot_vulnerability_curve(vc, color, alpha, vc_type='physiological', save_pat
     if len(save_path) > 0:
         plt.savefig(save_path, format='pdf', bbox_inches='tight')
         
-def plot_optimized_vulnerability_curve(data_save_folders, physiological_color, stochastic_color, physiological_alpha, stochastic_alpha, line_styles, labels, save_path):
+def plot_optimized_vulnerability_curve(data_save_folders, physiological_color, stochastic_color, physiological_alpha, stochastic_alpha, line_styles, labels, save_path, pooled_data=False, pooled_data_save_name='', std_alpha=0.5, prevalence_plot_save_path=''):
     """
     Reads from files the optimized SI spreading probabilities and related effective conductance values for a set of pressure difference values, calculates the percentage of
-    conductance lost (PLC) values (out of effective conductance at pressure difference 0) and plots the vulnerability curves.
+    conductance lost (PLC) values (out of effective conductance at pressure difference 0) and plots the vulnerability curves and prevalence plots for all pressure differences.
 
     Parameters
     ----------
@@ -241,7 +241,14 @@ def plot_optimized_vulnerability_curve(data_save_folders, physiological_color, s
         labels of the vc curbes; one label per data_save_folder
     save_path : str
         path to which to save the plot
-
+    pooled_data : bln, optional
+        has the data already been pooled, i.e., can all data be read from a single file per data_save_folder? (default: False)
+    pooled_data_save_name : str, optional
+        the name (NOTE: not path) of the pooled data file (default: '')
+    std_alpha : float, optional
+        alpha used to color the mean +/- std in the prevalence plots (default: 0.5)
+    prevalence_plot_save_path : str, optional
+        path to which to save the prevalence plot
     Returns
     -------
     None
@@ -249,25 +256,44 @@ def plot_optimized_vulnerability_curve(data_save_folders, physiological_color, s
     fig = plt.figure()
     ax = fig.add_subplot(111)
     
-    for data_save_folder, line_style, label in zip(data_save_folders, line_styles, labels):    
-        data_files = [os.path.join(data_save_folder, file) for file in os.listdir(data_save_folder) if os.path.isfile(os.path.join(data_save_folder, file))]
-        pressure_diffs = np.zeros(len(data_files))
-        physiological_effective_conductances = np.zeros(len(data_files))
-        stochastic_effective_conductances = np.zeros(len(data_files))
+    if pooled_data:
+        prevalence_fig = plt.figure()
+        prevalence_ax = prevalence_fig.add_subplot(111)
     
-        optimized_spreading_probabilities = np.zeros(len(data_files))
-    
-        for i, file in enumerate(data_files):
+    for data_save_folder, line_style, label in zip(data_save_folders, line_styles, labels): 
+        if pooled_data:
+            file = data_save_folder + '/' + pooled_data_save_name
             with open(file, 'rb') as f:
                 data = pickle.load(f)
                 f.close()
-            pressure_diffs[i] = data['pressure_difference']
-            physiological_effective_conductances[i] = data['physiological_effective_conductance']
-            stochastic_effective_conductances[i] = data['stochastic_effective_conductance']
-            if not 'optimized_spreading_probability' in data.keys():
-                optimized_spreading_probabilities[i] = data['optimal_spreading_probability'] # backward compatibility case, should be removed
-            else:
-                optimized_spreading_probabilities[i] = data['optimized_spreading_probability']
+            pressure_diffs = data['pressure_differences']
+            physiological_effective_conductances = data['physiological_effective_conductances']
+            optimized_spreading_probabilities = data['optimized_spreading_probabilities']
+            stochastic_effective_conductances = data['stochastic_effective_conductances']
+            
+            average_phys_prevalences = data['average_physiological_prevalences']
+            std_phys_prevalences = data['std_physiological_prevalences']
+            average_stoch_prevalences = data['average_stochastic_prevalences']
+            std_stoch_prevalences = data['std_stochastic_prevalences']
+        else:
+            data_files = [os.path.join(data_save_folder, file) for file in os.listdir(data_save_folder) if os.path.isfile(os.path.join(data_save_folder, file))]
+            pressure_diffs = np.zeros(len(data_files))
+            physiological_effective_conductances = np.zeros(len(data_files))
+            stochastic_effective_conductances = np.zeros(len(data_files))
+        
+            optimized_spreading_probabilities = np.zeros(len(data_files))
+        
+            for i, file in enumerate(data_files):
+                with open(file, 'rb') as f:
+                    data = pickle.load(f)
+                    f.close()
+                pressure_diffs[i] = data['pressure_difference']
+                physiological_effective_conductances[i] = data['physiological_effective_conductance']
+                stochastic_effective_conductances[i] = data['stochastic_effective_conductance']
+                if not 'optimized_spreading_probability' in data.keys():
+                    optimized_spreading_probabilities[i] = data['optimal_spreading_probability'] # backward compatibility case, should be removed
+                else:
+                    optimized_spreading_probabilities[i] = data['optimized_spreading_probability']
         indices = np.argsort(pressure_diffs)
         pressure_diffs = pressure_diffs[indices]
         physiological_effective_conductances = physiological_effective_conductances[indices]
@@ -279,7 +305,26 @@ def plot_optimized_vulnerability_curve(data_save_folders, physiological_color, s
 
         ax.plot(pressure_diffs, physiological_plc, color=physiological_color, alpha=physiological_alpha, ls=line_style, label='physiological ' + label)
         ax.plot(pressure_diffs, stochastic_plc, color=stochastic_color, alpha=stochastic_alpha, ls=line_style, label='stochastic ' + label)
+        
+        if pooled_data: # prevalence information is included only in the pooled data
+            for i, (av_phys_prevalence, std_phys_prevalence, av_stoch_prevalence, std_stoch_prevalence) in enumerate(zip(average_phys_prevalences, std_phys_prevalences, average_stoch_prevalences, std_stoch_prevalences)):
+                prevalence_ax.plot(av_phys_prevalence, color=physiological_color, alpha=physiological_alpha, ls=line_style, label='physiological ' + label)
+                prevalence_ax.plot(av_stoch_prevalence, color=stochastic_color, alpha=stochastic_alpha, ls=line_style, label='stochastic ' + label)
+            else:
+                prevalence_ax.plot(av_phys_prevalence, color=physiological_color, alpha=physiological_alpha, ls=line_style)
+                prevalence_ax.plot(av_stoch_prevalence, color=stochastic_color, alpha=stochastic_alpha, ls=line_style)
+            prevalence_ax.fill_between(np.arange(len(av_phys_prevalence)), av_phys_prevalence - std_phys_prevalence, av_phys_prevalence + std_phys_prevalence, color=physiological_color, alpha=std_alpha)
+            prevalence_ax.fill_between(np.arange(len(av_stoch_prevalence)), av_stoch_prevalence - std_stoch_prevalence, av_stoch_prevalence + std_stoch_prevalence, color=stochastic_color, alpha=std_alpha)
+    
+    plt.figure(fig)
     ax.set_xlabel('Pressure difference')
     ax.set_ylabel('PLC (%)')
     ax.legend()
     plt.savefig(save_path, format='pdf', bbox_inches='tight')
+    
+    if pooled_data:
+        plt.figure(prevalence_fig)
+        prevalence_ax.set_xlabel('Time')
+        prevalence_ax.set_ylabel('Prevalence (fraction of embolized conduits)')
+        prevalence_ax.legend()
+        plt.savefig(prevalence_plot_save_path, format='pdf', bbox_inches='tight')

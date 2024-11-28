@@ -11,7 +11,7 @@ import numpy as np
 from scipy.stats import norm
 
 # params for network creation
-net_size = np.array([110,100,56])
+net_size = np.array([11,10,56])
 fixed_random = True
 if fixed_random:
     if net_size[1] == 10:
@@ -54,7 +54,8 @@ target_conduit_density = 630.817129361309 # 1/mm^2; conduit density in large bra
 
 # paths for saving
 triton = True
-identifier = 'linspace_with_spontaneous_embolism'
+identifier = 'testing_slurm_across_iterations'
+pooled_optimized_spreading_probability_save_name = 'pooled_optimized_spreading_probability.pkl'
 
 if triton:
     network_save_file = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/netpoints'
@@ -67,10 +68,11 @@ if triton:
     vc_data_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/vc_data_' + identifier + '.pkl'
     vc_plot_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/vc_' + identifier + '.pdf'
     optimized_spreading_probability_save_path_base = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/optimized_spreading_probability/' + identifier + '/optimized_spreading_probability_' + identifier
-    optimized_vc_plot_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/vc_optimized_spreading_probability_' + identifier + '.pdf'
+    optimized_vc_plot_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/vc_optimized_spreading_probability_' + identifier + '.pdf' 
+    optimized_prevalence_plot_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/prevalence_all_pressure_diffs_' + identifier + '.pdf' 
     
     single_param_visualization_data_paths = ['/m/cs/scratch/networks/aokorhon/tree-percolation/output/percolation_3D_' + identifier + '_data.pkl']
-    optimized_vc_plot_save_path_bases = ['/m/cs/scratch/networks/aokorhon/tree-percolation/output/optimized_spreading_probability/' + identifier + '/optimized_spreading_probability_' + identifier]
+    optimized_vc_plot_data_save_path_bases = ['/m/cs/scratch/networks/aokorhon/tree-percolation/output/optimized_spreading_probability/' + identifier + '/optimized_spreading_probability_' + identifier]
 else:
     network_save_file = '/home/onervak/projects/hidrogat/output/netpoints'
     percolation_plot_save_path = '/home/onervak/projects/hidrogat/output/percolation_3D_' + identifier + '.pdf'
@@ -83,9 +85,10 @@ else:
     vc_plot_save_path = '/home/onervak/projects/hidrogat/output/vc_' + identifier + '.pdf'
     optimized_spreading_probability_save_path_base = '/home/onervak/projects/hidrogat/output/optimized_spreading_probability/' + identifier + '/optimized_spreading_probability_' + identifier
     optimized_vc_plot_save_path = '/home/onervak/projects/hidrogat/output/vc_optimized_spreading_probability_' + identifier + '.pdf'
+    optimized_prevalence_plot_save_path = '/home/onervak/projects/hidrogat/output/prevalence_all_pressure_diffs_' + identifier + '.pdf'
     
     single_param_visualization_data_paths = ['/home/onervak/projects/hidrogat/output/percolation_3D_' + identifier + '_data.pkl']
-    optimized_vc_plot_save_path_bases = ['/home/onervak/projects/hidrogat/output/optimized_spreading_probability/' + identifier + '/optimized_spreading_probability_' + identifier]
+    optimized_vc_plot_data_save_path_bases = ['/home/onervak/projects/hidrogat/output/optimized_spreading_probability/' + identifier + '/optimized_spreading_probability_' + identifier]
 
 # percolation parameters
 percolation_type = 'si'
@@ -102,9 +105,9 @@ surface_tension = 0.072 # Newtons/meter
 pressure = 100 # number of pressure steps used by the drainage algorithm
 pressure_diff = 3.5e6 # Pa, the difference between water and air (bubble) pressures, delta P in the Mrad et al. article
 nCPUs = 5
-vulnerability_pressure_range = np.arange(0, 3.5, step=0.25)*1E6
+vulnerability_pressure_range = np.arange(0, 3.5, step=1)*1E6#np.arange(0, 3.5, step=0.25)*1E6
 vulnerability_probability_range = np.arange(0.001, 1, step=0.1)
-optimization_probability_range = np.arange(0.001, 0.02, step=0.0015)#np.logspace(np.log10(0.0001), np.log10(0.02), 15) # spreading probability range used for optimization
+optimization_probability_range = np.array([0.001, 0.003, 0.01])#np.arange(0.001, 0.02, step=0.0015)#np.logspace(np.log10(0.0001), np.log10(0.02), 15) # spreading probability range used for optimization
 n_iterations = 1 # number of iterations used for optimizing spreading probability
 
 # visualization parameters
@@ -134,4 +137,5 @@ stochastic_vc_ls = '--'
 stochastic_vc_alpha = 0.5
 optimized_vc_linestyles = ['-', '--']
 optimized_vc_labels = ['no spontaneous embolism', 'with spontaneous embolism']
+std_alpha = 0.5
 

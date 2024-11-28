@@ -410,11 +410,113 @@ def run_spreading_iteration(net, cfg, pressure_differences, start_conduits, save
      
     # saving simulation outputs
     data = {'pressure_differences': pressure_differences, 'spreading_probability_range': spreading_probability_range, 'physiological_effective_conductances': physiological_effective_conductances,
-            'physiological_prevalences': physiological_prevalences, 'stochastic_effective_conductances': stochastic_effective_conductances, 'stochastic_prevalences': stochastic_prevalences}
+            'physiological_prevalences': physiological_prevalences, 'stochastic_effective_conductances': stochastic_effective_conductances, 'stochastic_prevalences': stochastic_prevalences,
+            'spontaneous_embolism': spontaneous_embolism}
     save_folder = save_path.rsplit('/', 1)[0]
     if not os.path.exists(save_folder):
         os.mkdir(save_folder)
     with open(save_path, 'wb') as f:
+        pickle.dump(data, f)
+    f.close()
+    
+def optimize_spreadig_probability_from_data(simulation_data_save_folder, simulation_data_save_name_base, pooled_data_save_path):
+    """
+    Starting from previously calculated simulation data, finds the SI spreading probability that yields final effective conductance as close as possible to that of 
+    physiological embolism spreading with given parameters. Note that only the similarity of final effective conductances is minimized, while the shape of the prevalence curves may be different.
+
+    Parameters
+    ----------
+    simulation_data_save_folder : str
+        path of the folder in which the simulation data is saved
+    simulation_data_save_name_base : str
+        stem of the simulation data file names; the file names can contain other parts but files with names that don't contain this stem aren't read
+    pooled_data_save_path : str
+        path to which to save the pressure difference, optimal spreading probability and the effective conductance values corresponding to these
+
+    Returns
+    -------
+    None.
+    """
+    data_files = [os.path.join(simulation_data_save_folder, file) for file in os.listdir(simulation_data_save_folder) if os.path.isfile(os.path.join(simulation_data_save_folder, file))]
+    data_files = [data_file for data_file in data_files if simulation_data_save_name_base in data_file]
+    if pooled_data_save_path in data_files:
+        data_files.pop(pooled_data_save_path)
+    for i, data_file in enumerate(data_files):
+        with open(data_file, 'rb') as f:
+            data = pickle.load(f)
+            f.close()
+        spontaneous_embolism = data['spontaneous_embolism']
+        if i == 0:
+            pressure_differences = data['pressure_differences']
+            spreading_probability_range = data['spreading_probability_range']
+            physiological_effective_conductances = np.zeros((len(pressure_differences), len(data_files))) # pressures x iterations
+            physiological_prevalences = []
+            if spontaneous_embolism:
+                stochastic_effective_conductances = np.zeros((len(spreading_probability_range), len(pressure_differences), len(data_files))) # spreading probabilities x pressures x iterations
+            else:
+                stochastic_effective_conductances = np.zeros((len(spreading_probability_range), len(data_files))) # spreading probabilities x iterations
+            stochastic_prevalences = []
+        else:
+            assert np.all(data['pressure_differences'] == pressure_differences), data_file + ' has different list of pressure_differences than other files'
+            assert np.all(data['spreading_probability_range'] == spreading_probability_range), data_file + ' has different spreading probability range than other files'
+        physiological_effective_conductances[:, i] = data['physiological_effective_conductances']
+        physiological_prevalences.append(data['physiological_prevalences'])
+        if spontaneous_embolism:
+            stochastic_effective_conductances = np.zeros((len(spreading_probability_range), len(pressure_differences), len(data_files))) # spreading probabilities x pressures x iterations
+            stochastic_effective_conductances[:, :, i] = data['stochastic_effective_conductances']
+        else:
+            stochastic_effective_conductances = np.zeros((len(spreading_probability_range), len(data_files))) # spreading probabilities x iterations
+            stochastic_effective_conductances[:, i] = data['stochastic_effective_conductances']
+        stochastic_prevalences = []
+        stochastic_prevalences.append(data['stochastic_prevalences'])
+    
+    averaged_physiological_effective_conductances = np.zeros(len(pressure_differences))
+    optimized_spreading_probabilities = np.zeros(len(pressure_differences))
+    optimized_stochastic_effective_conductances = np.zeros(len(pressure_differences))
+    average_phys_prevalences = []
+    std_phys_prevalences = []
+    average_stoch_prevalences = []
+    std_stoch_prevalences = []
+    for i, pressure_difference in enumerate(pressure_differences):
+        physiological_effective_conductance = np.mean(physiological_effective_conductances[i, :])
+        averaged_physiological_effective_conductances[i] = physiological_effective_conductance
+        if spontaneous_embolism:
+            averaged_stochastic_effective_conductances = np.mean(stochastic_effective_conductances[:, i, :], axis=1)
+        else:
+            averaged_stochastic_effective_conductances = np.mean(stochastic_effective_conductances, axis=1)
+        optimized_spreading_probability_index = np.argmin(np.abs(averaged_stochastic_effective_conductances - physiological_effective_conductance))
+        optimized_spreading_probabilities[i] = spreading_probability_range[optimized_spreading_probability_index]
+        optimized_stochastic_effective_conductances[i] = averaged_stochastic_effective_conductances[optimized_spreading_probability_index]
+        
+        pressure_difference_phys_prevalences = [prevalences[i] for prevalences in physiological_prevalences]
+        physiological_prevalence_length = max([len(prevalence) for prevalence in pressure_difference_phys_prevalences])
+        for p, prevalence in enumerate(pressure_difference_phys_prevalences):
+            if len(prevalence) < physiological_prevalence_length:
+                pressure_difference_phys_prevalences[p] = np.concatenate((prevalence, prevalence[-1] * np.ones(physiological_prevalence_length - len(prevalence))))
+        pressure_difference_phys_prevalences = np.array(pressure_difference_phys_prevalences)
+        average_phys_prevalences.append(np.mean(pressure_difference_phys_prevalences, axis=0))
+        std_phys_prevalences.append(np.std(pressure_difference_phys_prevalences, axis=0))
+        
+        
+        if spontaneous_embolism:
+            pressure_difference_stoch_prevalences = [prevalences[optimized_spreading_probability_index][i] for prevalences in stochastic_prevalences]
+        else:
+            pressure_difference_stoch_prevalences = [prevalences[optimized_spreading_probability_index] for prevalences in stochastic_prevalences]
+        stochastic_prevalence_length = max([len(prevalence) for prevalence in pressure_difference_stoch_prevalences])
+        for p, prevalence in enumerate(pressure_difference_stoch_prevalences):
+            if len(prevalence) < stochastic_prevalence_length:
+                pressure_difference_stoch_prevalences[p] = np.concatenate((prevalence, prevalence[-1] * np.ones(stochastic_prevalence_length - len(prevalence))))
+        pressure_difference_stoch_prevalences = np.array(pressure_difference_stoch_prevalences)
+        average_stoch_prevalences.append(np.mean(pressure_difference_stoch_prevalences, axis=0))
+        std_stoch_prevalences.append(np.std(pressure_difference_stoch_prevalences, axis=0))
+        
+        #TODO: add handling of prevalences
+    
+    data = {'pressure_differences': pressure_differences, 'optimized_spreading_probabilities': optimized_spreading_probabilities, 'physiological_effective_conductances': averaged_physiological_effective_conductances,
+            'stochastic_effective_conductances': optimized_stochastic_effective_conductances, 'average_physiological_prevalences': average_phys_prevalences, 'std_physiological_prevalences': std_phys_prevalences,
+            'average_stochastic_prevalences': average_stoch_prevalences, 'std_stochastic_prevalences': std_stoch_prevalences}
+    
+    with open(pooled_data_save_path, 'wb') as f:
         pickle.dump(data, f)
     f.close()
     
