@@ -68,6 +68,9 @@ if triton:
     vc_plot_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/vc_' + identifier + '.pdf'
     optimized_spreading_probability_save_path_base = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/optimized_spreading_probability/' + identifier + '/optimized_spreading_probability_' + identifier
     optimized_vc_plot_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/vc_optimized_spreading_probability_' + identifier + '.pdf'
+    
+    single_param_visualization_data_paths = ['/m/cs/scratch/networks/aokorhon/tree-percolation/output/percolation_3D_' + identifier + '_data.pkl']
+    optimized_vc_plot_save_path_bases = ['/m/cs/scratch/networks/aokorhon/tree-percolation/output/optimized_spreading_probability/' + identifier + '/optimized_spreading_probability_' + identifier]
 else:
     network_save_file = '/home/onervak/projects/hidrogat/output/netpoints'
     percolation_plot_save_path = '/home/onervak/projects/hidrogat/output/percolation_3D_' + identifier + '.pdf'
@@ -80,6 +83,9 @@ else:
     vc_plot_save_path = '/home/onervak/projects/hidrogat/output/vc_' + identifier + '.pdf'
     optimized_spreading_probability_save_path_base = '/home/onervak/projects/hidrogat/output/optimized_spreading_probability/' + identifier + '/optimized_spreading_probability_' + identifier
     optimized_vc_plot_save_path = '/home/onervak/projects/hidrogat/output/vc_optimized_spreading_probability_' + identifier + '.pdf'
+    
+    single_param_visualization_data_paths = ['/home/onervak/projects/hidrogat/output/percolation_3D_' + identifier + '_data.pkl']
+    optimized_vc_plot_save_path_bases = ['/home/onervak/projects/hidrogat/output/optimized_spreading_probability/' + identifier + '/optimized_spreading_probability_' + identifier]
 
 # percolation parameters
 percolation_type = 'si'
@@ -118,10 +124,14 @@ percolation_ninlet_label = 'Average n inlets'
 percolation_noutlet_label = 'Average n outlets'
 percolation_ninlet_alpha = 1
 percolation_noutlet_alpha = 1
+percolation_linestyles = ['-', '--']
+percolation_labels = ['no spontaneous embolism', 'with spontaneous embolism']
 physiological_vc_color = 'r'
 physiological_vc_ls = '-'
 physiological_vc_alpha = 1
 stochastic_vc_color = 'k'
 stochastic_vc_ls = '--'
 stochastic_vc_alpha = 0.5
+optimized_vc_linestyles = ['-', '--']
+optimized_vc_labels = ['no spontaneous embolism', 'with spontaneous embolism']
 
