@@ -50,7 +50,8 @@ cfg['fixed_random'] = True
 
 simulate_single_param_spreading = False
 construct_VC = False
-optimize_spreading_probability = True
+optimize_spreading_probability = False
+create_optimization_data = True
 time = False
 
 #print(cfg['net_size'])
@@ -132,19 +133,26 @@ if __name__=='__main__':
     if optimize_spreading_probability:
         if params.spontaneous_embolism:
             spontaneous_embolism_probabilities = percolation.get_spontaneous_embolism_probability(params.vulnerability_pressure_range)
+            cfg['spontaneous_embolism_probabilities'] = spontaneous_embolism_probabilities
             
         index = int(sys.argv[1])
         pressure_diff = params.vulnerability_pressure_range[index]
-        if params.spontaneous_embolism:
-            cfg['spontaneous_embolism_probabilities'] = spontaneous_embolism_probabilities
 
         cfg['conduit_diameters'] = 'inherit_from_net'
-    
-        optimized_spreading_probabilities = np.zeros(len(params.vulnerability_pressure_range))
-        physiological_effective_conductances = np.zeros(len(params.vulnerability_pressure_range))
-        stochastic_effective_conductances = np.zeros(len(params.vulnerability_pressure_range))
 
         percolation.optimize_spreading_probability(net_cleaned, cfg, pressure_diff, cfg['start_conduits'], params.optimization_probability_range, si_length=cfg['si_length'], n_iterations=params.n_iterations, save_path_base=params.optimized_spreading_probability_save_path_base)
+    
+    if create_optimization_data:
+        if params.spontaneous_embolism:
+            spontaneous_embolism_probabilities = percolation.get_spontaneous_embolism_probability(params.vulnerability_pressure_range)
+            cfg['spontaneous_embolism_probabilities'] = spontaneous_embolism_probabilities
+            
+        cfg['conduit_diameters'] = 'inherit_from_net'
+        
+        index = int(sys.argv[1])
+        save_path = params.optimized_spreading_probability_save_path_base + '_' + str(index) + '.pkl'
+        percolation.run_spreading_iteration(net, cfg, params.vulnerability_pressure_range, cfg['start_conduits'], save_path, 
+                                            spreading_probability_range=params.optimization_probability_range, si_length=cfg['si_length'])
     
     if time:
         import timeit

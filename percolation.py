@@ -279,7 +279,6 @@ def optimize_spreading_probability(net, cfg, pressure_difference, start_conduits
          stochastic_effective_conductance : float, the effective conductance at the end of the stochastic embolism spreading
     """
     # TODO: should same start conduits be used for all pressure_differences? is so, where and how to define start conduits?
-    # TODO: should this return the whole spreading curves? are they needed later for visualization?
     
     cfg['si_length'] = si_length
     cfg['si_type'] = 'physiological'
@@ -318,7 +317,7 @@ def optimize_spreading_probability(net, cfg, pressure_difference, start_conduits
     else:
         return output
     
-def run_spreading_iteration(net, cfg, pressure_differences, start_conduits, save_path_base, spreading_probability_range=np.arange(0.001, 1, step=0.1), si_length=1000):
+def run_spreading_iteration(net, cfg, pressure_differences, start_conduits, save_path, spreading_probability_range=np.arange(0.001, 1, step=0.1), si_length=1000):
     """
     Runs physiological conduit SI for a range of pressure difference values and stochastic conduit SI for a range of spreading probability values and saves the effective conductance
     value and prevalence curve of each simulation. Used for creating the data for optimizing spreading probability.
@@ -354,26 +353,70 @@ def run_spreading_iteration(net, cfg, pressure_differences, start_conduits, save
         weibull_a : float, Weibull distribution scale parameter (used for simulating pressure-difference-based embolism spreading) (default 20.28E6)
         weibull_b : float, Weibull distribution shape parameter (used for simulating pressure-difference-based embolism spreading) (default 3.2)
         average_pit_area : float, the average area of a pit
-        nCPUs : int, number of CPUs used for parallel computing (default 5)
-    pressure_difference : float
-        pressure difference between water in conduits and air (bubble)
+        spontaneous_embolism : bln, is spontaneous embolism through bubble expansion allowed (default: False)
+        spontaneous_embolism_probabilities : dic where keys are pressure values and values probabilities for spontaneous embolism
+    pressure_differences : iterable of float
+        pressure differences between water in conduits and air (bubble), with which the physiological SI is simulated
     start_conduits : str or array-like of ints
         the first conduits to be removed (i.e. the first infected node of the simulation)
         if 'random', a single start conduit is selected at random
         if 'random_per_component', a single start conduit per network component is selected at random
         if an array-like of ints is given, the ints are used as indices of the start conduits
+    save_path : str
+        base path to which to save the outcomes
     spreading_probability_range : array-like, optional
-        the spreading probability values, among which the optimal one is selected
+        the spreading probability values, with which the stochastic SI is simulated
     si_length : int, optional
         maximum number of time steps used for the simulation. The default is 1000.
-    save_path_base : str, optional
-        base path to which to save the pressure difference, optimal spreading probability and the effective conductance values corresponding to these. if no save_path_base is
-        given, these values are returned instead.
 
     Returns
     -------
     None
     """
+    spontaneous_embolism = cfg.get('spontaneous_embolism', False)
+    physiological_effective_conductances = np.zeros(len(pressure_differences))
+    physiological_prevalences = []
+    if spontaneous_embolism:
+        spontaneous_embolism_probabilities = cfg['spontaneous_embolism_probabilities']
+        stochastic_effective_conductances = np.zeros((len(spreading_probability_range), len(pressure_differences)))
+        stochastic_prevalences = [[] for spreading_probability in spreading_probability_range]
+    else:
+        stochastic_effective_conductances = np.zeros(len(spreading_probability_range))
+        stochastic_prevalences = []
+    
+    # running physiological SI
+    cfg['si_type'] = 'physiological'
+    for i, pressure_difference in enumerate(pressure_differences):
+        if spontaneous_embolism:
+            cfg['spontaneous_embolism_probability'] = spontaneous_embolism_probabilities[pressure_difference]
+        output = run_conduit_si(net, cfg, pressure_difference)
+        physiological_effective_conductances[i] = output[0][-1]
+        physiological_prevalences.append(output[-1])
+        
+    # running stochastic SI
+    cfg['si_type'] = 'stochastic'
+    if spontaneous_embolism:
+        for i, spreading_probability in enumerate(spreading_probability_range):
+            for j, pressure_difference in enumerate(pressure_differences):
+                cfg['spontaneous_embolism_probability'] = spontaneous_embolism_probabilities[pressure_difference]
+                output = run_conduit_si(net, cfg, spreading_probability)
+                stochastic_effective_conductances[i, j] = output[0][-1]
+                stochastic_prevalences[i].append(output[-1])
+    else:
+        for i, spreading_probabilty in enumerate(spreading_probability_range):
+            output = run_conduit_si(net, cfg, spreading_probability)
+            stochastic_effective_conductances[i] = output[0][-1]
+            stochastic_prevalences.append(output[-1])
+     
+    # saving simulation outputs
+    data = {'pressure_differences': pressure_differences, 'spreading_probability_range': spreading_probability_range, 'physiological_effective_conductances': physiological_effective_conductances,
+            'physiological_prevalences': physiological_prevalences, 'stochastic_effective_conductances': stochastic_effective_conductances, 'stochastic_prevalences': stochastic_prevalences}
+    save_folder = save_path.rsplit('/', 1)[0]
+    if not os.path.exists(save_folder):
+        os.mkdir(save_folder)
+    with open(save_path, 'wb') as f:
+        pickle.dump(data, f)
+    f.close()
     
 def run_conduit_si_repeatedly(net, net_proj, cfg, spreading_param=0):
     """
@@ -1083,16 +1126,17 @@ def run_conduit_si(net, cfg, spreading_param=0):
             # spontaneous embolism due to bubble expansion
             if spontaneous_embolism:
                 test = np.random.rand(perc_net['pore.coords'].shape[0])
-                embolisation = test < spontaneous_embolism_probability
-                spontaneously_embolised_pores = np.where(embolisation)[0]
-                for spontaneously_embolised_pore in spontaneously_embolised_pores:
-                    spontaneously_embolised_conduit = np.where((conduits[:, 0] <= spontaneously_embolised_pore) & (spontaneously_embolised_pore <= conduits[:, 1]))[0][0]
-                    if embolization_times[spontaneously_embolised_conduit, 1] > 0: # the spontaneously embolised conduit is functional and will be removed from the network
-                        pores_to_remove.extend(list(np.arange(conduits[spontaneously_embolised_conduit, 0], conduits[spontaneously_embolised_conduit, 1] + 1)))
-                        removed_conduit_indices.append(spontaneously_embolised_conduit)
+                embolization = test < spontaneous_embolism_probability
+                spontaneously_embolized_pores = np.where(embolization)[0]
+                for spontaneously_embolized_pore in spontaneously_embolized_pores:
+                    spontaneously_embolized_conduit = np.where((conduits[:, 0] <= spontaneously_embolized_pore) & (spontaneously_embolized_pore <= conduits[:, 1]))[0][0]
+                    embolization_times[spontaneously_embolized_conduit, 0] = time_step
+                    if embolization_times[spontaneously_embolized_conduit, 1] > 0: # the spontaneously embolized conduit is functional and will be removed from the network
+                        pores_to_remove.extend(list(np.arange(conduits[spontaneously_embolized_conduit, 0], conduits[spontaneously_embolized_conduit, 1] + 1)))
+                        removed_conduit_indices.append(spontaneously_embolized_conduit)
                     else: # if a nonfunctional conduit is embolized, nonfunctional component size and volume decrease
                         nonfunctional_component_size[time_step] -= 1
-                        nonfunctional_component_volume[time_step] -= np.sum(np.pi * 0.5 * orig_pore_diameter[np.arange(orig_conduits[spontaneously_embolised_conduit, 0], orig_conduits[spontaneously_embolised_conduit, 1] + 1)]**2 * conduit_element_length)
+                        nonfunctional_component_volume[time_step] -= np.sum(np.pi * 0.5 * orig_pore_diameter[np.arange(orig_conduits[spontaneously_embolized_conduit, 0], orig_conduits[spontaneously_embolized_conduit, 1] + 1)]**2 * conduit_element_length)
             
             # embolism spreading
             embolized_conduits = np.where(embolization_times[:, 0] < time_step)[0]
@@ -1164,7 +1208,7 @@ def run_conduit_si(net, cfg, spreading_param=0):
                 nonfunctional_component_size[time_step] = nonfunctional_component_size[time_step] + nonfunctional_component_size[time_step - 1] + n_nonfunctional_conduits
                 if removed_lcc > max_removed_lcc: # Percolation doesn't affect the sizes of removed components -> the largest removed component size changes only if a new, larger component gets removed
                     max_removed_lcc = removed_lcc
-                removed_conduit_indices = get_conduit_indices(conduits, removed_elements)
+                removed_conduit_indices = get_conduit_indices(conduits, removed_elements)   
                 for removed_conduit_index in removed_conduit_indices[::-1]:
                     conduits[removed_conduit_index + 1::, 0:2] = conduits[removed_conduit_index + 1::, 0:2] - conduits[removed_conduit_index, 2]
                     conduits[removed_conduit_index, :] = -1
@@ -1834,10 +1878,10 @@ def get_spontaneous_embolism_probability(pressures):
         )
     
     unique_pressures = np.unique(pressures)
-    embolisation_probabilities = {}
+    embolization_probabilities = {}
     for pressure in unique_pressures:
-        embolisation_probability = bubble_expansion.probability(-pressure, T, mu, sigma, apl, r_range/1e9, n_bubble)
-        embolisation_probabilities[pressure] = embolisation_probability
+        embolization_probability = bubble_expansion.probability(-pressure, T, mu, sigma, apl, r_range/1e9, n_bubble)
+        embolization_probabilities[pressure] = embolization_probability
         
-    return embolisation_probabilities
+    return embolization_probabilities
 
