@@ -312,6 +312,63 @@ def optimize_spreading_probability(net, cfg, pressure_difference, start_conduits
     else:
         return output
     
+def run_spreading_iteration(net, cfg, pressure_differences, start_conduits, save_path_base, spreading_probability_range=np.arange(0.001, 1, step=0.1), si_length=1000):
+    """
+    Runs physiological conduit SI for a range of pressure difference values and stochastic conduit SI for a range of spreading probability values and saves the effective conductance
+    value and prevalence curve of each simulation. Used for creating the data for optimizing spreading probability.
+
+    Parameters
+    ----------
+    net : openpnm.Network()
+        pores correspond to conduit elements, throats to connections between the elements
+    cfg : dict
+        contains:
+        net_size: np.array, size of the network to be created (n_rows x n_columns x n_depths)
+        use_cylindrical_coords: bln, should Mrad model coordinates be interpreted as cylindrical ones in visualizations?
+        Lce: float, length of a conduit element
+        Dc: float, average conduit diameter (m)
+        Dc_cv: float, coefficient of variation of conduit diameter
+        fc: float, average contact fraction between two conduits
+        fpf: float, average pit field fraction between two conduits
+        conduit_diameters: np.array of floats, diameters of the conduits, or 'lognormal'
+        to draw diameters from a lognormal distribution defined by Dc and Dc_cv
+        cec_indicator: int, value used to indicate that the type of a throat is CE
+        tf: float, microfibril strand thickness (m)
+        icc_length: float, length of an ICC throat (m)
+        water_pore_viscosity: float, value of the water viscosity in pores
+        water_throat_viscosity: float, value of the water viscosity in throats
+        water_pore_diffusivity: float, value of the water diffusivity in pores
+        inlet_pressure: float, pressure at the inlet conduit elements (Pa)
+        outlet_pressure: float, pressure at the outlet conduit elements (Pa) 
+        Dp: float, average pit membrane pore diameter (m)
+        Tm: float, average thickness of membranes (m)
+        conduit_element_length : float, length of a single conduit element (m), used only if use_cylindrical_coords == True (default from the Mrad et al. article)
+        heartwood_d : float, diameter of the heartwood (= part of the tree not included in the xylem network) (in conduit elements) used only if use_cylindrical_coords == True (default value from the Mrad et al. article)
+        si_tolerance_length : int, tolerance parameter for defining the end of the simulation: when the prevalence hasn't changed for si_tolerance_length steps, the simulation stops (default 20)
+        weibull_a : float, Weibull distribution scale parameter (used for simulating pressure-difference-based embolism spreading) (default 20.28E6)
+        weibull_b : float, Weibull distribution shape parameter (used for simulating pressure-difference-based embolism spreading) (default 3.2)
+        average_pit_area : float, the average area of a pit
+        nCPUs : int, number of CPUs used for parallel computing (default 5)
+    pressure_difference : float
+        pressure difference between water in conduits and air (bubble)
+    start_conduits : str or array-like of ints
+        the first conduits to be removed (i.e. the first infected node of the simulation)
+        if 'random', a single start conduit is selected at random
+        if 'random_per_component', a single start conduit per network component is selected at random
+        if an array-like of ints is given, the ints are used as indices of the start conduits
+    spreading_probability_range : array-like, optional
+        the spreading probability values, among which the optimal one is selected
+    si_length : int, optional
+        maximum number of time steps used for the simulation. The default is 1000.
+    save_path_base : str, optional
+        base path to which to save the pressure difference, optimal spreading probability and the effective conductance values corresponding to these. if no save_path_base is
+        given, these values are returned instead.
+
+    Returns
+    -------
+    None
+    """
+    
 def run_conduit_si_repeatedly(net, net_proj, cfg, spreading_param=0):
     """
     Re-initializes all objects of op.Network().project to have given initial properties and
