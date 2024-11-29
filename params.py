@@ -11,7 +11,7 @@ import numpy as np
 from scipy.stats import norm
 
 # params for network creation
-net_size = np.array([11,10,56])
+net_size = np.array([110,100,56])
 fixed_random = True
 if fixed_random:
     if net_size[1] == 10:
@@ -54,7 +54,7 @@ target_conduit_density = 630.817129361309 # 1/mm^2; conduit density in large bra
 
 # paths for saving
 triton = True
-identifier = 'testing_slurm_across_iterations'
+identifier = 'linspace_with_spontaneous_embolism'
 pooled_optimized_spreading_probability_save_name = 'pooled_optimized_spreading_probability.pkl'
 
 if triton:
@@ -105,9 +105,9 @@ surface_tension = 0.072 # Newtons/meter
 pressure = 100 # number of pressure steps used by the drainage algorithm
 pressure_diff = 3.5e6 # Pa, the difference between water and air (bubble) pressures, delta P in the Mrad et al. article
 nCPUs = 5
-vulnerability_pressure_range = np.arange(0, 3.5, step=1)*1E6#np.arange(0, 3.5, step=0.25)*1E6
+vulnerability_pressure_range = np.arange(0, 3.5, step=0.25)*1E6
 vulnerability_probability_range = np.arange(0.001, 1, step=0.1)
-optimization_probability_range = np.array([0.001, 0.003, 0.01])#np.arange(0.001, 0.02, step=0.0015)#np.logspace(np.log10(0.0001), np.log10(0.02), 15) # spreading probability range used for optimization
+optimization_probability_range = np.arange(0.001, 0.02, step=0.0015)#np.logspace(np.log10(0.0001), np.log10(0.02), 15) # spreading probability range used for optimization
 n_iterations = 1 # number of iterations used for optimizing spreading probability
 
 # visualization parameters
@@ -135,7 +135,7 @@ physiological_vc_alpha = 1
 stochastic_vc_color = 'k'
 stochastic_vc_ls = '--'
 stochastic_vc_alpha = 0.5
-optimized_vc_linestyles = ['-', '--']
-optimized_vc_labels = ['no spontaneous embolism', 'with spontaneous embolism']
+optimized_vc_linestyles = ['-']
+optimized_vc_labels = ['with spontaneous embolism']
 std_alpha = 0.5
 
