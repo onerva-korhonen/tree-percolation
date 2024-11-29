@@ -279,7 +279,6 @@ def optimize_spreading_probability(net, cfg, pressure_difference, start_conduits
          stochastic_effective_conductance : float, the effective conductance at the end of the stochastic embolism spreading
     """
     # TODO: should same start conduits be used for all pressure_differences? is so, where and how to define start conduits?
-    
     cfg['si_length'] = si_length
     cfg['si_type'] = 'physiological'
     physiological_effective_conductances = np.zeros(n_iterations)
@@ -1091,6 +1090,7 @@ def run_conduit_si(net, cfg, spreading_param=0):
         start_conduits : str or array-like of ints, the first conduits to be removed (i.e. the first infected node of the simulation)
             if 'random', a single start conduit is selected at random
             if 'random_per_component', a single start conduit per network component is selected at random
+            if 'none', no start conduits are selected and embolism spreading is based solely on spontaneous embolism (for using this option, spontaneous_embolism must be True)
             if an array-like of ints is given, the ints are used as indices of the start conduits
         si_length : int, maximum number of time steps used for the simulation (default: 1000)
         spontaneous_embolism : bln, is spontaneous embolism through bubble expansion allowed (default: False)
@@ -1179,6 +1179,9 @@ def run_conduit_si(net, cfg, spreading_param=0):
             for i, component_elements in enumerate(component_indices):
                 start_element = np.random.choice(component_elements)
                 start_conduits[i] = np.where((conduits[:, 0] <= start_element) & (start_element <= conduits[:, 1]))[0][0]
+        elif start_conduits == 'none':
+            assert spontaneous_embolism, 'no start conduits given and spontaneous embolism not allowed so simulating embolism spreading is not possible'
+            start_conduits = []
     
     embolization_times = np.zeros((conduits.shape[0], 2))
     embolization_times[:, 0] = np.inf
@@ -1215,6 +1218,9 @@ def run_conduit_si(net, cfg, spreading_param=0):
     last_removed_by_embolism = False
        
     while (prevalence_diff > 0) & (time_step < si_length):
+        
+        #if (time_step == 4) & (pressure_diff == 1250000.0):
+        #    import pdb; pdb.set_trace()
             
         pores_to_remove = []
         removed_conduit_indices = []
@@ -1234,6 +1240,7 @@ def run_conduit_si(net, cfg, spreading_param=0):
                     spontaneously_embolized_conduit = np.where((conduits[:, 0] <= spontaneously_embolized_pore) & (spontaneously_embolized_pore <= conduits[:, 1]))[0][0]
                     embolization_times[spontaneously_embolized_conduit, 0] = time_step
                     if embolization_times[spontaneously_embolized_conduit, 1] > 0: # the spontaneously embolized conduit is functional and will be removed from the network
+                        embolization_times[spontaneously_embolized_conduit, 1] = 0
                         pores_to_remove.extend(list(np.arange(conduits[spontaneously_embolized_conduit, 0], conduits[spontaneously_embolized_conduit, 1] + 1)))
                         removed_conduit_indices.append(spontaneously_embolized_conduit)
                     else: # if a nonfunctional conduit is embolized, nonfunctional component size and volume decrease
@@ -1241,21 +1248,22 @@ def run_conduit_si(net, cfg, spreading_param=0):
                         nonfunctional_component_volume[time_step] -= np.sum(np.pi * 0.5 * orig_pore_diameter[np.arange(orig_conduits[spontaneously_embolized_conduit, 0], orig_conduits[spontaneously_embolized_conduit, 1] + 1)]**2 * conduit_element_length)
             
             # embolism spreading
-            embolized_conduits = np.where(embolization_times[:, 0] < time_step)[0]
-            possible_embolizations = False
-            for embolized_conduit in embolized_conduits:
-                try: 
-                    neighbour_embolization_times = embolization_times[np.array(conduit_neighbours[embolized_conduit]), 0]
-                except:
-                    if len(conduit_neighbours[embolized_conduit]) == 0:
-                        continue
-                    else:
-                        raise 
-                if np.any(neighbour_embolization_times > time_step):
-                    possible_embolizations = True
-                    break
-            if not possible_embolizations:
-                break # no further embolizations are possible and the simulation stops
+            if not spontaneous_embolism: # this stops the simulation if further embolisations are not possible: there are no unembolised conduits with embolised neighbours and spontaneous embolism is not allowed
+                embolized_conduits = np.where(embolization_times[:, 0] < time_step)[0]
+                possible_embolizations = False
+                for embolized_conduit in embolized_conduits:
+                    try: 
+                        neighbour_embolization_times = embolization_times[np.array(conduit_neighbours[embolized_conduit]), 0]
+                    except:
+                        if len(conduit_neighbours[embolized_conduit]) == 0:
+                            continue
+                        else:
+                            raise 
+                    if np.any(neighbour_embolization_times > time_step):
+                        possible_embolizations = True
+                        break
+                if not possible_embolizations:
+                    break # no further embolizations are possible and the simulation stops
             
             for conduit in conduit_neighbours.keys():
                 if embolization_times[conduit, 0] < time_step:
