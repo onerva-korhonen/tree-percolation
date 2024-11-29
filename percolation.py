@@ -1218,9 +1218,6 @@ def run_conduit_si(net, cfg, spreading_param=0):
     last_removed_by_embolism = False
        
     while (prevalence_diff > 0) & (time_step < si_length):
-        
-        #if (time_step == 4) & (pressure_diff == 1250000.0):
-        #    import pdb; pdb.set_trace()
             
         pores_to_remove = []
         removed_conduit_indices = []
@@ -1248,8 +1245,8 @@ def run_conduit_si(net, cfg, spreading_param=0):
                         nonfunctional_component_volume[time_step] -= np.sum(np.pi * 0.5 * orig_pore_diameter[np.arange(orig_conduits[spontaneously_embolized_conduit, 0], orig_conduits[spontaneously_embolized_conduit, 1] + 1)]**2 * conduit_element_length)
             
             # embolism spreading
+            embolized_conduits = np.where(embolization_times[:, 0] < time_step)[0]
             if not spontaneous_embolism: # this stops the simulation if further embolisations are not possible: there are no unembolised conduits with embolised neighbours and spontaneous embolism is not allowed
-                embolized_conduits = np.where(embolization_times[:, 0] < time_step)[0]
                 possible_embolizations = False
                 for embolized_conduit in embolized_conduits:
                     try: 
