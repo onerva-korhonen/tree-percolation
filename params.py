@@ -69,7 +69,7 @@ if triton:
     vc_plot_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/vc_' + identifier + '.pdf'
     optimized_spreading_probability_save_path_base = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/optimized_spreading_probability/' + identifier + '/optimized_spreading_probability_' + identifier
     optimized_vc_plot_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/vc_optimized_spreading_probability_' + identifier + '.pdf' 
-    optimized_prevalence_plot_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/prevalence_all_pressure_diffs_' + identifier + '.pdf' 
+    optimized_prevalence_plot_save_path_base = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/prevalence/prevalence_all_pressure_diffs_' + identifier 
     
     single_param_visualization_data_paths = ['/m/cs/scratch/networks/aokorhon/tree-percolation/output/percolation_3D_' + identifier + '_data.pkl']
     optimized_vc_plot_data_save_path_bases = ['/m/cs/scratch/networks/aokorhon/tree-percolation/output/optimized_spreading_probability/' + identifier + '/optimized_spreading_probability_' + identifier]
@@ -85,7 +85,7 @@ else:
     vc_plot_save_path = '/home/onervak/projects/hidrogat/output/vc_' + identifier + '.pdf'
     optimized_spreading_probability_save_path_base = '/home/onervak/projects/hidrogat/output/optimized_spreading_probability/' + identifier + '/optimized_spreading_probability_' + identifier
     optimized_vc_plot_save_path = '/home/onervak/projects/hidrogat/output/vc_optimized_spreading_probability_' + identifier + '.pdf'
-    optimized_prevalence_plot_save_path = '/home/onervak/projects/hidrogat/output/prevalence_all_pressure_diffs_' + identifier + '.pdf'
+    optimized_prevalence_plot_save_path_base = '/home/onervak/projects/hidrogat/output/prevalence/prevalence_all_pressure_diffs_' + identifier
     
     single_param_visualization_data_paths = ['/home/onervak/projects/hidrogat/output/percolation_3D_' + identifier + '_data.pkl']
     optimized_vc_plot_data_save_path_bases = ['/home/onervak/projects/hidrogat/output/optimized_spreading_probability/' + identifier + '/optimized_spreading_probability_' + identifier]
@@ -98,7 +98,7 @@ spontaneous_embolism = True
 si_length = 1000
 si_tolerance_length = 20
 spreading_probability = 0.15100000000000002
-start_conduits = 'random_per_component' # options: 'random', 'random_per_component' (= one random seed in all network components), int, and 'bottom' (= all conduits with a pore at the first row, allowed only when percolation_type == 'drainage')
+start_conduits = 'none' # options: 'random', 'random_per_component' (= one random seed in all network components), 'none' (= no start conduits set, only spontaneous embolism), int, and 'bottom' (= all conduits with a pore at the first row, allowed only when percolation_type == 'drainage')
 # contact angle and surface tension values are from OpenPNM tutorial (https://openpnm.org/examples/tutorials/09_simulating_invasion.html)
 air_contact_angle = 120 # degrees
 surface_tension = 0.072 # Newtons/meter
@@ -128,7 +128,7 @@ percolation_noutlet_label = 'Average n outlets'
 percolation_ninlet_alpha = 1
 percolation_noutlet_alpha = 1
 percolation_linestyles = ['-', '--']
-percolation_labels = ['no spontaneous embolism', 'with spontaneous embolism']
+percolation_labels = ['with spontaneous embolism']
 physiological_vc_color = 'r'
 physiological_vc_ls = '-'
 physiological_vc_alpha = 1
@@ -138,4 +138,5 @@ stochastic_vc_alpha = 0.5
 optimized_vc_linestyles = ['-']
 optimized_vc_labels = ['with spontaneous embolism']
 std_alpha = 0.5
+prevalence_linestyles = ['-', '--', '-.'] # for total prevalence, prevalence due to spontaneous embolism, prevalence due to spreading
 
