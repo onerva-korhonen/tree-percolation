@@ -212,7 +212,7 @@ def construct_vulnerability_curve(net, cfg, x_range, start_conduits, si_length=1
     vc = (x_range, vulnerability)
     return vc
 
-def optimize_spreading_probability(net, cfg, pressure_difference, start_conduits, spreading_probability_range=np.arange(0.001, 1, step=0.1), si_length=1000, n_iterations=1, save_path_base=''):
+def optimize_spreading_probability(net, cfg, pressure_difference, spreading_probability_range=np.arange(0.001, 1, step=0.1), si_length=1000, n_iterations=1, save_path_base=''):
     """
     Finds the SI spreading probability that yields final effective conductance as close as possible to that of physiological embolism spreading with given parameters. Note that
     only the similarity of final effective conductances is minimized, while the shape of the prevalence curves may be different.
@@ -251,13 +251,13 @@ def optimize_spreading_probability(net, cfg, pressure_difference, start_conduits
         nCPUs : int, number of CPUs used for parallel computing (default 5)
         spontaneous_embolism : bln, is spontaneous embolism through bubble expansion allowed (default: False)
         spontaneous_embolism_probabilities : dic where keys are pressure values and values probabilities for spontaneous embolism
+        start_conduits : str or array-like of ints
+           the first conduits to be removed (i.e. the first infected node of the simulation)
+           if 'random', a single start conduit is selected at random
+           if 'random_per_component', a single start conduit per network component is selected at random
+           if an array-like of ints is given, the ints are used as indices of the start conduits
     pressure_difference : float
         pressure difference between water in conduits and air (bubble)
-    start_conduits : str or array-like of ints
-        the first conduits to be removed (i.e. the first infected node of the simulation)
-        if 'random', a single start conduit is selected at random
-        if 'random_per_component', a single start conduit per network component is selected at random
-        if an array-like of ints is given, the ints are used as indices of the start conduits
     spreading_probability_range : array-like
         the spreading probability values, among which the optimal one is selected
     si_length : int, optional
@@ -316,7 +316,7 @@ def optimize_spreading_probability(net, cfg, pressure_difference, start_conduits
     else:
         return output
     
-def run_spreading_iteration(net, cfg, pressure_differences, start_conduits, save_path, spreading_probability_range=np.arange(0.001, 1, step=0.1), si_length=1000):
+def run_spreading_iteration(net, cfg, pressure_differences, save_path, spreading_probability_range=np.arange(0.001, 1, step=0.1), si_length=1000):
     """
     Runs physiological conduit SI for a range of pressure difference values and stochastic conduit SI for a range of spreading probability values and saves the effective conductance
     value and prevalence curve of each simulation. Used for creating the data for optimizing spreading probability.
@@ -354,13 +354,13 @@ def run_spreading_iteration(net, cfg, pressure_differences, start_conduits, save
         average_pit_area : float, the average area of a pit
         spontaneous_embolism : bln, is spontaneous embolism through bubble expansion allowed (default: False)
         spontaneous_embolism_probabilities : dic where keys are pressure values and values probabilities for spontaneous embolism
+        start_conduits : str or array-like of ints
+            the first conduits to be removed (i.e. the first infected node of the simulation)
+            if 'random', a single start conduit is selected at random
+            if 'random_per_component', a single start conduit per network component is selected at random
+            if an array-like of ints is given, the ints are used as indices of the start conduits
     pressure_differences : iterable of float
         pressure differences between water in conduits and air (bubble), with which the physiological SI is simulated
-    start_conduits : str or array-like of ints
-        the first conduits to be removed (i.e. the first infected node of the simulation)
-        if 'random', a single start conduit is selected at random
-        if 'random_per_component', a single start conduit per network component is selected at random
-        if an array-like of ints is given, the ints are used as indices of the start conduits
     save_path : str
         base path to which to save the outcomes
     spreading_probability_range : array-like, optional

@@ -141,7 +141,7 @@ if __name__=='__main__':
 
         cfg['conduit_diameters'] = 'inherit_from_net'
 
-        percolation.optimize_spreading_probability(net_cleaned, cfg, pressure_diff, cfg['start_conduits'], params.optimization_probability_range, si_length=cfg['si_length'], n_iterations=params.n_iterations, save_path_base=params.optimized_spreading_probability_save_path_base)
+        percolation.optimize_spreading_probability(net_cleaned, cfg, pressure_diff, params.optimization_probability_range, si_length=cfg['si_length'], n_iterations=params.n_iterations, save_path_base=params.optimized_spreading_probability_save_path_base)
     
     if create_optimization_data:
         if params.spontaneous_embolism:
@@ -152,7 +152,7 @@ if __name__=='__main__':
         
         index = int(sys.argv[1])
         save_path = params.optimized_spreading_probability_save_path_base + '_' + str(index) + '.pkl'
-        percolation.run_spreading_iteration(net, cfg, params.vulnerability_pressure_range, cfg['start_conduits'], save_path, 
+        percolation.run_spreading_iteration(net, cfg, params.vulnerability_pressure_range, save_path, 
                                             spreading_probability_range=params.optimization_probability_range, si_length=cfg['si_length'])
     if combine_optimization_data:
         simulation_data_save_folder = params.optimized_spreading_probability_save_path_base.rsplit('/', 1)[0]
