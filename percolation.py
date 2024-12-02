@@ -413,7 +413,7 @@ def run_spreading_iteration(net, cfg, pressure_differences, save_path, spreading
                 stochastic_prevalences_due_to_spontaneous_embolism[i].append(output[-2])
                 stochastic_prevalences_due_to_spreading[i].append(output[-1])
     else:
-        for i, spreading_probabilty in enumerate(spreading_probability_range):
+        for i, spreading_probability in enumerate(spreading_probability_range):
             output = run_conduit_si(net, cfg, spreading_probability)
             stochastic_effective_conductances[i] = output[0][-1]
             stochastic_prevalences.append(output[-3])
