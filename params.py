@@ -11,7 +11,7 @@ import numpy as np
 from scipy.stats import norm
 
 # params for network creation
-net_size = np.array([11,10,56])
+net_size = np.array([110,100,56])
 fixed_random = True
 if fixed_random:
     if net_size[1] == 10:
@@ -135,7 +135,7 @@ physiological_vc_alpha = 1
 stochastic_vc_color = 'k'
 stochastic_vc_ls = '--'
 stochastic_vc_alpha = 0.5
-optimized_vc_linestyles = ['-', '--']
+optimized_vc_linestyles = ['-']
 optimized_vc_labels = ['with spontaneous embolism']
 std_alpha = 0.5
 prevalence_linestyles = ['-', '--', '-.'] # for total prevalence, prevalence due to spontaneous embolism, prevalence due to spreading
