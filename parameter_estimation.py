@@ -16,7 +16,7 @@ import params
         
 
 def optimize_conduit_start_and_end_probabilities(target_density, target_length, conduit_element_length=mrad_params.Lce, optimization_net_size=[11,10,56], n_iterations=1, 
-                                                 start_range=[], end_range=[]):
+                                                 start_range=[], end_range=[], Pe_rad=[1, 1], Pe_tan=[1, 1]):
     """
     Finds the conduit start and end probabilities (NPc and Pc) of the Mrad xylem network model that produce
     conduit density and average conduit length as close as possible to given target values.
@@ -34,9 +34,17 @@ def optimize_conduit_start_and_end_probabilities(target_density, target_length, 
     n_iterations : int
         number of xylem networks used for calculating conduit density and length for each NPc-Pc pair
     start_range : list of floats, optional
-        NPc values to test. default [], in which case TODO values between 0 and 1 are used
+        NPc values to test. default [], in which case values between 0 and 1 are used
     end_range : list of floats, optional
-        Pc values to test. default [], in which case TODO values between 0 and 1 are used
+        Pc values to test. default [], in which case values between 0 and 1 are used
+    Pe_rad : iterable of floats, optional
+        the probability of building an inter-conduit connection in radial direction at the location closest to the pith (first element)
+        and furthest away from it (second element); probabilities for other locations are interpolated from
+        these two values (default [1, 1])
+    Pe_ran : iterable of floats, optional
+        the probability of building an inter-conduit connection in tangential direction, first and second elements defined as in
+        Pe_rad (default [1, 1])
+            
         
     Returns
     -------
@@ -54,8 +62,9 @@ def optimize_conduit_start_and_end_probabilities(target_density, target_length, 
     cfg = {}
     cfg['net_size'] = optimization_net_size
     cfg['fixed_random'] = False
-    cfg['Pe_rad'] = [0, 0] # since we're interested in conduit density and length only, probability of inter-conduit connections is set to 0
-    cfg['Pe_tan'] = [0, 0]
+    
+    # TODO: add a dimension for estimating ICC probability (or otherwise, estimate it outside and give as parameter)
+    # TODO: check parallelization: might be better to define the parameter space outside this function, run for one parameter combination at time, save outputs, and do optimization in a separate wrapping function
     
     if len(start_range) == 0:
         start_range = np.arange(0, 1.01, 0.01)
@@ -67,20 +76,27 @@ def optimize_conduit_start_and_end_probabilities(target_density, target_length, 
         for i, NPc in enumerate(start_range):
             cfg['NPc'] = [NPc, NPc] # assuming same NPc at both ends of the radial range
             for j, Pc in enumerate(end_range):
+            # TODO: figure out why NPc = 1 leads to no conduits starting at the first row
                 if NPc > 0: # if NPc == 0, there are no conduits and thus conduit density and length equal to zero
                     cfg['Pc'] = [Pc, Pc] # assuming same Pc at both ends of the radial range
                     conduit_elements, conns = mrad_model.create_mrad_network(cfg)
-                    # TODO: clean_network tries to remove all pores
                     net = mrad_model.mrad_to_openpnm(conduit_elements, conns)
-                    net, _ = mrad_model.clean_network(net, conduit_elements, optimization_net_size[0])
-                    conduit_densities[i, j] += get_conduit_density(net, optimization_net_size)
-                    conduit_lengths[i, j] += get_conduit_length(net)
+                    try:
+                        net, _ = mrad_model.clean_network(net, conduit_elements, optimization_net_size[0] - 1)
+                        conduit_densities[i, j] += get_conduit_density(net, optimization_net_size)
+                        conduit_lengths[i, j] += get_conduit_length(net)
+                    except Exception as e:
+                        if str(e) == 'Cannot delete ALL pores': # current combination of NPc and Pc doesn't yield any components that would extend through the whole row direction; this can be the case for very small NPc's and very high Pc's
+                            conduit_densities[i, j] = 0
+                            conduit_lengths[i, j] = 0 
+                    
     conduit_densities /= n_iterations
     conduit_lengths /= n_iterations
     conduit_lengths *= conduit_element_length
     
     density_landscape = np.abs(conduit_densities - target_density)
-    optimal_NPc_indices, optimal_Pc_indices = np.where(density_landscape == np.amin(density_landscape))
+    optimal_NPc_indices, optimal_Pc_indices = np.where(density_landscape == np.amin(density_landscape)) 
+    # TODO: consider adding a tolerance parameter: include in potential optima everything that is within the tolerance from the target
     
     if len(optimal_NPc_indices) > 1:
         mask = 1000 * np.ones(len(start_range), len(end_range))
@@ -122,7 +138,7 @@ def get_conduit_density(net, net_size, conduit_element_length=1.):
         pore_coords = net['pore.coords'] / conduit_element_length
         conduit_densities = np.zeros(net_size[0])
         for i in range(net_size[0]):
-            conduit_densities[i] = np.sum(pore_coords[0, :] == i) / (net_size[1] * net_size[2])
+            conduit_densities[i] = np.sum(pore_coords[:, 0] == i) / (net_size[1] * net_size[2])
         conduit_density = np.mean(conduit_densities)
         return conduit_density
 
@@ -163,9 +179,11 @@ if __name__=='__main__':
     
     start_range = np.arange(0, 1.1, 0.1)
     end_range = np.arange(0, 1.1, 0.1)
+    Pe_rad = [1, 1] # this ensures that no conduits are removed by clean_network()
+    Pe_tan = [1, 1]
     
-    NPc, Pc = optimize_conduit_start_and_end_probabilities(target_density, target_length, conduit_element_length=mrad_params.Lce, optimization_net_size=[11,10,56], n_iterations=1, 
-                                                     start_range=start_range, end_range=end_range)
+    NPc, Pc, _, _ = optimize_conduit_start_and_end_probabilities(target_density, target_length, conduit_element_length=mrad_params.Lce, optimization_net_size=[11,10,56], n_iterations=1, 
+                                                     start_range=start_range, end_range=end_range, Pe_rad=Pe_rad, Pe_tan=Pe_tan)
     
     
                 
