@@ -704,11 +704,11 @@ def create_conduit_map_column(n_rows, n_depth, NPc, Pc, seed_NPc=None, seed_Pc=N
         to a conduit)
 
     """
-    if not seed_Pc is None:
+    if not seed_NPc is None:
         np.random.seed(seed_NPc)
     cond_start = np.random.rand(n_rows + 100, 1, n_depth) > (1 - NPc)
     
-    if not seed_NPc is None:
+    if not seed_Pc is None:
         np.random.seed(seed_Pc)
     cond_end = np.random.rand(n_rows + 100, 1, n_depth) > (1 - Pc)
     
@@ -730,7 +730,7 @@ def create_conduit_map_column(n_rows, n_depth, NPc, Pc, seed_NPc=None, seed_Pc=N
         # construct a conduit at the first row of this column if the last 
         # 1 among the 50 first entries of the cond_start matrix is at a more
         # advanced postition than the last 1 among the 50 entries of the cond_end matrix
-        if (np.where(cond_start[0:50, 0, j])[0].size > 0) and (last_start < last_end):
+        if (np.where(cond_start[0:50, 0, j])[0].size > 0) and (last_start > last_end):
             temp_start[0, 0, j] = 1
             
     # Cleaning up the obtained start and end points

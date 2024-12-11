@@ -76,7 +76,6 @@ def optimize_conduit_start_and_end_probabilities(target_density, target_length, 
         for i, NPc in enumerate(start_range):
             cfg['NPc'] = [NPc, NPc] # assuming same NPc at both ends of the radial range
             for j, Pc in enumerate(end_range):
-            # TODO: figure out why NPc = 1 leads to no conduits starting at the first row
                 if NPc > 0: # if NPc == 0, there are no conduits and thus conduit density and length equal to zero
                     cfg['Pc'] = [Pc, Pc] # assuming same Pc at both ends of the radial range
                     conduit_elements, conns = mrad_model.create_mrad_network(cfg)
