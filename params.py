@@ -54,10 +54,11 @@ target_conduit_density = 630.817129361309 # 1/mm^2; conduit density in large bra
 
 # paths for saving
 triton = True
-identifier = 'linspace_with_spontaneous_embolism'
+identifier = 'small_net_small_space'
 pooled_optimized_spreading_probability_save_name = 'pooled_optimized_spreading_probability.pkl'
 
 if triton:
+    parameter_optimization_save_path_base = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/param_optimization/' + identifier + '/param_optimization_' + identifier
     network_save_file = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/netpoints'
     percolation_plot_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/percolation_3D_' + identifier + '.pdf'
     nonfunctional_component_size_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/percolation_3D_' + identifier + '_nonfunc_volume.pdf'
@@ -70,10 +71,13 @@ if triton:
     optimized_spreading_probability_save_path_base = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/optimized_spreading_probability/' + identifier + '/optimized_spreading_probability_' + identifier
     optimized_vc_plot_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/vc_optimized_spreading_probability_' + identifier + '.pdf' 
     optimized_prevalence_plot_save_path_base = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/prevalence/prevalence_all_pressure_diffs_' + identifier 
+    param_optimization_density_fig_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/parameter_optimization_conduit_density_' + identifier + '.pdf' 
+    param_optimization_length_fig_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/parameter_optimization_conduit_length_' + identifier + '.pdf' 
     
     single_param_visualization_data_paths = ['/m/cs/scratch/networks/aokorhon/tree-percolation/output/percolation_3D_' + identifier + '_data.pkl']
     optimized_vc_plot_data_save_path_bases = ['/m/cs/scratch/networks/aokorhon/tree-percolation/output/optimized_spreading_probability/' + identifier + '/optimized_spreading_probability_' + identifier]
 else:
+    parameter_optimization_save_path_base = '/home/onervak/projects/hidrogat/output/param_optimization/' + identifier + '/param_optimization_' + identifier
     network_save_file = '/home/onervak/projects/hidrogat/output/netpoints'
     percolation_plot_save_path = '/home/onervak/projects/hidrogat/output/percolation_3D_' + identifier + '.pdf'
     nonfunctional_component_size_save_path = '/home/onervak/projects/hidrogat/output/percolation_3D_' + identifier + '_nonfunc_volume.pdf'
@@ -86,6 +90,8 @@ else:
     optimized_spreading_probability_save_path_base = '/home/onervak/projects/hidrogat/output/optimized_spreading_probability/' + identifier + '/optimized_spreading_probability_' + identifier
     optimized_vc_plot_save_path = '/home/onervak/projects/hidrogat/output/vc_optimized_spreading_probability_' + identifier + '.pdf'
     optimized_prevalence_plot_save_path_base = '/home/onervak/projects/hidrogat/output/prevalence/prevalence_all_pressure_diffs_' + identifier
+    param_optimization_density_fig_save_path = '/home/onervak/projects/hidrogat/output/parameter_optimization_conduit_density_' + identifier + '.pdf' 
+    param_optimization_length_fig_save_path = '/home/onervak/projects/hidrogat/output/parameter_optimization_conduit_length_' + identifier + '.pdf' 
     
     single_param_visualization_data_paths = ['/home/onervak/projects/hidrogat/output/percolation_3D_' + identifier + '_data.pkl']
     optimized_vc_plot_data_save_path_bases = ['/home/onervak/projects/hidrogat/output/optimized_spreading_probability/' + identifier + '/optimized_spreading_probability_' + identifier]
@@ -139,4 +145,5 @@ optimized_vc_linestyles = ['-']
 optimized_vc_labels = ['with spontaneous embolism']
 std_alpha = 0.5
 prevalence_linestyles = ['-', '--', '-.'] # for total prevalence, prevalence due to spontaneous embolism, prevalence due to spreading
+param_optimization_conduit_color = 'r'
 
