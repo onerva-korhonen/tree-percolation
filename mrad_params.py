@@ -51,7 +51,7 @@ tf = 30e-9 # microfibril strand thickness (m)
 icc_length = 1e-12 # length of an ICC throat (m)
 # The two following measures are in the Mrad et al. article used to tune the Pe_rad and Pe_tan connection probabilities
 GI = 0 # TODO: Fix GI (= grouping index) is the number of conduits in a cross-section divided by the number of conduit groups
-conduit_frequency = 0 # TODO: fix frequency of conduits per area in cross-section
+conduit_density = 0 # TODO: fix density of conduits per area in cross-section
 
 # probabilities used for network construction
 Pc = np.array([0.75, 0.75])

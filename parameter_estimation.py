@@ -23,10 +23,10 @@ combine_parameter_optimization_data = True
         
 
 def run_parameter_optimization_iteration(save_path, conduit_element_length=mrad_params.Lce, optimization_net_size=[11,10,56], n_iterations=1, 
-                                         start_range=None, end_range=None, Pe_rad=[1, 1], Pe_tan=[1, 1]):
+                                         start_range=None, end_range=None, Pes_rad=[[1, 1]], Pes_tan=[[1, 1]]):
     """
-    Calculates conduit density and length in the space spanned by conduit start and end probability (NPc and Pc) ranges. Used to create
-    data for optimizing NPc and Pc.
+    Calculates conduit density and length in the space spanned by conduit start and end probability (NPc and Pc) and probability to build radial
+    and tangential ICCs (Pe_rad and Pe_tan). Used to create data for optimizing NPc, Pc, Pe_rad, and Pe_tan.
     
     Parameters
     ----------
@@ -42,13 +42,13 @@ def run_parameter_optimization_iteration(save_path, conduit_element_length=mrad_
         NPc values to test. default None, in which case values between 0 and 1 are used
     end_range : np.array of floats, optional
         Pc values to test. default None, in which case values between 0 and 1 are used
-    Pe_rad : iterable of floats, optional
-        the probability of building an inter-conduit connection in radial direction at the location closest to the pith (first element)
-        and furthest away from it (second element); probabilities for other locations are interpolated from
-        these two values (default [1, 1])
-    Pe_ran : iterable of floats, optional
-        the probability of building an inter-conduit connection in tangential direction, first and second elements defined as in
-        Pe_rad (default [1, 1])
+    Pes_rad : list of iterables of floats, optional
+        the probabilities of building an inter-conduit connection in radial direction. Within each element of Pes_rad, the first element corresponds
+        to the location closest to the pith and the second element to the location furthest away from it; probabilities for other locations are interpolated from
+        these two values (default [[1, 1]])
+    Pes_ran : iterable of floats, optional
+        the probabilities of building an inter-conduit connection in tangential direction. Within each element of Pes_tan, the first and second elements defined as in
+        Pes_rad (default [[1, 1]])
             
         
     Returns
@@ -57,39 +57,45 @@ def run_parameter_optimization_iteration(save_path, conduit_element_length=mrad_
     """
     assert np.amin(start_range) >= 0, 'probability to start a conduit cannot be negative'
     assert np.amin(end_range) >= 0, 'probability to end a conduit cannot be negative'
+    assert min(min(Pes_rad)) >= 0, 'probability to build radial ICCs cannot be negative'
+    assert min(min(Pes_tan)) >= 0, 'probability to build tangential ICCs cannot be negative'
+    
     cfg = {}
     cfg['net_size'] = optimization_net_size
     cfg['fixed_random'] = False
-    
-    # TODO: add a dimension for estimating ICC probability (or otherwise, estimate it outside and give as parameter)
-    # TODO: check parallelization: might be better to define the parameter space outside this function, run for one parameter combination at time, save outputs, and do optimization in a separate wrapping function
     
     if start_range is None:
         start_range = np.arange(0, 1.01, 0.01)
     if end_range is None:
         end_range = np.arange(0, 1.01, 0.01)
-    conduit_densities = np.zeros((len(start_range), len(end_range)))
-    conduit_lengths = np.zeros((len(start_range), len(end_range)))
-    for it in range(n_iterations):
-        for i, NPc in enumerate(start_range):
-            cfg['NPc'] = [NPc, NPc] # assuming same NPc at both ends of the radial range
-            for j, Pc in enumerate(end_range):
-                if NPc > 0: # if NPc == 0, there are no conduits and thus conduit density and length equal to zero
-                    cfg['Pc'] = [Pc, Pc] # assuming same Pc at both ends of the radial range
-                    conduit_elements, conns = mrad_model.create_mrad_network(cfg)
-                    net = mrad_model.mrad_to_openpnm(conduit_elements, conns)
-                    try:
-                        net, _ = mrad_model.clean_network(net, conduit_elements, optimization_net_size[0] - 1)
-                        conduit_densities[i, j] += get_conduit_density(net, optimization_net_size)
-                        conduit_lengths[i, j] += get_conduit_length(net)
-                    except Exception as e:
-                        if str(e) == 'Cannot delete ALL pores': # current combination of NPc and Pc doesn't yield any components that would extend through the whole row direction; this can be the case for very small NPc's and very high Pc's
-                            conduit_densities[i, j] = 0
-                            conduit_lengths[i, j] = 0 
-                            
+    conduit_densities = np.zeros((len(start_range), len(end_range), len(Pes_rad), len(Pes_tan)))
+    conduit_lengths = np.zeros((len(start_range), len(end_range), len(Pes_rad), len(Pes_tan)))
+    for i, NPc in enumerate(start_range):
+        cfg['NPc'] = [NPc, NPc] # assuming same NPc at both ends of the radial range
+        for j, Pc in enumerate(end_range):
+            if NPc > 0: # if NPc == 0, there are no conduits and thus conduit density and length equal to zero
+                cfg['Pc'] = [Pc, Pc] # assuming same Pc at both ends of the radial range
+                for k, Pe_rad in enumerate(Pes_rad):
+                    cfg['Pe_rad'] = Pe_rad
+                    for l, Pe_tan in enumerate(Pes_tan):
+                        cfg['Pe_tan'] = Pe_tan
+                        conduit_elements, conns = mrad_model.create_mrad_network(cfg)
+                        net = mrad_model.mrad_to_openpnm(conduit_elements, conns)
+                        try:
+                            net, _ = mrad_model.clean_network(net, conduit_elements, optimization_net_size[0] - 1)
+                            conduit_densities[i, j, k, l] += get_conduit_density(net, optimization_net_size)
+                            conduit_lengths[i, j, k, l] += get_conduit_length(net)
+                            # TODO: add calculation of grouping index
+                        except Exception as e:
+                            if str(e) == 'Cannot delete ALL pores': # current parameter combination doesn't yield any components that would extend through the whole row direction; this can be the case for very small NPc's and very high Pc's
+                                conduit_densities[i, j, k, l] = 0
+                                conduit_lengths[i, j, k, l] = 0 
+                            else:
+                                raise
+
     conduit_lengths *= conduit_element_length
                             
-    data = {'start_range' : start_range, 'end_range' : end_range, 'Pe_rad' : Pe_rad, 'Pe_tan' : Pe_tan, 'net_size' : optimization_net_size, 'conduit_densities' : conduit_densities,
+    data = {'start_range' : start_range, 'end_range' : end_range, 'Pes_rad' : Pes_rad, 'Pes_tan' : Pes_tan, 'net_size' : optimization_net_size, 'conduit_densities' : conduit_densities,
             'conduit_lengths' : conduit_lengths}
     
     save_folder = save_path.rsplit('/', 1)[0]
@@ -100,7 +106,7 @@ def run_parameter_optimization_iteration(save_path, conduit_element_length=mrad_
     f.close()
                     
 
-def optimize_parameters_from_data(target_density, target_length, optimization_data_save_folder, optimization_data_save_name_base, density_fig_save_path, length_fig_save_path):
+def optimize_parameters_from_data(target_density, target_length, optimization_data_save_folder, optimization_data_save_name_base, fig_save_path_base):
     """
     Starting from pre-calculated data,  finds the conduit start and end probabilities (NPc and Pc) of the Mrad xylem network model that produce
     conduit density and average conduit length as close as possible to given target values.
@@ -115,10 +121,8 @@ def optimize_parameters_from_data(target_density, target_length, optimization_da
         path of the folder in which the simulation data is saved
     optimization_data_save_name_base : str
         stem of the simulation data file names; the file names can contain other parts but files with names that don't contain this stem aren't read
-    density_fig_save_path : str
-        path, to which save the visualization of the optimization outcome related to conduit density
-    length_fig_save_path : str
-        path, to which save the visulization of the optimization outcome related to conduit_density
+    fig_save_path : str
+        base path, to which save the optimization outcome visualizations
         
     Returns
     -------
@@ -126,13 +130,16 @@ def optimize_parameters_from_data(target_density, target_length, optimization_da
         conduit start probability
     Pc : float
         conduit end probability
+    Pe_rad : list of floats
+        probability to build an ICC in radial direction, first element corresponding to the location closest to the pith and second element to the location
+        furthest away from it
+    Pe_tan : list of floats
+        probability to build an ICC in tangential direction, first and second element defined as in Pe_rad
     achieved_density : float
         the conduit density produced by NPc and Pc
     achieved_length : float
         the average conduit length produced by Npc and Pc
     """
-    #import pdb; pdb.set_trace()
-    
     data_files = [os.path.join(optimization_data_save_folder, file) for file in os.listdir(optimization_data_save_folder) if os.path.isfile(os.path.join(optimization_data_save_folder, file))]
     data_files = [data_file for data_file in data_files if optimization_data_save_name_base in data_file]
     
@@ -147,9 +154,13 @@ def optimize_parameters_from_data(target_density, target_length, optimization_da
             conduit_lengths = data['conduit_lengths']
             start_range = data['start_range']
             end_range = data['end_range']
+            Pes_rad = data['Pes_rad']
+            Pes_tan = data['Pes_tan']
         else:
             assert np.all(data['start_range'] == start_range), 'different NPc ranges at different parameter optimization iterations!'
             assert np.all(data['end_range'] == end_range), 'different Pc ranges at different parameter optimization iterations!'
+            assert data['Pes_rad'] == Pes_rad, 'different Pe_rad ranges at different parameter optimization iterations!'
+            assert data['Pes_tan'] == Pes_tan, 'different Pe_tan ranges at different parameter optimization iterations'
             conduit_densities += data['conduit_densities']
             conduit_lengths += data['conduit_lengths']
     
@@ -158,61 +169,79 @@ def optimize_parameters_from_data(target_density, target_length, optimization_da
     conduit_lengths /= n_iterations
     
     density_landscape = np.abs(conduit_densities - target_density)
-    optimal_NPc_indices, optimal_Pc_indices = np.where(density_landscape == np.amin(density_landscape)) 
+    optimal_NPc_indices, optimal_Pc_indices, optimal_Pe_rad_indices, optimal_Pe_tan_indices = np.where(density_landscape == np.amin(density_landscape)) 
     # TODO: consider adding a tolerance parameter: include in potential optima everything that is within the tolerance from the target
     
+    # TODO: instead using the if clause, consider calculating the overlap of optimal indices in terms of conduit density, conduit length, and grouping index
+    # or finding the parameter combination that minimizes the sum of relative difference compared to the target density, length, and GI
     if len(optimal_NPc_indices) > 1:
-        mask = 1000 * np.ones(len(start_range), len(end_range))
-        mask[optimal_NPc_indices, optimal_Pc_indices] = 1
+        mask = 1000 * np.ones(len(start_range), len(end_range), len(Pes_rad), len(Pes_tan))
+        mask[optimal_NPc_indices, optimal_Pc_indices, optimal_Pe_rad_indices, optimal_Pe_tan_indices] = 1
         length_landscape = mask * np.abs(conduit_lengths - target_length)
-        optimal_NPc_indices, optimal_Pc_indices = np.where(length_landscape == np.amin(length_landscape))
+        optimal_NPc_indices, optimal_Pc_indices, optimal_Pe_rad_indices, optimal_Pe_tan_indices = np.where(length_landscape == np.amin(length_landscape))
     
     NPc = start_range[optimal_NPc_indices[0]]
     Pc = end_range[optimal_Pc_indices[0]]
-    achieved_density = conduit_densities[optimal_NPc_indices[0], optimal_Pc_indices[0]]
-    achieved_length = conduit_lengths[optimal_NPc_indices[0], optimal_Pc_indices[0]]
+    Pe_rad = Pes_rad[optimal_Pe_rad_indices[0]]
+    Pe_tan = Pes_tan[optimal_Pe_tan_indices[0]]
+    achieved_density = conduit_densities[optimal_NPc_indices[0], optimal_Pc_indices[0], optimal_Pe_rad_indices[0], optimal_Pe_tan_indices[0]]
+    achieved_length = conduit_lengths[optimal_NPc_indices[0], optimal_Pc_indices[0], optimal_Pe_rad_indices[0], optimal_Pe_tan_indices[0]]
     
-    density_contours = np.ones(conduit_densities.shape)
-    density_contours[optimal_NPc_indices, optimal_Pc_indices] = 0
+    # Pes_rad and Pes_tan are lists of value pairs; visualization needs lists of single values
+    if np.all(np.array([Pe_rad[0] == Pe_rad[1] for Pe_rad in Pes_rad])):
+        Pes_rad = np.array([Pe_rad[0] for Pe_rad in Pes_rad]) # if the first and second element are equal, let's use the first elements
+    else:
+        Pes_rad = np.arange(len(Pes_rad)) # otherwise, let's use the indices of element pairs
+    if np.all(np.array([Pe_tan[0] == Pe_tan[1] for Pe_tan in Pes_tan])):
+        Pes_tan = np.array([Pe_tan[0] for Pe_tan in Pes_tan])
+    else:
+        Pes_tan = np.arange(len(Pes_tan))
     
-    centers = [start_range.min(), start_range.max(), end_range.min(), end_range.max()]
+    densities_for_viz_constant_Pe = conduit_densities[:, :, optimal_Pe_rad_indices[0], optimal_Pe_tan_indices[0]]
+    densities_for_viz_constant_Pc = conduit_densities[optimal_NPc_indices[0], optimal_Pc_indices[0], :, :]
+    lengths_for_viz_constant_Pe = conduit_lengths[:, :, optimal_Pe_rad_indices[0], optimal_Pe_tan_indices[0]]
+    lengths_for_viz_constant_Pc = conduit_lengths[optimal_NPc_indices[0], optimal_Pc_indices[0], :, :]
+    viz_data = [densities_for_viz_constant_Pe, densities_for_viz_constant_Pc, lengths_for_viz_constant_Pe, lengths_for_viz_constant_Pc]
+    constant_indices = [[optimal_NPc_indices, optimal_Pc_indices], [optimal_Pe_rad_indices, optimal_Pe_tan_indices], [optimal_NPc_indices, optimal_Pc_indices], [optimal_Pe_rad_indices, optimal_Pe_tan_indices]]
+    x_ranges = [start_range, Pes_rad, end_range, Pes_rad]
+    y_ranges = [end_range, Pes_tan, end_range, Pes_tan]
+    ylabels = ['NPc', 'Pe_rad', 'NPc', 'Pe_rad']
+    xlabels = ['Pc', 'Pe_tan', 'Pc', 'Pe_tan']
+    zlabels = ['Conduit density', 'Conduit density', 'Conduit length (m)', 'Conduit length (m)']
+    save_path_identifiers = ['_conduit_density_constant_Pe', '_conduit_density_constant_Pc', '_conduit_length_constant_Pe', '_conduit_length_constant_Pc']
+    
+    for data, constant_index, x_range, y_range, ylabel, xlabel, zlabel, save_path_identifier in zip(viz_data, constant_indices, x_ranges, y_ranges, ylabels, xlabels, zlabels, save_path_identifiers):
 
-    dx, = np.diff(centers[:2])/(conduit_densities.shape[1]-1)
-    dy, = -np.diff(centers[2:])/(conduit_densities.shape[0]-1)
-    extent = [centers[0]-dx/2, centers[1]+dx/2, centers[2]+dy/2, centers[3]-dy/2]
+        centers = [x_range.min(), x_range.max(), y_range.min(), y_range.max()]
+        
+        dx, = np.diff(centers[:2])/(data.shape[1]-1)
+        dy, = -np.diff(centers[2:])/(data.shape[0]-1)
+        extent = [centers[0]-dx/2, centers[1]+dx/2, centers[2]+dy/2, centers[3]-dy/2]
     
-    density_fig = plt.figure()
-    density_ax = density_fig.add_subplot(111)
+        contours = np.ones(data.shape)
+        contours[constant_index[0][0], constant_index[1][0]] = 0
     
-    plt.imshow(conduit_densities, origin='lower', extent=extent)
-    plt.colorbar(label='Conduit density')
-    plt.contour(start_range, end_range, density_contours, 1, colors=params.param_optimization_conduit_color)
+        contours = np.vstack([contours, np.ones(len(y_range))])
+        contours = np.vstack([np.ones(len(y_range)), contours])
+        contours = np.hstack([contours, np.ones((len(x_range) + 2, 1))])
+        contours = np.hstack([np.ones((len(x_range) + 2, 1)), contours])
     
-    density_ax.set_yticks(start_range)
-    density_ax.set_xticks(end_range)
-    density_ax.set_ylabel('NPc')
-    density_ax.set_xlabel('Pc')
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
     
-    plt.savefig(density_fig_save_path, format='pdf',bbox_inches='tight')
+        plt.contour(np.hstack([np.array([np.amin(x_range) - dx]), x_range, np.array([np.amax(x_range) + dx])]), np.hstack([np.array([np.amin(y_range) + dy]), y_range, np.array([np.amax(y_range) - dy])]), contours, 1, colors=params.param_optimization_conduit_color) # NOTE: dx > 0, dy < 0
+        plt.imshow(data, origin='lower', extent=extent)
+        plt.colorbar(label=zlabel)
     
-    length_contours = np.ones(conduit_lengths.shape)
-    length_contours[optimal_NPc_indices, optimal_Pc_indices] = 0
+        ax.set_yticks(x_range)
+        ax.set_xticks(y_range)
+        ax.set_ylabel(ylabel)
+        ax.set_xlabel(xlabel)
+        
+        save_path = fig_save_path_base + save_path_identifier + '.pdf'
+        plt.savefig(save_path, format='pdf',bbox_inches='tight')
     
-    length_fig = plt.figure()
-    length_ax = length_fig.add_subplot(111)
-    
-    plt.imshow(conduit_lengths, origin='lower', extent=extent)
-    plt.colorbar(label='Conduit length (m)')
-    plt.contour(start_range, end_range, length_contours, 1, colors=params.param_optimization_conduit_color)
-    
-    length_ax.set_yticks(start_range)
-    length_ax.set_xticks(end_range)
-    length_ax.set_ylabel('NPc')
-    length_ax.set_xlabel('Pc')
-    
-    plt.savefig(length_fig_save_path, format='pdf',bbox_inches='tight')
-    
-    return NPc, Pc, achieved_density, achieved_length
+    return NPc, Pc, Pe_rad, Pe_tan, achieved_density, achieved_length
 
 def get_conduit_density(net, net_size, conduit_element_length=1.):
     """
@@ -277,16 +306,20 @@ def get_conduit_length(net, cec_indicator=mrad_params.cec_indicator, conduit_ele
 if __name__=='__main__':
     if create_parameter_optimization_data:
         
-        start_range = np.arange(0, 1.1, 0.1)
-        end_range = np.arange(0, 1.1, 0.1)
-        Pe_rad = [1, 1] # this ensures that no conduits are removed by clean_network()
-        Pe_tan = [1, 1]
+        start_range = np.arange(0, 1.1, 0.3)
+        end_range = np.arange(0, 1.1, 0.3)
+        
+        Pe_rad_range = np.arange(0, 1.1, 0.3)
+        Pe_tan_range = np.arange(0, 1.1, 0.3)
+        
+        Pes_rad = [[Pe_rad, Pe_rad] for Pe_rad in Pe_rad_range]
+        Pes_tan = [[Pe_tan, Pe_tan] for Pe_tan in Pe_tan_range]
         
         index = int(sys.argv[1])
         save_path = params.parameter_optimization_save_path_base + '_' + str(index) + '.pkl'
         
         run_parameter_optimization_iteration(save_path, conduit_element_length=mrad_params.Lce, optimization_net_size=[11,10,56], n_iterations=1, 
-                                                         start_range=start_range, end_range=end_range, Pe_rad=Pe_rad, Pe_tan=Pe_tan)
+                                                         start_range=start_range, end_range=end_range, Pes_rad=Pes_rad, Pes_tan=Pes_tan)
     if combine_parameter_optimization_data:
         average_diameter = params.Dc
         average_area = np.pi * average_diameter**2
@@ -296,8 +329,14 @@ if __name__=='__main__':
         optimization_data_save_folder = params.parameter_optimization_save_path_base.rsplit('/', 1)[0]
         optimization_data_save_name_base = params.parameter_optimization_save_path_base.rsplit('/', 1)[1]
         
-        NPc, Pc, achived_density, achieved_length = optimize_parameters_from_data(target_density, target_length, optimization_data_save_folder, optimization_data_save_name_base,
-                                                                                  params.param_optimization_density_fig_save_path, params.param_optimization_length_fig_save_path)
+        NPc, Pc, Pe_rad, Pe_tan, achived_density, achieved_length = optimize_parameters_from_data(target_density, target_length, optimization_data_save_folder, optimization_data_save_name_base,
+                                                                                  params.param_optimization_fig_save_path_base)
+        print('Optimal NPc: ' + str(NPc))
+        print('Optimal Pc:' + str(Pc))
+        print('Optimal Pe_rad:' + str(Pe_rad))
+        print('Optimal Pe_tan:' + str(Pe_tan))
+        print('Target conduit density ' + str(target_density) + ', achieved conduit density ' + str(achived_density))
+        print('Target conduit length ' + str(target_length) + ', achieved conduit length ' + str(achieved_length))
 
     
     

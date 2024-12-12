@@ -71,8 +71,7 @@ if triton:
     optimized_spreading_probability_save_path_base = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/optimized_spreading_probability/' + identifier + '/optimized_spreading_probability_' + identifier
     optimized_vc_plot_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/vc_optimized_spreading_probability_' + identifier + '.pdf' 
     optimized_prevalence_plot_save_path_base = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/prevalence/prevalence_all_pressure_diffs_' + identifier 
-    param_optimization_density_fig_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/parameter_optimization_conduit_density_' + identifier + '.pdf' 
-    param_optimization_length_fig_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/parameter_optimization_conduit_length_' + identifier + '.pdf' 
+    param_optimization_fig_save_path_base = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/parameter_optimization_' + identifier 
     
     single_param_visualization_data_paths = ['/m/cs/scratch/networks/aokorhon/tree-percolation/output/percolation_3D_' + identifier + '_data.pkl']
     optimized_vc_plot_data_save_path_bases = ['/m/cs/scratch/networks/aokorhon/tree-percolation/output/optimized_spreading_probability/' + identifier + '/optimized_spreading_probability_' + identifier]
@@ -90,8 +89,7 @@ else:
     optimized_spreading_probability_save_path_base = '/home/onervak/projects/hidrogat/output/optimized_spreading_probability/' + identifier + '/optimized_spreading_probability_' + identifier
     optimized_vc_plot_save_path = '/home/onervak/projects/hidrogat/output/vc_optimized_spreading_probability_' + identifier + '.pdf'
     optimized_prevalence_plot_save_path_base = '/home/onervak/projects/hidrogat/output/prevalence/prevalence_all_pressure_diffs_' + identifier
-    param_optimization_density_fig_save_path = '/home/onervak/projects/hidrogat/output/parameter_optimization_conduit_density_' + identifier + '.pdf' 
-    param_optimization_length_fig_save_path = '/home/onervak/projects/hidrogat/output/parameter_optimization_conduit_length_' + identifier + '.pdf' 
+    param_optimization_fig_save_path_base = '/home/onervak/projects/hidrogat/output/parameter_optimization_' + identifier
     
     single_param_visualization_data_paths = ['/home/onervak/projects/hidrogat/output/percolation_3D_' + identifier + '_data.pkl']
     optimized_vc_plot_data_save_path_bases = ['/home/onervak/projects/hidrogat/output/optimized_spreading_probability/' + identifier + '/optimized_spreading_probability_' + identifier]
