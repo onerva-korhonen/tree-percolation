@@ -13,6 +13,7 @@ import sys
 import os
 import pickle
 import matplotlib.pylab as plt
+from scipy.ndimage import label, generate_binary_structure
 
 import mrad_model
 import mrad_params
@@ -70,9 +71,10 @@ def run_parameter_optimization_iteration(save_path, conduit_element_length=mrad_
         end_range = np.arange(0, 1.01, 0.01)
     conduit_densities = np.zeros((len(start_range), len(end_range), len(Pes_rad), len(Pes_tan)))
     conduit_lengths = np.zeros((len(start_range), len(end_range), len(Pes_rad), len(Pes_tan)))
+    grouping_indices = np.zeros((len(start_range), len(end_range), len(Pes_rad), len(Pes_tan)))
     for i, NPc in enumerate(start_range):
         cfg['NPc'] = [NPc, NPc] # assuming same NPc at both ends of the radial range
-        for j, Pc in enumerate(end_range):
+        for j, Pc in enumerate(end_range): 
             if NPc > 0: # if NPc == 0, there are no conduits and thus conduit density and length equal to zero
                 cfg['Pc'] = [Pc, Pc] # assuming same Pc at both ends of the radial range
                 for k, Pe_rad in enumerate(Pes_rad):
@@ -85,18 +87,19 @@ def run_parameter_optimization_iteration(save_path, conduit_element_length=mrad_
                             net, _ = mrad_model.clean_network(net, conduit_elements, optimization_net_size[0] - 1)
                             conduit_densities[i, j, k, l] += get_conduit_density(net, optimization_net_size)
                             conduit_lengths[i, j, k, l] += get_conduit_length(net)
-                            # TODO: add calculation of grouping index
+                            grouping_indices[i, j, k, l] += get_grouping_index(net, optimization_net_size)
                         except Exception as e:
                             if str(e) == 'Cannot delete ALL pores': # current parameter combination doesn't yield any components that would extend through the whole row direction; this can be the case for very small NPc's and very high Pc's
                                 conduit_densities[i, j, k, l] = 0
                                 conduit_lengths[i, j, k, l] = 0 
+                                grouping_indices[i, j, k, l] = 0
                             else:
                                 raise
 
     conduit_lengths *= conduit_element_length
                             
     data = {'start_range' : start_range, 'end_range' : end_range, 'Pes_rad' : Pes_rad, 'Pes_tan' : Pes_tan, 'net_size' : optimization_net_size, 'conduit_densities' : conduit_densities,
-            'conduit_lengths' : conduit_lengths}
+            'conduit_lengths' : conduit_lengths, 'grouping_indices' : grouping_indices}
     
     save_folder = save_path.rsplit('/', 1)[0]
     if not os.path.exists(save_folder):
@@ -106,10 +109,10 @@ def run_parameter_optimization_iteration(save_path, conduit_element_length=mrad_
     f.close()
                     
 
-def optimize_parameters_from_data(target_density, target_length, optimization_data_save_folder, optimization_data_save_name_base, fig_save_path_base):
+def optimize_parameters_from_data(target_density, target_length, target_grouping_index, optimization_data_save_folder, optimization_data_save_name_base, fig_save_path_base):
     """
     Starting from pre-calculated data,  finds the conduit start and end probabilities (NPc and Pc) of the Mrad xylem network model that produce
-    conduit density and average conduit length as close as possible to given target values.
+    conduit density, average conduit length, and grouping index as close as possible to given target values.
     
     Parameters
     ----------
@@ -117,6 +120,8 @@ def optimize_parameters_from_data(target_density, target_length, optimization_da
         the desired conduit density
     target_length : float
         the desired average conduit length in meters
+    target_grouping_index : float
+        the desired grouping index
     optimization_data_save_folder : str
         path of the folder in which the simulation data is saved
     optimization_data_save_name_base : str
@@ -152,6 +157,7 @@ def optimize_parameters_from_data(target_density, target_length, optimization_da
         if i == 0:
             conduit_densities = data['conduit_densities']
             conduit_lengths = data['conduit_lengths']
+            grouping_indices = data['grouping_indices']
             start_range = data['start_range']
             end_range = data['end_range']
             Pes_rad = data['Pes_rad']
@@ -163,22 +169,30 @@ def optimize_parameters_from_data(target_density, target_length, optimization_da
             assert data['Pes_tan'] == Pes_tan, 'different Pe_tan ranges at different parameter optimization iterations'
             conduit_densities += data['conduit_densities']
             conduit_lengths += data['conduit_lengths']
+            grouping_indices += data['grouping_indices']
     
     
     conduit_densities /= n_iterations
     conduit_lengths /= n_iterations
+    grouping_indices /= n_iterations
     
-    density_landscape = np.abs(conduit_densities - target_density)
-    optimal_NPc_indices, optimal_Pc_indices, optimal_Pe_rad_indices, optimal_Pe_tan_indices = np.where(density_landscape == np.amin(density_landscape)) 
+    density_landscape = np.abs(conduit_densities - target_density) / target_density # absolute relative difference
+    if target_length > 0: # TODO: remove this case after setting target length
+        length_landscape = np.abs(conduit_lengths - target_length) / target_length
+    else:
+        length_landscape = np.zeros(conduit_lengths.shape)
+    grouping_index_landscape = np.abs(grouping_indices - target_grouping_index)
+    optimization_landscape = density_landscape + length_landscape + grouping_index_landscape
+     
+    optimal_NPc_indices, optimal_Pc_indices, optimal_Pe_rad_indices, optimal_Pe_tan_indices = np.where(optimization_landscape == np.amin(optimization_landscape)) 
     # TODO: consider adding a tolerance parameter: include in potential optima everything that is within the tolerance from the target
     
-    # TODO: instead using the if clause, consider calculating the overlap of optimal indices in terms of conduit density, conduit length, and grouping index
     # or finding the parameter combination that minimizes the sum of relative difference compared to the target density, length, and GI
-    if len(optimal_NPc_indices) > 1:
-        mask = 1000 * np.ones(len(start_range), len(end_range), len(Pes_rad), len(Pes_tan))
-        mask[optimal_NPc_indices, optimal_Pc_indices, optimal_Pe_rad_indices, optimal_Pe_tan_indices] = 1
-        length_landscape = mask * np.abs(conduit_lengths - target_length)
-        optimal_NPc_indices, optimal_Pc_indices, optimal_Pe_rad_indices, optimal_Pe_tan_indices = np.where(length_landscape == np.amin(length_landscape))
+    #if len(optimal_NPc_indices) > 1:
+    #    mask = 1000 * np.ones(len(start_range), len(end_range), len(Pes_rad), len(Pes_tan))
+    #    mask[optimal_NPc_indices, optimal_Pc_indices, optimal_Pe_rad_indices, optimal_Pe_tan_indices] = 1
+    #    length_landscape = mask * np.abs(conduit_lengths - target_length)
+    #    optimal_NPc_indices, optimal_Pc_indices, optimal_Pe_rad_indices, optimal_Pe_tan_indices = np.where(length_landscape == np.amin(length_landscape))
     
     NPc = start_range[optimal_NPc_indices[0]]
     Pc = end_range[optimal_Pc_indices[0]]
@@ -186,6 +200,7 @@ def optimize_parameters_from_data(target_density, target_length, optimization_da
     Pe_tan = Pes_tan[optimal_Pe_tan_indices[0]]
     achieved_density = conduit_densities[optimal_NPc_indices[0], optimal_Pc_indices[0], optimal_Pe_rad_indices[0], optimal_Pe_tan_indices[0]]
     achieved_length = conduit_lengths[optimal_NPc_indices[0], optimal_Pc_indices[0], optimal_Pe_rad_indices[0], optimal_Pe_tan_indices[0]]
+    achieved_grouping_index = grouping_indices[optimal_NPc_indices[0], optimal_Pc_indices[0], optimal_Pe_rad_indices[0], optimal_Pe_tan_indices[0]]
     
     # Pes_rad and Pes_tan are lists of value pairs; visualization needs lists of single values
     if np.all(np.array([Pe_rad[0] == Pe_rad[1] for Pe_rad in Pes_rad])):
@@ -201,14 +216,16 @@ def optimize_parameters_from_data(target_density, target_length, optimization_da
     densities_for_viz_constant_Pc = conduit_densities[optimal_NPc_indices[0], optimal_Pc_indices[0], :, :]
     lengths_for_viz_constant_Pe = conduit_lengths[:, :, optimal_Pe_rad_indices[0], optimal_Pe_tan_indices[0]]
     lengths_for_viz_constant_Pc = conduit_lengths[optimal_NPc_indices[0], optimal_Pc_indices[0], :, :]
-    viz_data = [densities_for_viz_constant_Pe, densities_for_viz_constant_Pc, lengths_for_viz_constant_Pe, lengths_for_viz_constant_Pc]
-    constant_indices = [[optimal_NPc_indices, optimal_Pc_indices], [optimal_Pe_rad_indices, optimal_Pe_tan_indices], [optimal_NPc_indices, optimal_Pc_indices], [optimal_Pe_rad_indices, optimal_Pe_tan_indices]]
-    x_ranges = [start_range, Pes_rad, end_range, Pes_rad]
-    y_ranges = [end_range, Pes_tan, end_range, Pes_tan]
-    ylabels = ['NPc', 'Pe_rad', 'NPc', 'Pe_rad']
-    xlabels = ['Pc', 'Pe_tan', 'Pc', 'Pe_tan']
-    zlabels = ['Conduit density', 'Conduit density', 'Conduit length (m)', 'Conduit length (m)']
-    save_path_identifiers = ['_conduit_density_constant_Pe', '_conduit_density_constant_Pc', '_conduit_length_constant_Pe', '_conduit_length_constant_Pc']
+    grouping_indices_for_viz_constant_Pe = grouping_indices[:, :, optimal_Pe_rad_indices[0], optimal_Pe_tan_indices[0]]
+    grouping_indices_for_viz_constant_Pc = grouping_indices[optimal_NPc_indices[0], optimal_Pc_indices[0], :, :]
+    viz_data = [densities_for_viz_constant_Pe, densities_for_viz_constant_Pc, lengths_for_viz_constant_Pe, lengths_for_viz_constant_Pc, grouping_indices_for_viz_constant_Pe, grouping_indices_for_viz_constant_Pc]
+    constant_indices = [[optimal_NPc_indices, optimal_Pc_indices], [optimal_Pe_rad_indices, optimal_Pe_tan_indices], [optimal_NPc_indices, optimal_Pc_indices], [optimal_Pe_rad_indices, optimal_Pe_tan_indices], [optimal_NPc_indices, optimal_Pc_indices], [optimal_Pe_rad_indices, optimal_Pe_tan_indices]]
+    x_ranges = [start_range, Pes_rad, start_range, Pes_rad, start_range, Pes_rad]
+    y_ranges = [end_range, Pes_tan, end_range, Pes_tan, end_range, Pes_tan]
+    ylabels = ['NPc', 'Pe_rad', 'NPc', 'Pe_rad', 'NPc', 'Pe_rad']
+    xlabels = ['Pc', 'Pe_tan', 'Pc', 'Pe_tan', 'Pc', 'Pe_tan']
+    zlabels = ['Conduit density', 'Conduit density', 'Conduit length (m)', 'Conduit length (m)', 'Grouping index', 'Grouping index']
+    save_path_identifiers = ['_conduit_density_constant_Pe', '_conduit_density_constant_Pc', '_conduit_length_constant_Pe', '_conduit_length_constant_Pc', '_grouping_index_constant_Pe', '_grouping_index_constant_Pc']
     
     for data, constant_index, x_range, y_range, ylabel, xlabel, zlabel, save_path_identifier in zip(viz_data, constant_indices, x_ranges, y_ranges, ylabels, xlabels, zlabels, save_path_identifiers):
 
@@ -241,7 +258,7 @@ def optimize_parameters_from_data(target_density, target_length, optimization_da
         save_path = fig_save_path_base + save_path_identifier + '.pdf'
         plt.savefig(save_path, format='pdf',bbox_inches='tight')
     
-    return NPc, Pc, Pe_rad, Pe_tan, achieved_density, achieved_length
+    return NPc, Pc, Pe_rad, Pe_tan, achieved_density, achieved_length, achieved_grouping_index
 
 def get_conduit_density(net, net_size, conduit_element_length=1.):
     """
@@ -303,6 +320,48 @@ def get_conduit_length(net, cec_indicator=mrad_params.cec_indicator, conduit_ele
         conduit_length = conduit_element_length * np.mean(conduits[:, 2])
         return conduit_length
     
+def get_grouping_index(net, net_size):
+    """
+    Calculates the average grouping index, defined as N_conduits / N_conduitgroups, across network slices in row direction. A conduit group
+    is defined as a group of conduits touching each other vertically, horizontally or diagonally; solitary conduits count as groups of
+    their own.
+
+    Parameters
+    ----------
+    net : op.Network()
+        pores correspond to conduit elements, throats to CECs and ICCs
+    net_size : list of ints
+        size of the network, [n_rows x n_columns x n_depth]
+
+    Returns
+    -------
+    grouping_index : float
+        average grouping index of net
+    """
+    if not 'pore.coords' in net.keys(): # there are no pores and thus no conduits and no grouping in the network
+        return 0
+    else:
+        pore_coordinates = net['pore.coords']
+        n_rows = net_size[0]
+        n_columns = net_size[1]
+        n_depth = net_size[2]
+        grouping_index = 0
+        for row_index in np.arange(n_rows):
+            occupied_cells = pore_coordinates[np.where(pore_coordinates[:, 0] == row_index)][:, 1:]
+            mask = np.zeros((n_columns, n_depth))
+            mask[occupied_cells[:, 0], occupied_cells[:, 1]] = 1
+            #s = generate_binary_structure(2,2)
+            #labeled_array, num_features = label(mask, structure=s)
+            labeled_array, num_features = label(mask)
+            cluster_sizes = np.zeros(num_features)
+            for i in np.arange(1, num_features + 1):
+                cluster_sizes[i - 1] = np.sum(labeled_array == i)
+            n_total = np.sum(cluster_sizes) # TODO: is cluster_sizes needed for anything; does this equal to occupied_cells.shape[0]?
+            n_groups = len(cluster_sizes) # TODO: does this equal to num_features?
+            grouping_index += n_total / n_groups
+        grouping_index /= n_rows
+        return grouping_index
+    
 if __name__=='__main__':
     if create_parameter_optimization_data:
         
@@ -325,18 +384,20 @@ if __name__=='__main__':
         average_area = np.pi * average_diameter**2
         target_density = params.target_conduit_density / (1E-3**2 / average_area) # transferring the 1/mm^2 conduit density from Lintunen & Kalliokoski 2010 to a fraction of occupied cells
         target_length = 0 # TODO: find average conduit length for Betula pendula
+        target_grouping_index = params.target_grouping_index
         
         optimization_data_save_folder = params.parameter_optimization_save_path_base.rsplit('/', 1)[0]
         optimization_data_save_name_base = params.parameter_optimization_save_path_base.rsplit('/', 1)[1]
         
-        NPc, Pc, Pe_rad, Pe_tan, achived_density, achieved_length = optimize_parameters_from_data(target_density, target_length, optimization_data_save_folder, optimization_data_save_name_base,
-                                                                                  params.param_optimization_fig_save_path_base)
+        NPc, Pc, Pe_rad, Pe_tan, achived_density, achieved_length, achieved_grouping_index = optimize_parameters_from_data(target_density, target_length, target_grouping_index, optimization_data_save_folder, 
+                                                                                                  optimization_data_save_name_base, params.param_optimization_fig_save_path_base)
         print('Optimal NPc: ' + str(NPc))
         print('Optimal Pc:' + str(Pc))
         print('Optimal Pe_rad:' + str(Pe_rad))
         print('Optimal Pe_tan:' + str(Pe_tan))
         print('Target conduit density ' + str(target_density) + ', achieved conduit density ' + str(achived_density))
         print('Target conduit length ' + str(target_length) + ', achieved conduit length ' + str(achieved_length))
+        print('Target grouping index: ' + str(target_grouping_index) + ', achieved grouping index: ' + str(achieved_grouping_index))
 
     
     

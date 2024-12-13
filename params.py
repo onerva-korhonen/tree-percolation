@@ -50,6 +50,7 @@ Dc_alpha = 0.05 # alpha value of Dc_ci
 Dc_z = norm.ppf(1 - (1 - Dc_alpha) / 2)
 
 target_conduit_density = 630.817129361309 # 1/mm^2; conduit density in large branches of Betula pendula; from Lintunen & Kalliokoski 2010
+target_grouping_index = 2.47 # grouping index in branches of Betula pendula; from Alber et al., Trees 33, 2019
     
 
 # paths for saving
