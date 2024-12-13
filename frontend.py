@@ -44,6 +44,9 @@ cfg['average_pit_area'] = mrad_params.Dm**2
 cfg['conduit_element_length'] = mrad_params.Lce
 cfg['fc'] = mrad_params.fc
 cfg['fpf'] = mrad_params.fpf
+cfg['tf'] = mrad_params.tf
+cfg['Dp'] = mrad_params.Dp
+cfg['icc_length'] = mrad_params.icc_length
 
 cfg['use_cylindrical_coords'] = False
 cfg['fixed_random'] = True
