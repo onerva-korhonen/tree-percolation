@@ -171,28 +171,25 @@ def optimize_parameters_from_data(target_density, target_length, target_grouping
             conduit_lengths += data['conduit_lengths']
             grouping_indices += data['grouping_indices']
     
-    
     conduit_densities /= n_iterations
     conduit_lengths /= n_iterations
     grouping_indices /= n_iterations
     
-    density_landscape = np.abs(conduit_densities - target_density) / target_density # absolute relative difference
+    #density_landscape = np.abs(conduit_densities - target_density) / target_density # absolute relative difference
+    density_landscape = np.argsort(np.abs(conduit_densities - target_density), axis=None)
     if target_length > 0: # TODO: remove this case after setting target length
-        length_landscape = np.abs(conduit_lengths - target_length) / target_length
+        #length_landscape = np.abs(conduit_lengths - target_length) / target_length
+        length_landscape = np.argsort(np.abs(conduit_lengths - target_length), axis=None)
     else:
-        length_landscape = np.zeros(conduit_lengths.shape)
-    grouping_index_landscape = np.abs(grouping_indices - target_grouping_index)
+        #length_landscape = np.zeros(conduit_lengths.shape)
+        length_landscape = np.zeros(conduit_lengths.size)
+    #grouping_index_landscape = np.abs(grouping_indices - target_grouping_index)
+    grouping_index_landscape = np.argsort(np.abs(grouping_indices - target_grouping_index), axis=None)
     optimization_landscape = density_landscape + length_landscape + grouping_index_landscape
+    optimization_landscape = np.reshape(optimization_landscape, conduit_densities.shape)
      
     optimal_NPc_indices, optimal_Pc_indices, optimal_Pe_rad_indices, optimal_Pe_tan_indices = np.where(optimization_landscape == np.amin(optimization_landscape)) 
     # TODO: consider adding a tolerance parameter: include in potential optima everything that is within the tolerance from the target
-    
-    # or finding the parameter combination that minimizes the sum of relative difference compared to the target density, length, and GI
-    #if len(optimal_NPc_indices) > 1:
-    #    mask = 1000 * np.ones(len(start_range), len(end_range), len(Pes_rad), len(Pes_tan))
-    #    mask[optimal_NPc_indices, optimal_Pc_indices, optimal_Pe_rad_indices, optimal_Pe_tan_indices] = 1
-    #    length_landscape = mask * np.abs(conduit_lengths - target_length)
-    #    optimal_NPc_indices, optimal_Pc_indices, optimal_Pe_rad_indices, optimal_Pe_tan_indices = np.where(length_landscape == np.amin(length_landscape))
     
     NPc = start_range[optimal_NPc_indices[0]]
     Pc = end_range[optimal_Pc_indices[0]]
@@ -222,12 +219,14 @@ def optimize_parameters_from_data(target_density, target_length, target_grouping
     constant_indices = [[optimal_NPc_indices, optimal_Pc_indices], [optimal_Pe_rad_indices, optimal_Pe_tan_indices], [optimal_NPc_indices, optimal_Pc_indices], [optimal_Pe_rad_indices, optimal_Pe_tan_indices], [optimal_NPc_indices, optimal_Pc_indices], [optimal_Pe_rad_indices, optimal_Pe_tan_indices]]
     x_ranges = [start_range, Pes_rad, start_range, Pes_rad, start_range, Pes_rad]
     y_ranges = [end_range, Pes_tan, end_range, Pes_tan, end_range, Pes_tan]
+    z_scales = ['linear', 'linear', 'linear', 'linear', 'log', 'log']
     ylabels = ['NPc', 'Pe_rad', 'NPc', 'Pe_rad', 'NPc', 'Pe_rad']
     xlabels = ['Pc', 'Pe_tan', 'Pc', 'Pe_tan', 'Pc', 'Pe_tan']
     zlabels = ['Conduit density', 'Conduit density', 'Conduit length (m)', 'Conduit length (m)', 'Grouping index', 'Grouping index']
     save_path_identifiers = ['_conduit_density_constant_Pe', '_conduit_density_constant_Pc', '_conduit_length_constant_Pe', '_conduit_length_constant_Pc', '_grouping_index_constant_Pe', '_grouping_index_constant_Pc']
     
-    for data, constant_index, x_range, y_range, ylabel, xlabel, zlabel, save_path_identifier in zip(viz_data, constant_indices, x_ranges, y_ranges, ylabels, xlabels, zlabels, save_path_identifiers):
+    
+    for data, constant_index, x_range, y_range, z_scale, ylabel, xlabel, zlabel, save_path_identifier in zip(viz_data, constant_indices, x_ranges, y_ranges, z_scales, ylabels, xlabels, zlabels, save_path_identifiers):
 
         centers = [x_range.min(), x_range.max(), y_range.min(), y_range.max()]
         
@@ -236,7 +235,7 @@ def optimize_parameters_from_data(target_density, target_length, target_grouping
         extent = [centers[0]-dx/2, centers[1]+dx/2, centers[2]+dy/2, centers[3]-dy/2]
     
         contours = np.ones(data.shape)
-        contours[constant_index[0][0], constant_index[1][0]] = 0
+        contours[constant_index[0], constant_index[1]] = 0
     
         contours = np.vstack([contours, np.ones(len(y_range))])
         contours = np.vstack([np.ones(len(y_range)), contours])
@@ -247,7 +246,7 @@ def optimize_parameters_from_data(target_density, target_length, target_grouping
         ax = fig.add_subplot(111)
     
         plt.contour(np.hstack([np.array([np.amin(x_range) - dx]), x_range, np.array([np.amax(x_range) + dx])]), np.hstack([np.array([np.amin(y_range) + dy]), y_range, np.array([np.amax(y_range) - dy])]), contours, 1, colors=params.param_optimization_conduit_color) # NOTE: dx > 0, dy < 0
-        plt.imshow(data, origin='lower', extent=extent)
+        plt.imshow(data, origin='lower', extent=extent, norm=z_scale)
         plt.colorbar(label=zlabel)
     
         ax.set_yticks(x_range)
@@ -381,8 +380,8 @@ if __name__=='__main__':
                                                          start_range=start_range, end_range=end_range, Pes_rad=Pes_rad, Pes_tan=Pes_tan)
     if combine_parameter_optimization_data:
         average_diameter = params.Dc
-        average_area = np.pi * average_diameter**2
-        target_density = params.target_conduit_density / (1E-3**2 / average_area) # transferring the 1/mm^2 conduit density from Lintunen & Kalliokoski 2010 to a fraction of occupied cells
+        average_area = np.pi * (average_diameter/2)**2
+        target_density = params.target_conduit_density * average_area # transferring the 1/m^2 conduit density from Lintunen & Kalliokoski 2010 to a fraction of occupied cells
         target_length = 0 # TODO: find average conduit length for Betula pendula
         target_grouping_index = params.target_grouping_index
         
