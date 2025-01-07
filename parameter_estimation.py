@@ -23,7 +23,7 @@ create_parameter_optimization_data = False
 combine_parameter_optimization_data = True
         
 
-def run_parameter_optimization_iteration(save_path, conduit_element_length=mrad_params.Lce, optimization_net_size=[11,10,56], n_iterations=1, 
+def run_parameter_optimization_iteration(save_path, conduit_element_length=mrad_params.Lce, optimization_net_size=[11,10,56], 
                                          start_range=None, end_range=None, Pes_rad=[[1, 1]], Pes_tan=[[1, 1]]):
     """
     Calculates conduit density and length in the space spanned by conduit start and end probability (NPc and Pc) and probability to build radial
@@ -37,8 +37,6 @@ def run_parameter_optimization_iteration(save_path, conduit_element_length=mrad_
         length of a single conduit element. Default 0.00288 m from the Mrad et al. 2018 article
     optimization_network_size : list if ints, optional
         size of the xylem networks created for the optimization. default [11, 10, 56]
-    n_iterations : int
-        number of xylem networks used for calculating conduit density and length for each NPc-Pc pair
     start_range : np.array of floats, optional
         NPc values to test. default None, in which case values between 0 and 1 are used
     end_range : np.array of floats, optional
@@ -336,6 +334,7 @@ def get_grouping_index(net, net_size):
     if not 'pore.coords' in net.keys(): # there are no pores and thus no conduits and no grouping in the network
         return 0
     else:
+        
         pore_coordinates = net['pore.coords']
         n_rows = net_size[0]
         n_columns = net_size[1]
@@ -345,15 +344,8 @@ def get_grouping_index(net, net_size):
             occupied_cells = pore_coordinates[np.where(pore_coordinates[:, 0] == row_index)][:, 1:]
             mask = np.zeros((n_columns, n_depth))
             mask[occupied_cells[:, 0], occupied_cells[:, 1]] = 1
-            #s = generate_binary_structure(2,2)
-            #labeled_array, num_features = label(mask, structure=s)
-            labeled_array, num_features = label(mask)
-            cluster_sizes = np.zeros(num_features)
-            for i in np.arange(1, num_features + 1):
-                cluster_sizes[i - 1] = np.sum(labeled_array == i)
-            n_total = np.sum(cluster_sizes) # TODO: is cluster_sizes needed for anything; does this equal to occupied_cells.shape[0]?
-            n_groups = len(cluster_sizes) # TODO: does this equal to num_features?
-            grouping_index += n_total / n_groups
+            _, num_features = label(mask)
+            grouping_index += occupied_cells.shape[0] / num_features
         grouping_index /= n_rows
         return grouping_index
     
@@ -372,7 +364,7 @@ if __name__=='__main__':
         index = int(sys.argv[1])
         save_path = params.parameter_optimization_save_path_base + '_' + str(index) + '.pkl'
         
-        run_parameter_optimization_iteration(save_path, conduit_element_length=mrad_params.Lce, optimization_net_size=[11,10,56], n_iterations=1, 
+        run_parameter_optimization_iteration(save_path, conduit_element_length=mrad_params.Lce, optimization_net_size=[11,10,56], 
                                                          start_range=start_range, end_range=end_range, Pes_rad=Pes_rad, Pes_tan=Pes_tan)
     if combine_parameter_optimization_data:
         average_diameter = params.Dc
