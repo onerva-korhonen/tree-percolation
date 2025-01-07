@@ -174,19 +174,15 @@ def optimize_parameters_from_data(target_density, target_length, target_grouping
     conduit_densities /= n_iterations
     conduit_lengths /= n_iterations
     grouping_indices /= n_iterations
-    
-    #density_landscape = np.abs(conduit_densities - target_density) / target_density # absolute relative difference
-    density_landscape = np.argsort(np.abs(conduit_densities - target_density), axis=None)
+
+    density_landscape = np.argsort(np.abs(conduit_densities - target_density), axis=None) # rank of absolute difference
     if target_length > 0: # TODO: remove this case after setting target length
-        #length_landscape = np.abs(conduit_lengths - target_length) / target_length
         length_landscape = np.argsort(np.abs(conduit_lengths - target_length), axis=None)
     else:
-        #length_landscape = np.zeros(conduit_lengths.shape)
         length_landscape = np.zeros(conduit_lengths.size)
-    #grouping_index_landscape = np.abs(grouping_indices - target_grouping_index)
     grouping_index_landscape = np.argsort(np.abs(grouping_indices - target_grouping_index), axis=None)
     optimization_landscape = density_landscape + length_landscape + grouping_index_landscape
-    optimization_landscape = np.reshape(optimization_landscape, conduit_densities.shape)
+    optimization_landscape = np.reshape(optimization_landscape, conduit_densities.shape) # the optimal parameter combination minimizes the rank sum of conduit density, conduit length, and grouping index
      
     optimal_NPc_indices, optimal_Pc_indices, optimal_Pe_rad_indices, optimal_Pe_tan_indices = np.where(optimization_landscape == np.amin(optimization_landscape)) 
     # TODO: consider adding a tolerance parameter: include in potential optima everything that is within the tolerance from the target

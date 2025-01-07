@@ -55,7 +55,7 @@ target_grouping_index = 2.47 # grouping index in branches of Betula pendula; fro
 
 # paths for saving
 triton = False
-identifier = 'small_net_small_space'
+identifier = 'small_net_small_space_retest'
 pooled_optimized_spreading_probability_save_name = 'pooled_optimized_spreading_probability.pkl'
 
 if triton:
