@@ -146,32 +146,7 @@ def optimize_parameters_from_data(target_density, target_length, target_grouping
     data_files = [os.path.join(optimization_data_save_folder, file) for file in os.listdir(optimization_data_save_folder) if os.path.isfile(os.path.join(optimization_data_save_folder, file))]
     data_files = [data_file for data_file in data_files if optimization_data_save_name_base in data_file]
     
-    n_iterations = len(data_files)
-    
-    for i, data_file in enumerate(data_files):
-        with open(data_file, 'rb') as f:
-            data = pickle.load(f)
-            f.close()
-        if i == 0:
-            conduit_densities = data['conduit_densities']
-            conduit_lengths = data['conduit_lengths']
-            grouping_indices = data['grouping_indices']
-            start_range = data['start_range']
-            end_range = data['end_range']
-            Pes_rad = data['Pes_rad']
-            Pes_tan = data['Pes_tan']
-        else:
-            assert np.all(data['start_range'] == start_range), 'different NPc ranges at different parameter optimization iterations!'
-            assert np.all(data['end_range'] == end_range), 'different Pc ranges at different parameter optimization iterations!'
-            assert data['Pes_rad'] == Pes_rad, 'different Pe_rad ranges at different parameter optimization iterations!'
-            assert data['Pes_tan'] == Pes_tan, 'different Pe_tan ranges at different parameter optimization iterations'
-            conduit_densities += data['conduit_densities']
-            conduit_lengths += data['conduit_lengths']
-            grouping_indices += data['grouping_indices']
-    
-    conduit_densities /= n_iterations
-    conduit_lengths /= n_iterations
-    grouping_indices /= n_iterations
+    start_range, end_range, Pes_rad, Pes_tan, conduit_densities, conduit_lengths, grouping_indices = read_and_combine_data(data_files)
 
     density_landscape = np.argsort(np.abs(conduit_densities - target_density), axis=None) # rank of absolute difference
     if target_length > 0: # TODO: remove this case after setting target length
@@ -348,6 +323,95 @@ def get_grouping_index(net, net_size):
             grouping_index += occupied_cells.shape[0] / num_features
         grouping_index /= n_rows
         return grouping_index
+    
+def read_and_combine_data(data_files):
+    """
+    Reads parameter optimization data and combines areas of simulation space possibly distributed in different files into a single space and, when relevant,
+    averaging values obtained with the same parameter combination.
+
+    Parameters
+    ----------
+    data_files : list of strs
+        paths to files to be read
+
+    Returns
+    -------
+    conduit_densities : np.array
+        conduit density obtained with different parameter combinations
+    conduit_lengths : np.array 
+        conduit length obtained with different parameter combinations
+    grouping_indices : np.array
+        grouping indices obtained with different parameter combinations
+    unique_NPcs : np.array
+        unique values of NPc used for obtaining data
+    unique_Pcs : np.array
+        unique Pc values used for obtaining data
+    unique_Pes_rad : np.array
+        unique Pe_rad values used for obtaining data
+    unique_Pes_tan : 
+        unique Pe_tan values used for obtaining data
+    """
+    unique_NPcs = []
+    unique_Pcs = []
+    unique_Pes_rad = []
+    unique_Pes_tan = []
+    
+    conduit_densities = []
+    conduit_lengths = []
+    grouping_indices = []
+    param_combinations = []
+    
+    for i, data_file in enumerate(data_files):
+        with open(data_file, 'rb') as f:
+            data = pickle.load(f)
+            f.close()
+            for NPc in data['start_range']:
+                if not NPc in unique_NPcs:
+                    unique_NPcs.append(NPc)
+            for Pc in data['end_range']:
+                if not Pc in unique_Pcs:
+                    unique_Pcs.append(Pc)
+            for Pe_rad in data['Pes_rad']:
+                if not Pe_rad in unique_Pes_rad:
+                    unique_Pes_rad.append(Pe_rad)
+            for Pe_tan in data['Pes_tan']:
+                if not Pe_tan in unique_Pes_tan:
+                    unique_Pes_tan.append(Pe_tan)
+            conduit_densities.extend(data['conduit_densities'].T.reshape(-1, 1))
+            conduit_lengths.extend(data['conduit_lengths'].T.reshape(-1, 1))
+            grouping_indices.extend(data['grouping_indices'].T.reshape(-1, 1))
+            param_combinations.extend(np.array(np.meshgrid(data['start_range'], data['end_range'], np.array(data['Pes_rad'])[:, 0], np.array(data['Pes_tan'])[:, 0])).T.reshape(-1, 4))
+    
+    # TODO: the code now assumes the two elements of Pe_rad and Pe_tan to be identical; modify to handle non-identical elements
+    
+    unique_NPcs = np.sort(unique_NPcs)
+    unique_Pcs = np.sort(unique_Pcs)
+    unique_Pes_rad = np.sort(unique_Pes_rad)
+    unique_Pes_tan = np.sort(unique_Pes_tan)
+
+    output_param_combinations = np.array(np.meshgrid(unique_NPcs, unique_Pcs, unique_Pes_tan[:, 0], unique_Pes_rad[:, 0])).T.reshape(-1, 4)
+    conduit_density_array = np.zeros(len(output_param_combinations))
+    conduit_length_array = np.zeros(len(output_param_combinations))
+    grouping_index_array = np.zeros(len(output_param_combinations))
+    
+    for param_combination, conduit_density, conduit_length, grouping_index in zip(param_combinations, conduit_densities, conduit_lengths, grouping_indices):
+        index = np.where((output_param_combinations == param_combination).all(axis=1))
+        conduit_density_array[index] += conduit_density
+        conduit_length_array[index] += conduit_length
+        grouping_index_array[index] += grouping_index
+    
+    conduit_densities = conduit_density_array.reshape(len(unique_NPcs), len(unique_Pcs), len(unique_Pes_rad), len(unique_Pes_tan)).T
+    conduit_lengths = conduit_length_array.reshape(len(unique_NPcs), len(unique_Pcs), len(unique_Pes_rad), len(unique_Pes_tan)).T
+    grouping_indices = grouping_index_array.reshape(len(unique_NPcs), len(unique_Pcs), len(unique_Pes_rad), len(unique_Pes_tan)).T
+    
+    n_iterations = len(data_files)
+    
+    conduit_densities /= n_iterations
+    conduit_lengths /= n_iterations
+    grouping_indices /= n_iterations
+    
+    return unique_NPcs, unique_Pcs, unique_Pes_rad, unique_Pes_tan, conduit_densities, conduit_lengths, grouping_indices
+            
     
 if __name__=='__main__':
     if create_parameter_optimization_data:
