@@ -24,6 +24,9 @@ cfg['net_size'] = params.net_size
 cfg['conduit_diameters'] = 'lognormal'#mrad_params.conduit_diameters
 cfg['Dc'] = params.Dc
 cfg['Dc_cv'] = params.Dc_cv
+cfg['conduit_element_length'] = params.Lce
+cfg['fc'] = params.fc
+cfg['average_pit_area'] = params.average_pit_membrane_area
 cfg['seeds_NPc'] = params.seeds_NPc
 cfg['seeds_Pc'] = params.seeds_Pc
 cfg['seed_ICC_rad'] = params.seed_ICC_rad
@@ -40,9 +43,6 @@ cfg['spontaneous_embolism'] = params.spontaneous_embolism
 # TODO: check that the followig params match the physiology of betula pendula
 cfg['weibull_a'] = mrad_params.weibull_a
 cfg['weibull_b'] = mrad_params.weibull_b
-cfg['average_pit_area'] = mrad_params.Dm**2
-cfg['conduit_element_length'] = mrad_params.Lce
-cfg['fc'] = mrad_params.fc
 cfg['fpf'] = mrad_params.fpf
 cfg['tf'] = mrad_params.tf
 cfg['Dp'] = mrad_params.Dp
@@ -54,8 +54,8 @@ cfg['fixed_random'] = True
 simulate_single_param_spreading = False
 construct_VC = False
 optimize_spreading_probability = False
-create_optimization_data = False
-combine_optimization_data = True
+create_optimization_data = True
+combine_optimization_data = False
 time = False
 
 #print(cfg['net_size'])

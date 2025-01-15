@@ -142,7 +142,7 @@ def plot_percolation_curve(total_n_nodes, values, colors, labels, alphas, axinde
         axis = [ax, ax2]
     
     for total_n_nodes, value_array, x, param_ls, param_label in zip(total_n_nodes, values, xs, param_linestyles, param_labels):
-        n_percolation_steps = values.shape[1]
+        n_percolation_steps = value_array.shape[1]
         assert n_percolation_steps > 1, 'only the values calculated for the full network given for plotting percolation curves'
         if len(x) > 0:
             assert len(x) == n_percolation_steps, "length of the given x axis does not match the number of percolation outcomes"
@@ -156,10 +156,10 @@ def plot_percolation_curve(total_n_nodes, values, colors, labels, alphas, axinde
         if secondary_ax: #secondary y axis will be used 
             ax2 = ax.twinx()
             axis = [ax, ax2]
-            for value, color, label, alpha, axind in zip(values, colors, labels, alphas, axindex):
+            for value, color, label, alpha, axind in zip(value_array, colors, labels, alphas, axindex):
                 axis[axind].plot(x, value, color=color, label=label + ', ' + param_label, alpha=alpha, ls=param_ls)
         else:    
-            for value, color, label, alpha in zip(values, colors, labels, alphas):
+            for value, color, label, alpha in zip(value_array, colors, labels, alphas):
                 ax.plot(x, value, color=color, label=label + ', ' + param_label, alpha=alpha, ls=param_ls)
             
     

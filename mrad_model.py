@@ -283,7 +283,7 @@ def prepare_simulation_network(net, cfg, update_coords=True):
     #-----------------------------------------------------------------------------------------------------------------------------------------------
     
     use_cylindrical_coords = cfg.get('use_cylindrical_coords', True)
-    Lce = cfg.get('Lce', params.Lce)
+    Lce = cfg.get('conduit_element_length', params.Lce)
     Dp = cfg.get('Dp', params.Dp)
     fc = cfg.get('fc', params.fc)
     fpf = cfg.get('fpf', params.fpf)
@@ -364,7 +364,7 @@ def prepare_simulation_network(net, cfg, update_coords=True):
     net['throat.area_m_mrad'] = 0.5 * (conduit_areas[conduit_indices[conns[:, 0]] - 1] / \
         conduit_icc_count[conduit_indices[conns[:, 0]] - 1] + conduit_areas[conduit_indices[conns[:, 1]] - 1] / \
         conduit_icc_count[conduit_indices[conns[:, 1]] - 1]) * fc * fpf # membrane area calculated from the Mrad geometry
-    pore_area = (Dp + tf)**2 # area of a single pore (m^2)
+    pore_area = np.pi*(Dp + tf)**2/4 # area of a single pore (m^2)
     net['throat.npore'] = np.floor(net['throat.area_m_mrad'] / pore_area).astype(int)
     
 # Conduit map operations
@@ -616,8 +616,8 @@ def get_removed_components(net, conduit_elements, outlet_row_index):
     # Find components that don't extend through the domain in axial direction
     removed_components = []
     for component in sorted_components:
-        in_btm = np.sum(conduit_elements[component, 0] == 0) # number of conduit elements belonging to this component at the inlet row
-        in_top = np.sum(conduit_elements[component, 0] == outlet_row_index) # number of conduit elements belonging to this component at the outlet row
+        in_btm = np.sum(np.isclose(conduit_elements[component, 0], 0)) # number of conduit elements belonging to this component at the inlet row; using np.isclose to avoid problems due to rounding issues
+        in_top = np.sum(np.isclose(conduit_elements[component, 0], outlet_row_index)) # number of conduit elements belonging to this component at the outlet row
         if (in_btm == 0) or (in_top == 0):
             removed_components.append(component)
         

@@ -11,7 +11,7 @@ import numpy as np
 from scipy.stats import norm
 
 # params for network creation
-net_size = np.array([110,100,56])
+net_size = np.array([11,10,56])
 fixed_random = True
 if fixed_random:
     if net_size[1] == 10:
@@ -42,20 +42,26 @@ if fixed_random:
     seed_ICC_tan = 73956
     
 # dimensions of conduit elements
-Dc = 18.18232653752158e-6 # m; diameter of a conduit element in large branches of Betula pendula; from Lintunen & Kalliokoski 2010
+Lce = 0.42E-3 # m; average conduit element length in Betula pendula branches; from Bhat & Kärkkäinen 1981
+Dc = 23.5261E-6 # m; diameter of a conduit element in Betula pendula branches; from Held et al. (in preparation)
+Dc_std = 13.1038E-6 # m; standard deviation of conduit element diameter in Betula pendula branches; from Held et al. (in preparation)
+# Note: Linunen & Kalliokoski 2010 would have Dc = 18.18232653752158e-6, Dc_std = 10.76131985221804e-6 
 #Dc_ci = [13.3995938309482, 18.4374185582225] # confidence interval of Dc
-Dc_std = 10.76131985221804e-6 # m; standard deviation of conduit element diameter in large brances of Betula pendula; from Lintunen & Kalliokoski 2010
 Dc_cv = Dc_std / Dc
 Dc_alpha = 0.05 # alpha value of Dc_ci
 Dc_z = norm.ppf(1 - (1 - Dc_alpha) / 2)
+fc = 0.31 # average contact fraction between two conduits; the Mrad et al. value for Acer glabrum, evaluated as a reasonable value for B. pendula as well by Lintunen & Held (personal communication)
+Dp = 32.0e-9 # m; average pit membrane pore diameter; from Jansen et al. 2009
+tf = 20.17e-9 # m; microfibril strand thickness; average across all measured species from Jansen et al. 2009
+average_pit_membrane_area = 3.68937478230582*(1E-6)**2 # m^2; average pit membrane area; from Held et al. (in preparation)
 
 target_conduit_density = 630.817129361309/(1e-3)**2 # 1/m^2; conduit density in large branches of Betula pendula; from Lintunen & Kalliokoski 2010
 target_grouping_index = 2.47 # grouping index in branches of Betula pendula; from Alber et al., Trees 33, 2019
     
 
 # paths for saving
-triton = False
-identifier = 'small_net_small_space_retest'
+triton = True
+identifier = 'small_net_new_pit_area'
 pooled_optimized_spreading_probability_save_name = 'pooled_optimized_spreading_probability.pkl'
 
 if triton:
@@ -99,11 +105,11 @@ else:
 percolation_type = 'si'
 si_type = 'physiological'
 break_nonfunctional_components = False
-spontaneous_embolism = True
+spontaneous_embolism = False
 si_length = 1000
 si_tolerance_length = 20
 spreading_probability = 0.15100000000000002
-start_conduits = 'none' # options: 'random', 'random_per_component' (= one random seed in all network components), 'none' (= no start conduits set, only spontaneous embolism), int, and 'bottom' (= all conduits with a pore at the first row, allowed only when percolation_type == 'drainage')
+start_conduits = 'random_per_component' # options: 'random', 'random_per_component' (= one random seed in all network components), 'none' (= no start conduits set, only spontaneous embolism), int, and 'bottom' (= all conduits with a pore at the first row, allowed only when percolation_type == 'drainage')
 # contact angle and surface tension values are from OpenPNM tutorial (https://openpnm.org/examples/tutorials/09_simulating_invasion.html)
 air_contact_angle = 120 # degrees
 surface_tension = 0.072 # Newtons/meter

@@ -38,7 +38,6 @@ def run_percolation(net, cfg, percolation_type='bond', removal_order='random', b
         contains:
         net_size: np.array, size of the network to be created (n_rows x n_columns x n_depths)
         use_cylindrical_coords: bln, should Mrad model coordinates be interpreted as cylindrical ones in visualizations?
-        Lce: float, length of a conduit element
         Dc: float, average conduit diameter (m)
         Dc_cv: float, coefficient of variation of conduit diameter
         fc: float, average contact fraction between two conduits
@@ -135,7 +134,6 @@ def construct_vulnerability_curve(net, cfg, x_range, start_conduits, si_length=1
         contains:
         net_size: np.array, size of the network to be created (n_rows x n_columns x n_depths)
         use_cylindrical_coords: bln, should Mrad model coordinates be interpreted as cylindrical ones in visualizations?
-        Lce: float, length of a conduit element
         Dc: float, average conduit diameter (m)
         Dc_cv: float, coefficient of variation of conduit diameter
         fc: float, average contact fraction between two conduits
@@ -225,7 +223,6 @@ def optimize_spreading_probability(net, cfg, pressure_difference, spreading_prob
         contains:
         net_size: np.array, size of the network to be created (n_rows x n_columns x n_depths)
         use_cylindrical_coords: bln, should Mrad model coordinates be interpreted as cylindrical ones in visualizations?
-        Lce: float, length of a conduit element
         Dc: float, average conduit diameter (m)
         Dc_cv: float, coefficient of variation of conduit diameter
         fc: float, average contact fraction between two conduits
@@ -329,7 +326,6 @@ def run_spreading_iteration(net, cfg, pressure_differences, save_path, spreading
         contains:
         net_size: np.array, size of the network to be created (n_rows x n_columns x n_depths)
         use_cylindrical_coords: bln, should Mrad model coordinates be interpreted as cylindrical ones in visualizations?
-        Lce: float, length of a conduit element
         Dc: float, average conduit diameter (m)
         Dc_cv: float, coefficient of variation of conduit diameter
         fc: float, average contact fraction between two conduits
@@ -741,7 +737,6 @@ def run_conduit_si_repeatedly(net, net_proj, cfg, spreading_param=0):
         contains:
         net_size: np.array, size of the network to be created (n_rows x n_columns x n_depths)
         use_cylindrical_coords: bln, should Mrad model coordinates be interpreted as cylindrical ones in visualizations?
-        Lce: float, length of a conduit element
         Dc: float, average conduit diameter (m)
         Dc_cv: float, coefficient of variation of conduit diameter
         fc: float, average contact fraction between two conduits
@@ -817,7 +812,6 @@ def run_graph_theoretical_element_percolation(net, cfg, percolation_type='bond',
         contains:
         net_size: np.array, size of the network to be created (n_rows x n_columns x n_depths)
         use_cylindrical_coords: bln, should Mrad model coordinates be interpreted as cylindrical ones in visualizations?
-        Lce: float, length of a conduit element
         Dc: float, average conduit diameter (m)
         Dc_cv: float, coefficient of variation of conduit diameter
         fc: float, average contact fraction between two conduits
@@ -946,7 +940,6 @@ def run_physiological_element_percolation(net, cfg, percolation_type):
         contains:
         net_size: np.array, size of the network to be created (n_rows x n_columns x n_depths)
         use_cylindrical_coords: bln, should Mrad model coordinates be interpreted as cylindrical ones in visualizations?
-        Lce: float, length of a conduit element
         Dc: float, average conduit diameter (m)
         Dc_cv: float, coefficient of variation of conduit diameter
         fc: float, average contact fraction between two conduits
@@ -1096,7 +1089,6 @@ def run_physiological_conduit_percolation(net, cfg, removal_order='random'):
         contains:
         net_size: np.array, size of the network to be created (n_rows x n_columns x n_depths)
         use_cylindrical_coords: bln, should Mrad model coordinates be interpreted as cylindrical ones in visualizations?
-        Lce: float, length of a conduit element
         Dc: float, average conduit diameter (m)
         Dc_cv: float, coefficient of variation of conduit diameter
         fc: float, average contact fraction between two conduits
@@ -1270,7 +1262,6 @@ def run_conduit_si(net, cfg, spreading_param=0):
         contains:
         net_size: np.array, size of the network to be created (n_rows x n_columns x n_depths)
         use_cylindrical_coords: bln, should Mrad model coordinates be interpreted as cylindrical ones in visualizations?
-        Lce: float, length of a conduit element
         Dc: float, average conduit diameter (m)
         Dc_cv: float, coefficient of variation of conduit diameter
         fc: float, average contact fraction between two conduits
@@ -1520,7 +1511,7 @@ def run_conduit_si(net, cfg, spreading_param=0):
                                                                   heartwood_d=heartwood_d, cec_indicator=cec_indicator)
             conduit_elements = mrad_model.get_conduit_elements(net=perc_net, cec_indicator=cec_indicator, 
                                                                conduit_element_length=conduit_element_length, heartwood_d=heartwood_d, use_cylindrical_coords=use_cylindrical_coords)
-            
+
             removed_components = mrad_model.get_removed_components(perc_net, np.concatenate((conduit_elements[:,0:3]/conduit_element_length, conduit_elements[:,3::]),axis=1), cfg['net_size'][0] - 1)
             removed_elements = list(itertools.chain.from_iterable(removed_components)) # calculating the size of the largest removed component in conduits
             nonfunctional_component_volume[time_step] += nonfunctional_component_volume[time_step - 1] + np.sum(np.pi * 0.5 * perc_net['pore.diameter'][removed_elements]**2 * conduit_element_length)
@@ -1596,7 +1587,6 @@ def run_physiological_conduit_drainage(net, cfg, start_conduits):
         contains:
         net_size: np.array, size of the network to be created (n_rows x n_columns x n_depths)
         use_cylindrical_coords: bln, should Mrad model coordinates be interpreted as cylindrical ones in visualizations?
-        Lce: float, length of a conduit element
         Dc: float, average conduit diameter (m)
         Dc_cv: float, coefficient of variation of conduit diameter
         fc: float, average contact fraction between two conduits
@@ -2115,8 +2105,8 @@ def get_inlet_conduits(net, conduits, cec_indicator=params.cec_indicator, condui
 
 def calculate_bpp(net, conduits, icc_mask, cfg):
     """
-    Calculates the bubble propagation pressure (BPP) for each ICC as 4*gamma/D_p where D_p is drawn from Weibull
-    distribution (equation 6 of the Mrad et al. article). 
+    Draws the bubble propagation pressure (BPP) for each ICC from a Weibull distribution defined per equation 8
+    of the Mrad et al. article. 
 
     Parameters
     ----------
@@ -2131,7 +2121,7 @@ def calculate_bpp(net, conduits, icc_mask, cfg):
         weibull_a : float, Weibull distribution scale parameter (used for simulating pressure-difference-based embolism spreading) (default 20.28E6)
         weibull_b : float, Weibull distribution shape parameter (used for simulating pressure-difference-based embolism spreading) (default 3.2)
         average_pit_area : float, the average area of a pit
-        Lce: float, length of a conduit element
+        conduit_element_length: float, length of a conduit element
         Dc: float, average conduit diameter (m)
         Dc_cv: float, coefficient of variation of conduit diameter
         fc: float, average contact fraction between two conduits
@@ -2162,7 +2152,7 @@ def calculate_bpp(net, conduits, icc_mask, cfg):
         end_conduit = np.where((conduits[:, 0] <= icc[1]) & (icc[1] <= conduits[:, 1]))[0][0] 
         Am = 0.5 * (conduit_areas[start_conduit] / icc_count[start_conduit] + conduit_areas[end_conduit] / icc_count[end_conduit]) * fc * fpf
         pit_count = Am / average_pit_area
-        bpp[i] = (weibull_a / pit_count**(1 / weibull_b)) * np.random.weibull(weibull_b)
+        bpp[i] = (weibull_a / pit_count**(1 / weibull_b)) * np.random.weibull(weibull_b) # this is BPP solved from Mrad et al. equation 8
         
     return bpp
 

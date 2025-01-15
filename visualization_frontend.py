@@ -7,9 +7,9 @@ import pickle
 import numpy as np
 import matplotlib.pylab as plt
 
-visualize_single_param_spreading = False
+visualize_single_param_spreading = True
 visualize_vc = False
-visualize_optimized_vc = True
+visualize_optimized_vc = False
 
 if visualize_single_param_spreading:
     
@@ -54,7 +54,7 @@ if visualize_single_param_spreading:
         percolation_outcome_values_all.append(percolation_outcome_values)
         nonfunctional_component_volumes_all.append(np.expand_dims(nonfunctional_component_volume, axis=0))
         n_inlets_all.append(np.concatenate((np.expand_dims(n_inlets, axis=0), np.expand_dims(n_outlets, axis=0)), axis=0))
-        total_n_nodes_all.append(total_n_nodes = data['total_n_nodes'])
+        total_n_nodes_all.append(data['total_n_nodes'])
         x_all.append(x)
         
     visualization.plot_percolation_curve(total_n_nodes_all, percolation_outcome_values_all,
