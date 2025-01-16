@@ -76,6 +76,7 @@ cec_indicator = 1000
 water_pore_viscosity = 1.002e-3
 water_throat_viscosity = 1.002e-3
 water_pore_diffusivity = 1.0e-9
+water_surface_tension = 0.072 # Pam
 
 # simulation parameters
 inlet_pressure = 0.1E6 # Pa 

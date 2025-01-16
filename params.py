@@ -54,6 +54,7 @@ fc = 0.31 # average contact fraction between two conduits; the Mrad et al. value
 Dp = 32.0e-9 # m; average pit membrane pore diameter; from Jansen et al. 2009
 tf = 20.17e-9 # m; microfibril strand thickness; average across all measured species from Jansen et al. 2009
 average_pit_membrane_area = 3.68937478230582*(1E-6)**2 # m^2; average pit membrane area; from Held et al. (in preparation)
+fpf = 0.517910375603663 #average pit field fraction between two conduits; from Held et al. (in preparation)
 
 target_conduit_density = 630.817129361309/(1e-3)**2 # 1/m^2; conduit density in large branches of Betula pendula; from Lintunen & Kalliokoski 2010
 target_grouping_index = 2.47 # grouping index in branches of Betula pendula; from Alber et al., Trees 33, 2019

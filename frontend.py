@@ -27,6 +27,9 @@ cfg['Dc_cv'] = params.Dc_cv
 cfg['conduit_element_length'] = params.Lce
 cfg['fc'] = params.fc
 cfg['average_pit_area'] = params.average_pit_membrane_area
+cfg['fpf'] = params.fpf
+cfg['tf'] = params.tf
+cfg['Dp'] = params.Dp
 cfg['seeds_NPc'] = params.seeds_NPc
 cfg['seeds_Pc'] = params.seeds_Pc
 cfg['seed_ICC_rad'] = params.seed_ICC_rad
@@ -43,9 +46,6 @@ cfg['spontaneous_embolism'] = params.spontaneous_embolism
 # TODO: check that the followig params match the physiology of betula pendula
 cfg['weibull_a'] = mrad_params.weibull_a
 cfg['weibull_b'] = mrad_params.weibull_b
-cfg['fpf'] = mrad_params.fpf
-cfg['tf'] = mrad_params.tf
-cfg['Dp'] = mrad_params.Dp
 cfg['icc_length'] = mrad_params.icc_length
 
 cfg['use_cylindrical_coords'] = False
