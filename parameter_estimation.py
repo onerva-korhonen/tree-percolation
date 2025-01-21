@@ -21,8 +21,8 @@ import mrad_params
 import params
 
 create_parameter_optimization_data = False
-combine_parameter_optimization_data = True
-calculate_weibull_params = False
+combine_parameter_optimization_data = False
+calculate_weibull_params = True
         
 
 def run_parameter_optimization_iteration(save_path, conduit_element_length=mrad_params.Lce, optimization_net_size=[11,10,56], 
@@ -453,17 +453,19 @@ if __name__=='__main__':
         print('Target grouping index: ' + str(target_grouping_index) + ', achieved grouping index: ' + str(achieved_grouping_index))
         
     if calculate_weibull_params:
-        pore_diameters = params.pore_diameters # TODO: get the pore diameters, possibly read from file
-        pore_diameters = pore_diameters[np.where(pore_diameters >= np.percentile(pore_diameters, 90))] # following Mrad et al., let's use the 10% largest pore diameters
-        cv = np.std(pore_diameters) / np.mean(pore_diameters) # coefficient of variation
+        #import pdb; pdb.set_trace()
+        
+        pore_diameters = params.pore_diameters 
+        top_pore_diameters = pore_diameters[np.where(pore_diameters >= np.percentile(pore_diameters, 90))] # following Mrad et al., let's use the 10% largest pore diameters
+        cv = np.std(top_pore_diameters) / np.mean(top_pore_diameters) # coefficient of variation
         
         water_surface_tension = mrad_params.water_surface_tension
         bpps = 4*water_surface_tension / pore_diameters # bubble propagation pressures as per equation 6 of Mrad et al. 2018
-        a = np.percentile(bpps, 75)
+        a = np.percentile(bpps, 75) # using the 75th percentile of all bubble propagation pressures as per Mrad et al. 2018
         
-        b_range = np.arange(1, 0.0001, 5)
+        b_range = np.arange(1, 100, 0.0001)
         y = np.sqrt((gamma((b_range + 2) / b_range)) / (gamma((b_range + 1) / b_range))**2 - 1)
-        b = np.where(np.abs(y - cv) == np.amin(np.abs(y - cv)))
+        b = b_range[np.where(np.abs(y - cv) == np.amin(np.abs(y - cv)))][0]
         
         print('Weibull a: ' + str(a))
         print('Weibull b: ' + str(b))

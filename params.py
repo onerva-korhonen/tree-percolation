@@ -10,6 +10,8 @@ Parameters not related to the Mrad et al. article
 import numpy as np
 from scipy.stats import norm
 
+import mrad_params
+
 # params for network creation
 net_size = np.array([11,10,56])
 fixed_random = True
@@ -54,7 +56,14 @@ fc = 0.31 # average contact fraction between two conduits; the Mrad et al. value
 Dp = 32.0e-9 # m; average pit membrane pore diameter; from Jansen et al. 2009
 tf = 20.17e-9 # m; microfibril strand thickness; average across all measured species from Jansen et al. 2009
 average_pit_membrane_area = 3.68937478230582*(1E-6)**2 # m^2; average pit membrane area; from Held et al. (in preparation)
-fpf = 0.517910375603663 #average pit field fraction between two conduits; from Held et al. (in preparation)
+fpf = 0.517910375603663 # average pit field fraction between two conduits; from Held et al. (in preparation)
+pore_diameters = 1E-9 * np.array([13.284, 27.234, 33.805, 63.84, 33.542, 104.234, 52.141, 18.277, 20.634, 19.798, 39.639, 69.396, 85.548, 79.804, 51.699, 21.299, 9.307, 
+                  35.219, 14.431, 82.702, 34.647, 64.713, 54.059, 60.852, 50.936, 75.162, 38, 76.067, 107.631, 19.31, 54.895, 68.195, 92.235, 106.55, 
+                  110.409, 122.917, 114.778, 8.224, 111.476, 45.735]) # m; pore diameter in Betula pendula, from Jansen et al. 2009
+icc_length = mrad_params.icc_length
+weibull_a = 9083441.686765894
+weibull_b = 29.345799999996878
+
 
 target_conduit_density = 630.817129361309/(1e-3)**2 # 1/m^2; conduit density in large branches of Betula pendula; from Lintunen & Kalliokoski 2010
 target_grouping_index = 2.47 # grouping index in branches of Betula pendula; from Alber et al., Trees 33, 2019
@@ -62,7 +71,7 @@ target_grouping_index = 2.47 # grouping index in branches of Betula pendula; fro
 
 # paths for saving
 triton = True
-identifier = 'small_net_new_pit_area'
+identifier = 'small_net_b_pendula_test'
 pooled_optimized_spreading_probability_save_name = 'pooled_optimized_spreading_probability.pkl'
 
 if triton:
@@ -140,7 +149,7 @@ percolation_noutlet_label = 'Average n outlets'
 percolation_ninlet_alpha = 1
 percolation_noutlet_alpha = 1
 percolation_linestyles = ['-', '--']
-percolation_labels = ['with spontaneous embolism']
+percolation_labels = ['without spontaneous embolism']
 physiological_vc_color = 'r'
 physiological_vc_ls = '-'
 physiological_vc_alpha = 1
@@ -148,8 +157,10 @@ stochastic_vc_color = 'k'
 stochastic_vc_ls = '--'
 stochastic_vc_alpha = 0.5
 optimized_vc_linestyles = ['-']
-optimized_vc_labels = ['with spontaneous embolism']
+optimized_vc_labels = ['without spontaneous embolism']
 std_alpha = 0.5
 prevalence_linestyles = ['-', '--', '-.'] # for total prevalence, prevalence due to spontaneous embolism, prevalence due to spreading
+prevalence_labels = ['total', 'spontaneous', 'spreading']
+prevalence_colors = ['b', 'r', 'g']
 param_optimization_conduit_color = 'r'
 

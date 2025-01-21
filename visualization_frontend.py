@@ -13,6 +13,9 @@ visualize_optimized_vc = False
 
 if visualize_single_param_spreading:
     
+    prevalence_colors = params.prevalence_colors
+    prevalence_labels = params.prevalence_labels
+    
     prevalence_fig = plt.figure()
     prevalence_ax = prevalence_fig.add_subplot(111)
     
@@ -41,11 +44,14 @@ if visualize_single_param_spreading:
         n_outlets = data['n_outlets']
         nonfunctional_component_volume = data['nonfunctional_component_volume']
         x = data['x']
+        prevalence_due_to_spontaneous_embolism = data['prevalence_due_to_spontaneous_embolism']
+        prevalence_due_to_spreading = data['prevalence_due_to_spreading']
+        prevalences = [x, prevalence_due_to_spontaneous_embolism, prevalence_due_to_spreading]
         
-        prevalence_ax.plot(x, ls=line_style, label=label)
+        for prevalence, prevalence_color, prevalence_label in zip(prevalences, prevalence_colors, prevalence_labels):
+            prevalence_ax.plot(prevalence, ls=line_style, color=prevalence_color, label=label+', '+prevalence_label)
+            
         lcc_ax.plot(lcc_sizes, ls=line_style, label=label)
-        
-        
     
         percolation_outcome_values = np.concatenate((np.expand_dims(effective_conductances, axis=0), 
                                                      np.expand_dims(lcc_sizes, axis=0), np.expand_dims(functional_lcc_sizes, axis=0)),
@@ -56,6 +62,17 @@ if visualize_single_param_spreading:
         n_inlets_all.append(np.concatenate((np.expand_dims(n_inlets, axis=0), np.expand_dims(n_outlets, axis=0)), axis=0))
         total_n_nodes_all.append(data['total_n_nodes'])
         x_all.append(x)
+        
+    plt.figure(prevalence_fig)
+    prevalence_ax.set_xlabel('time')
+    prevalence_ax.set_ylabel('prevalence (fraction of embolized conduits)')
+    prevalence_ax.legend()
+    plt.savefig(params.prevalence_save_path, format='pdf',bbox_inches='tight')
+    
+    plt.figure(lcc_fig)
+    lcc_ax.set_xlabel('time')
+    lcc_ax.set_ylabel('LCC')
+    plt.savefig(params.lcc_in_time_save_path, format='pdf', bbox_inches='tight')
         
     visualization.plot_percolation_curve(total_n_nodes_all, percolation_outcome_values_all,
                                          colors=params.percolation_outcome_colors, labels=params.percolation_outcome_labels, 
@@ -73,13 +90,6 @@ if visualize_single_param_spreading:
                                          save_path=params.ninlet_save_path, xs=x_all,
                                          param_linestyles=params.percolation_linestyles, param_labels=params.percolation_labels)
 
-    prevalence_ax.set_xlabel('time')
-    prevalence_ax.set_ylabel('prevalence (fraction of embolized conduits)')
-    plt.savefig(params.prevalence_save_path, format='pdf',bbox_inches='tight')
-    
-    lcc_ax.set_xlabel('time')
-    lcc_ax.set_ylabel('LCC')
-    plt.savefig(params.lcc_in_time_save_path, format='pdf', bbox_inches='tight')
     
 if visualize_vc:
     f = open(params.vc_data_save_path, 'rb')

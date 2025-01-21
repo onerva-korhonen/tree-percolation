@@ -30,6 +30,9 @@ cfg['average_pit_area'] = params.average_pit_membrane_area
 cfg['fpf'] = params.fpf
 cfg['tf'] = params.tf
 cfg['Dp'] = params.Dp
+cfg['weibull_a'] = params.weibull_a
+cfg['weibull_b'] = params.weibull_b
+cfg['icc_length'] = params.icc_length
 cfg['seeds_NPc'] = params.seeds_NPc
 cfg['seeds_Pc'] = params.seeds_Pc
 cfg['seed_ICC_rad'] = params.seed_ICC_rad
@@ -44,17 +47,16 @@ cfg['pressure'] = params.pressure
 cfg['nCPUs'] = params.nCPUs
 cfg['spontaneous_embolism'] = params.spontaneous_embolism
 # TODO: check that the followig params match the physiology of betula pendula
-cfg['weibull_a'] = mrad_params.weibull_a
-cfg['weibull_b'] = mrad_params.weibull_b
-cfg['icc_length'] = mrad_params.icc_length
+#cfg['weibull_a'] = mrad_params.weibull_a
+#cfg['weibull_b'] = mrad_params.weibull_b
 
 cfg['use_cylindrical_coords'] = False
 cfg['fixed_random'] = True
 
-simulate_single_param_spreading = False
+simulate_single_param_spreading = True
 construct_VC = False
 optimize_spreading_probability = False
-create_optimization_data = True
+create_optimization_data = False
 combine_optimization_data = False
 time = False
 
@@ -89,8 +91,8 @@ if __name__=='__main__':
     
         cfg['use_cylindrical_coords'] = False
         cfg['conduit_diameters'] = 'inherit_from_net'
-    
-        effective_conductances, lcc_sizes, functional_lcc_sizes, nonfunctional_component_size, susceptibilities, functional_susceptibilities, n_inlets, n_outlets, nonfunctional_component_volume, prevalence = percolation.run_percolation(net_cleaned, cfg, percolation_type=params.percolation_type, removal_order='random', break_nonfunctional_components=params.break_nonfunctional_components)
+        
+        effective_conductances, lcc_sizes, functional_lcc_sizes, nonfunctional_component_size, susceptibilities, functional_susceptibilities, n_inlets, n_outlets, nonfunctional_component_volume, prevalence, prevalence_due_to_spontaneous_embolism, prevalence_due_to_spreading = percolation.run_percolation(net_cleaned, cfg, percolation_type=params.percolation_type, removal_order='random', break_nonfunctional_components=params.break_nonfunctional_components)
         effective_conductances = np.append(np.array([effective_conductance]), effective_conductances)
         lcc_sizes = np.append(np.array([lcc_size]), lcc_sizes)
         functional_lcc_sizes = np.append(np.array([lcc_size]), functional_lcc_sizes)
@@ -100,6 +102,8 @@ if __name__=='__main__':
         n_inlets = np.append(np.array([n_inlet]), n_inlets)
         n_outlets = np.append(np.array([n_outlet]), n_outlets)
         nonfunctional_component_volume = np.append(np.array([0]), nonfunctional_component_volume)
+        prevalence_due_to_spontaneous_embolism = np.append(np.array([0]), prevalence_due_to_spontaneous_embolism)
+        prevalence_due_to_spreading = np.append(np.array([0]), prevalence_due_to_spreading)
         percolation_outcome_values = np.concatenate((np.expand_dims(effective_conductances, axis=0), 
                                                      np.expand_dims(lcc_sizes, axis=0), np.expand_dims(functional_lcc_sizes, axis=0)),
                                                      axis=0)
@@ -116,7 +120,11 @@ if __name__=='__main__':
         else:
             x = []
     
-        data = {'effective_conductances':effective_conductances, 'lcc_sizes':lcc_sizes, 'functional_lcc_sizes':functional_lcc_sizes, 'nonfunctional_component_size':nonfunctional_component_size, 'susceptibilities':susceptibilities, 'functional_susceptibilities':functional_susceptibilities, 'n_inlets':n_inlets, 'n_outlets': n_outlets, 'nonfunctional_component_volume':nonfunctional_component_volume, 'total_n_nodes':total_n_nodes, 'x':x}
+        data = {'effective_conductances':effective_conductances, 'lcc_sizes':lcc_sizes, 'functional_lcc_sizes':functional_lcc_sizes, 
+                'nonfunctional_component_size':nonfunctional_component_size, 'susceptibilities':susceptibilities, 
+                'functional_susceptibilities':functional_susceptibilities, 'n_inlets':n_inlets, 'n_outlets': n_outlets, 
+                'nonfunctional_component_volume':nonfunctional_component_volume, 'total_n_nodes':total_n_nodes, 'x':x,
+                'prevalence_due_to_spontaneous_embolism':prevalence_due_to_spontaneous_embolism, 'prevalence_due_to_spreading':prevalence_due_to_spreading}
         f = open(params.percolation_data_save_path, 'wb')
         pickle.dump(data, f)
         f.close()

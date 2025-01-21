@@ -94,6 +94,10 @@ def run_percolation(net, cfg, percolation_type='bond', removal_order='random', b
         total volume of nonfunctional components
     prevalence : np.array
         the fraction of embolized conduits in the network (only calculated if percolation_type == 'si')
+    prevalence_due_to_spontaneous_embolism : np.array
+        the fraction of conduits embolized spontaneously (only calculated if percolation_type == 'si')
+    prevalence_due_to_spreading : np.array
+        the fraction of conduits embolized through embolism spreading (only calculated if percolation_type == 'si')
     """
     if 'pore.diameter' in net.keys() and len(net['pore.diameter']) > 0:
         cfg['conduit_diameters'] == 'inherit_from_net'
@@ -114,8 +118,10 @@ def run_percolation(net, cfg, percolation_type='bond', removal_order='random', b
         effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume = run_physiological_element_percolation(net, cfg, percolation_type)
     if not percolation_type in ['si', 'drainage']:
         prevalence = np.zeros(len(effective_conductances))
+        prevalence_due_to_spontaneous_embolism = np.zeros(len(effective_conductances))
+        prevalence_due_to_spreading = np.zeros(len(effective_conductances))
     
-    return effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence
+    return effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence, prevalence_due_to_spontaneous_embolism, prevalence_due_to_spreading
 
 def construct_vulnerability_curve(net, cfg, x_range, start_conduits, si_length=1000):
     """
