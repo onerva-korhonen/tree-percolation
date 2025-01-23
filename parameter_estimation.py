@@ -15,6 +15,7 @@ import pickle
 import matplotlib.pylab as plt
 from scipy.ndimage import label, generate_binary_structure
 from scipy.special import gamma
+from operator import itemgetter
 
 import mrad_model
 import mrad_params
@@ -147,8 +148,9 @@ def optimize_parameters_from_data(target_density, target_length, target_grouping
     """
     data_files = [os.path.join(optimization_data_save_folder, file) for file in os.listdir(optimization_data_save_folder) if os.path.isfile(os.path.join(optimization_data_save_folder, file))]
     data_files = [data_file for data_file in data_files if optimization_data_save_name_base in data_file]
-    
+
     start_range, end_range, Pes_rad, Pes_tan, conduit_densities, conduit_lengths, grouping_indices = read_and_combine_data(data_files)
+
 
     density_landscape = np.argsort(np.abs(conduit_densities - target_density), axis=None) # rank of absolute difference
     if target_length > 0: # TODO: remove this case after setting target length
@@ -160,6 +162,10 @@ def optimize_parameters_from_data(target_density, target_length, target_grouping
     optimization_landscape = np.reshape(optimization_landscape, conduit_densities.shape) # the optimal parameter combination minimizes the rank sum of conduit density, conduit length, and grouping index
      
     optimal_NPc_indices, optimal_Pc_indices, optimal_Pe_rad_indices, optimal_Pe_tan_indices = np.where(optimization_landscape == np.amin(optimization_landscape)) 
+    #optimal_NPc_indices = [6]
+    #optimal_Pc_indices = [6]
+    #optimal_Pe_rad_indices = [7]
+    #optimal_Pe_tan_indices = [7]
     # TODO: consider adding a tolerance parameter: include in potential optima everything that is within the tolerance from the target
     
     NPc = start_range[optimal_NPc_indices[0]]
@@ -218,7 +224,10 @@ def optimize_parameters_from_data(target_density, target_length, target_grouping
     
         plt.contour(np.hstack([np.array([np.amin(x_range) - dx]), x_range, np.array([np.amax(x_range) + dx])]), np.hstack([np.array([np.amin(y_range) + dy]), y_range, np.array([np.amax(y_range) - dy])]), contours, 1, colors=params.param_optimization_conduit_color) # NOTE: dx > 0, dy < 0
         plt.imshow(data, origin='lower', extent=extent, norm=z_scale)
-        plt.colorbar(label=zlabel)
+        try:
+            plt.colorbar(label=zlabel)
+        except:
+            continue
     
         ax.set_yticks(x_range)
         ax.set_xticks(y_range)
@@ -362,7 +371,7 @@ def read_and_combine_data(data_files):
     conduit_lengths = []
     grouping_indices = []
     param_combinations = []
-    
+
     for i, data_file in enumerate(data_files):
         with open(data_file, 'rb') as f:
             data = pickle.load(f)
@@ -379,39 +388,51 @@ def read_and_combine_data(data_files):
             for Pe_tan in data['Pes_tan']:
                 if not Pe_tan in unique_Pes_tan:
                     unique_Pes_tan.append(Pe_tan)
-            conduit_densities.extend(data['conduit_densities'].T.reshape(-1, 1))
-            conduit_lengths.extend(data['conduit_lengths'].T.reshape(-1, 1))
-            grouping_indices.extend(data['grouping_indices'].T.reshape(-1, 1))
-            param_combinations.extend(np.array(np.meshgrid(data['start_range'], data['end_range'], np.array(data['Pes_rad'])[:, 0], np.array(data['Pes_tan'])[:, 0])).T.reshape(-1, 4))
+            conduit_densities.extend(data['conduit_densities'].ravel())
+            conduit_lengths.extend(data['conduit_lengths'].ravel())
+            grouping_indices.extend(data['grouping_indices'].ravel())
+            for Pe_tan in data['Pes_tan']: # TODO: try to make this more efficient
+                for Pe_rad in data['Pes_rad']:
+                    for Pc in data['end_range']:
+                        for NPc in data['start_range']:
+                            param_combinations.append(np.array([NPc, Pc, Pe_rad[0], Pe_tan[0]]))
     
     # TODO: the code now assumes the two elements of Pe_rad and Pe_tan to be identical; modify to handle non-identical elements
-    
     unique_NPcs = np.sort(unique_NPcs)
     unique_Pcs = np.sort(unique_Pcs)
-    unique_Pes_rad = np.sort(unique_Pes_rad)
-    unique_Pes_tan = np.sort(unique_Pes_tan)
+    unique_Pes_rad = np.array(sorted(unique_Pes_rad, key=itemgetter(0))) #sorting by the first value
+    unique_Pes_tan = np.array(sorted(unique_Pes_tan, key=itemgetter(0)))
 
-    output_param_combinations = np.array(np.meshgrid(unique_NPcs, unique_Pcs, unique_Pes_tan[:, 0], unique_Pes_rad[:, 0])).T.reshape(-1, 4)
+    output_param_combinations = []
+    for Pe_tan in unique_Pes_tan: # TODO: this looping is rather inefficient; see if anything could be done
+        for Pe_rad in unique_Pes_rad:
+            for Pc in unique_Pcs:
+                for NPc in unique_NPcs:
+                    output_param_combinations.append(np.array([NPc, Pc, Pe_rad[0], Pe_tan[0]]))
+    output_param_combinations = np.array(output_param_combinations)
     conduit_density_array = np.zeros(len(output_param_combinations))
     conduit_length_array = np.zeros(len(output_param_combinations))
     grouping_index_array = np.zeros(len(output_param_combinations))
+    n_iterations = np.zeros(len(output_param_combinations))
     
     for param_combination, conduit_density, conduit_length, grouping_index in zip(param_combinations, conduit_densities, conduit_lengths, grouping_indices):
         index = np.where((output_param_combinations == param_combination).all(axis=1))
         conduit_density_array[index] += conduit_density
         conduit_length_array[index] += conduit_length
         grouping_index_array[index] += grouping_index
+        n_iterations[index] += 1
+
+    conduit_density_array /= n_iterations
+    conduit_density_array[np.where(conduit_density_array == np.inf)] = np.nan # parameter combinations with no iterations lead to inf values; nan is better for visualization
+    conduit_length_array /= n_iterations
+    conduit_length_array[np.where(conduit_length_array == np.inf)] = np.nan
+    grouping_index_array /= n_iterations
+    grouping_index_array[np.where(grouping_index_array == np.inf)] = np.nan
     
-    conduit_densities = conduit_density_array.reshape(len(unique_NPcs), len(unique_Pcs), len(unique_Pes_rad), len(unique_Pes_tan)).T
-    conduit_lengths = conduit_length_array.reshape(len(unique_NPcs), len(unique_Pcs), len(unique_Pes_rad), len(unique_Pes_tan)).T
-    grouping_indices = grouping_index_array.reshape(len(unique_NPcs), len(unique_Pcs), len(unique_Pes_rad), len(unique_Pes_tan)).T
-    
-    n_iterations = len(data_files)
-    
-    conduit_densities /= n_iterations
-    conduit_lengths /= n_iterations
-    grouping_indices /= n_iterations
-    
+    conduit_densities = conduit_density_array.reshape(len(unique_Pes_tan), len(unique_Pes_rad), len(unique_Pcs), len(unique_NPcs)).T
+    conduit_lengths = conduit_length_array.reshape(len(unique_Pes_tan), len(unique_Pes_rad), len(unique_Pcs), len(unique_NPcs)).T
+    grouping_indices = grouping_index_array.reshape(len(unique_Pes_tan), len(unique_Pes_rad), len(unique_Pcs), len(unique_NPcs)).T
+
     return unique_NPcs, unique_Pcs, unique_Pes_rad, unique_Pes_tan, conduit_densities, conduit_lengths, grouping_indices
             
     
