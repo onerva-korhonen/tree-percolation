@@ -30,6 +30,7 @@ cfg['average_pit_area'] = params.average_pit_membrane_area
 cfg['fpf'] = params.fpf
 cfg['tf'] = params.tf
 cfg['Dp'] = params.Dp
+cfg['Tm'] = params.Tm
 cfg['weibull_a'] = params.weibull_a
 cfg['weibull_b'] = params.weibull_b
 cfg['icc_length'] = params.icc_length
