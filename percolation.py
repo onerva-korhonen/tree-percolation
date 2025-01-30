@@ -20,6 +20,7 @@ import mrad_model
 import mrad_params as params
 import simulations
 import bubble_expansion
+import pit_membrane
 
 def run_percolation(net, cfg, percolation_type='bond', removal_order='random', break_nonfunctional_components=True):
     """
@@ -61,8 +62,17 @@ def run_percolation(net, cfg, percolation_type='bond', removal_order='random', b
         conduit is selected at random, if 'bottom', all conduits with an inlet pore are used
         pressure : int or array-like, the frequency steps to investigate (if an int is given, a log-range with the corresponding number of steps is used)
         si_type : str, 'stochastic' for probability-based spreading, 'physiological' for spreading based on pressure differences (default stochastic)
-        weibull_a : float, Weibull distribution scale parameter (used for simulating pressure-difference-based embolism spreading)
-        weibull_b : float, Weibull distribution shape parameter (used for simulating pressure-difference-based embolism spreading)
+        weibull_a : float, Weibull distribution scale parameter (used for simulating pressure-difference-based embolism spreading); only used if bpp_type == 'young-laplace'
+        weibull_b : float, Weibull distribution shape parameter (used for simulating pressure-difference-based embolism spreading); only used if bpp_type == 'young-laplace'
+        bpp_type: str, how the bubble propagation pressure is calculated; options: 'young-laplace' (i.e. as in Mrad et al. 2018) and 'young-laplace_with_constrictions' (i.e. as in Kaack et al. 2021)
+        N_constrictions: int, the number of constrictions per pore; only used if bpp_type == 'young-laplace_with_constrictions'
+        truncnorm_center: float, center value of the truncated normal distribution; only used if bpp_type == 'young-laplace_with_constrictions'
+        truncnorm_std : float, standard deviation of the distribution; only used if bpp_type == 'young-laplace_with_constrictions'
+        truncnorm_a: float, startpoint of the left truncation; only used if bpp_type == 'young-laplace_with_constrictions'
+        truncnorm_b: float, optional, startpoint of the right truncation, default value np.inf gives left-only truncated distribution; only used if bpp_type == 'young-laplace_with_constrictions'
+        surface_tension: float, optional, surface tension of sap in the xylem conduits (default: the value given in the parameter file); only used if bpp_type == 'young-laplace_with_constrictions'
+        pore_shape_correction: float, correction factor applied to compensate for the inaccurately assumed round shape of all pores, default 0.5 (from Kaack et al. 2021); only used if bpp_type == 'young-laplace_with_constrictions'
+        gas_contact_angle: float, optional, the contact angle between gas and xylem sap in radians, default 0 (from Kaack et al. 2021); only used if bpp_type == 'young-laplace_with_constrictions'
     percolation type : str, optional
         type of the percolation, 'bond' to remove throats, 'site' to remove pores, 'conduit' to remove conduits,
         'si' to simulate the spreading of embolism between conduits using the SI model or 'drainage' to simulate the spreading of embolism with the openpnm drainage algorithm (default: 'bond')
@@ -160,10 +170,19 @@ def construct_vulnerability_curve(net, cfg, x_range, start_conduits, si_length=1
         heartwood_d : float, diameter of the heartwood (= part of the tree not included in the xylem network) (in conduit elements) used only if use_cylindrical_coords == True (default value from the Mrad et al. article)
         si_tolerance_length : int, tolerance parameter for defining the end of the simulation: when the prevalence hasn't changed for si_tolerance_length steps, the simulation stops (default 20)
         si_type : str, 'stochastic' for probability-based spreading, 'physiological' for spreading based on pressure differences (default stochastic)
-        weibull_a : float, Weibull distribution scale parameter (used for simulating pressure-difference-based embolism spreading) (default 20.28E6)
-        weibull_b : float, Weibull distribution shape parameter (used for simulating pressure-difference-based embolism spreading) (default 3.2)
+        weibull_a : float, Weibull distribution scale parameter (used for simulating pressure-difference-based embolism spreading) (default 20.28E6); only used if bpp_type == 'young-laplace'
+        weibull_b : float, Weibull distribution shape parameter (used for simulating pressure-difference-based embolism spreading) (default 3.2); only used if bpp_type == 'young-laplace'
         average_pit_area : float, the average area of a pit
         nCPUs : int, number of CPUs used for parallel computing (default 5)
+        bpp_type: str, how the bubble propagation pressure is calculated; options: 'young-laplace' (i.e. as in Mrad et al. 2018) and 'young-laplace_with_constrictions' (i.e. as in Kaack et al. 2021)
+        N_constrictions: int, the number of constrictions per pore; only used if bpp_type == 'young-laplace_with_constrictions'
+        truncnorm_center: float, center value of the truncated normal distribution; only used if bpp_type == 'young-laplace_with_constrictions'
+        truncnorm_std : float, standard deviation of the distribution; only used if bpp_type == 'young-laplace_with_constrictions'
+        truncnorm_a: float, startpoint of the left truncation; only used if bpp_type == 'young-laplace_with_constrictions'
+        truncnorm_b: float, optional, startpoint of the right truncation, default value np.inf gives left-only truncated distribution; only used if bpp_type == 'young-laplace_with_constrictions'
+        surface_tension: float, optional, surface tension of sap in the xylem conduits (default: the value given in the parameter file); only used if bpp_type == 'young-laplace_with_constrictions'
+        pore_shape_correction: float, correction factor applied to compensate for the inaccurately assumed round shape of all pores, default 0.5 (from Kaack et al. 2021); only used if bpp_type == 'young-laplace_with_constrictions'
+        gas_contact_angle: float, optional, the contact angle between gas and xylem sap in radians, default 0 (from Kaack et al. 2021); only used if bpp_type == 'young-laplace_with_constrictions'
     x_range : np.array
         x axis values of the VC; spreading probabilities in case of stochastic SI and pressure differences in case of physiological SI
     start_conduits : str or array-like of ints
@@ -248,8 +267,8 @@ def optimize_spreading_probability(net, cfg, pressure_difference, spreading_prob
         conduit_element_length : float, length of a single conduit element (m), used only if use_cylindrical_coords == True (default from the Mrad et al. article)
         heartwood_d : float, diameter of the heartwood (= part of the tree not included in the xylem network) (in conduit elements) used only if use_cylindrical_coords == True (default value from the Mrad et al. article)
         si_tolerance_length : int, tolerance parameter for defining the end of the simulation: when the prevalence hasn't changed for si_tolerance_length steps, the simulation stops (default 20)
-        weibull_a : float, Weibull distribution scale parameter (used for simulating pressure-difference-based embolism spreading) (default 20.28E6)
-        weibull_b : float, Weibull distribution shape parameter (used for simulating pressure-difference-based embolism spreading) (default 3.2)
+        weibull_a : float, Weibull distribution scale parameter (used for simulating pressure-difference-based embolism spreading) (default 20.28E6); only used if bpp_type == 'young-laplace'
+        weibull_b : float, Weibull distribution shape parameter (used for simulating pressure-difference-based embolism spreading) (default 3.2); only used if bpp_type == 'young-laplace'
         average_pit_area : float, the average area of a pit
         nCPUs : int, number of CPUs used for parallel computing (default 5)
         spontaneous_embolism : bln, is spontaneous embolism through bubble expansion allowed (default: False)
@@ -259,6 +278,15 @@ def optimize_spreading_probability(net, cfg, pressure_difference, spreading_prob
            if 'random', a single start conduit is selected at random
            if 'random_per_component', a single start conduit per network component is selected at random
            if an array-like of ints is given, the ints are used as indices of the start conduits
+        bpp_type: str, how the bubble propagation pressure is calculated; options: 'young-laplace' (i.e. as in Mrad et al. 2018) and 'young-laplace_with_constrictions' (i.e. as in Kaack et al. 2021)
+        N_constrictions: int, the number of constrictions per pore; only used if bpp_type == 'young-laplace_with_constrictions'
+        truncnorm_center: float, center value of the truncated normal distribution; only used if bpp_type == 'young-laplace_with_constrictions'
+        truncnorm_std : float, standard deviation of the distribution; only used if bpp_type == 'young-laplace_with_constrictions'
+        truncnorm_a: float, startpoint of the left truncation; only used if bpp_type == 'young-laplace_with_constrictions'
+        truncnorm_b: float, optional, startpoint of the right truncation, default value np.inf gives left-only truncated distribution; only used if bpp_type == 'young-laplace_with_constrictions'
+        surface_tension: float, optional, surface tension of sap in the xylem conduits (default: the value given in the parameter file); only used if bpp_type == 'young-laplace_with_constrictions'
+        pore_shape_correction: float, correction factor applied to compensate for the inaccurately assumed round shape of all pores, default 0.5 (from Kaack et al. 2021); only used if bpp_type == 'young-laplace_with_constrictions'
+        gas_contact_angle: float, optional, the contact angle between gas and xylem sap in radians, default 0 (from Kaack et al. 2021); only used if bpp_type == 'young-laplace_with_constrictions'
     pressure_difference : float
         pressure difference between water in conduits and air (bubble)
     spreading_probability_range : array-like
@@ -351,8 +379,8 @@ def run_spreading_iteration(net, cfg, pressure_differences, save_path, spreading
         conduit_element_length : float, length of a single conduit element (m), used only if use_cylindrical_coords == True (default from the Mrad et al. article)
         heartwood_d : float, diameter of the heartwood (= part of the tree not included in the xylem network) (in conduit elements) used only if use_cylindrical_coords == True (default value from the Mrad et al. article)
         si_tolerance_length : int, tolerance parameter for defining the end of the simulation: when the prevalence hasn't changed for si_tolerance_length steps, the simulation stops (default 20)
-        weibull_a : float, Weibull distribution scale parameter (used for simulating pressure-difference-based embolism spreading) (default 20.28E6)
-        weibull_b : float, Weibull distribution shape parameter (used for simulating pressure-difference-based embolism spreading) (default 3.2)
+        weibull_a : float, Weibull distribution scale parameter (used for simulating pressure-difference-based embolism spreading) (default 20.28E6); only used if bpp_type == 'young-laplace'
+        weibull_b : float, Weibull distribution shape parameter (used for simulating pressure-difference-based embolism spreading) (default 3.2); only used if bpp_type == 'young-laplace'
         average_pit_area : float, the average area of a pit
         spontaneous_embolism : bln, is spontaneous embolism through bubble expansion allowed (default: False)
         spontaneous_embolism_probabilities : dic where keys are pressure values and values probabilities for spontaneous embolism
@@ -361,6 +389,15 @@ def run_spreading_iteration(net, cfg, pressure_differences, save_path, spreading
             if 'random', a single start conduit is selected at random
             if 'random_per_component', a single start conduit per network component is selected at random
             if an array-like of ints is given, the ints are used as indices of the start conduits
+        bpp_type: str, how the bubble propagation pressure is calculated; options: 'young-laplace' (i.e. as in Mrad et al. 2018) and 'young-laplace_with_constrictions' (i.e. as in Kaack et al. 2021)
+        N_constrictions: int, the number of constrictions per pore; only used if bpp_type == 'young-laplace_with_constrictions'
+        truncnorm_center: float, center value of the truncated normal distribution; only used if bpp_type == 'young-laplace_with_constrictions'
+        truncnorm_std : float, standard deviation of the distribution; only used if bpp_type == 'young-laplace_with_constrictions'
+        truncnorm_a: float, startpoint of the left truncation; only used if bpp_type == 'young-laplace_with_constrictions'
+        truncnorm_b: float, optional, startpoint of the right truncation, default value np.inf gives left-only truncated distribution; only used if bpp_type == 'young-laplace_with_constrictions'
+        surface_tension: float, optional, surface tension of sap in the xylem conduits (default: the value given in the parameter file); only used if bpp_type == 'young-laplace_with_constrictions'
+        pore_shape_correction: float, correction factor applied to compensate for the inaccurately assumed round shape of all pores, default 0.5 (from Kaack et al. 2021); only used if bpp_type == 'young-laplace_with_constrictions'
+        gas_contact_angle: float, optional, the contact angle between gas and xylem sap in radians, default 0 (from Kaack et al. 2021); only used if bpp_type == 'young-laplace_with_constrictions'
     pressure_differences : iterable of float
         pressure differences between water in conduits and air (bubble), with which the physiological SI is simulated
     save_path : str
@@ -762,10 +799,19 @@ def run_conduit_si_repeatedly(net, net_proj, cfg, spreading_param=0):
         conduit_element_length : float, length of a single conduit element (m), used only if use_cylindrical_coords == True (default from the Mrad et al. article)
         heartwood_d : float, diameter of the heartwood (= part of the tree not included in the xylem network) (in conduit elements) used only if use_cylindrical_coords == True (default value from the Mrad et al. article)
         si_tolerance_length : int, tolerance parameter for defining the end of the simulation: when the prevalence hasn't changed for si_tolerance_length steps, the simulation stops (default 20)
-        weibull_a : float, Weibull distribution scale parameter (used for simulating pressure-difference-based embolism spreading) (default 20.28E6)
-        weibull_b : float, Weibull distribution shape parameter (used for simulating pressure-difference-based embolism spreading) (default 3.2)
+        weibull_a : float, Weibull distribution scale parameter (used for simulating pressure-difference-based embolism spreading) (default 20.28E6); only used if bpp_type == 'young-laplace'
+        weibull_b : float, Weibull distribution shape parameter (used for simulating pressure-difference-based embolism spreading) (default 3.2); only used if bpp_type == 'young-laplace'
         average_pit_area : float, the average area of a pit
         nCPUs : int, number of CPUs used for parallel computing (default 5)
+        bpp_type: str, how the bubble propagation pressure is calculated; options: 'young-laplace' (i.e. as in Mrad et al. 2018) and 'young-laplace_with_constrictions' (i.e. as in Kaack et al. 2021)
+        N_constrictions: int, the number of constrictions per pore; only used if bpp_type == 'young-laplace_with_constrictions'
+        truncnorm_center: float, center value of the truncated normal distribution; only used if bpp_type == 'young-laplace_with_constrictions'
+        truncnorm_std : float, standard deviation of the distribution; only used if bpp_type == 'young-laplace_with_constrictions'
+        truncnorm_a: float, startpoint of the left truncation; only used if bpp_type == 'young-laplace_with_constrictions'
+        truncnorm_b: float, optional, startpoint of the right truncation, default value np.inf gives left-only truncated distribution; only used if bpp_type == 'young-laplace_with_constrictions'
+        surface_tension: float, optional, surface tension of sap in the xylem conduits (default: the value given in the parameter file); only used if bpp_type == 'young-laplace_with_constrictions'
+        pore_shape_correction: float, correction factor applied to compensate for the inaccurately assumed round shape of all pores, default 0.5 (from Kaack et al. 2021); only used if bpp_type == 'young-laplace_with_constrictions'
+        gas_contact_angle: float, optional, the contact angle between gas and xylem sap in radians, default 0 (from Kaack et al. 2021); only used if bpp_type == 'young-laplace_with_constrictions'
     spreading_param : float
         parameter that controls the spreading speed, specifically
         if si_type == 'stochastic', spreading_param is the probability at which embolism spreads to neighbouring conduits (default: 0.1)
@@ -1288,8 +1334,8 @@ def run_conduit_si(net, cfg, spreading_param=0):
         heartwood_d : float, diameter of the heartwood (= part of the tree not included in the xylem network) (in conduit elements) used only if use_cylindrical_coords == True (default value from the Mrad et al. article)
         si_tolerance_length : int, tolerance parameter for defining the end of the simulation: when the prevalence hasn't changed for si_tolerance_length steps, the simulation stops (default 20)
         si_type : str, 'stochastic' for probability-based spreading, 'physiological' for spreading based on pressure differences (default stochastic)
-        weibull_a : float, Weibull distribution scale parameter (used for simulating pressure-difference-based embolism spreading) (default 20.28E6)
-        weibull_b : float, Weibull distribution shape parameter (used for simulating pressure-difference-based embolism spreading) (default 3.2)
+        weibull_a : float, Weibull distribution scale parameter (used for simulating pressure-difference-based embolism spreading) (default 20.28E6); only used if bpp_type == 'young-laplace'
+        weibull_b : float, Weibull distribution shape parameter (used for simulating pressure-difference-based embolism spreading) (default 3.2); only used if bpp_type ==  'young-laplace'
         average_pit_area : float, the average area of a pit
         start_conduits : str or array-like of ints, the first conduits to be removed (i.e. the first infected node of the simulation)
             if 'random', a single start conduit is selected at random
@@ -1299,6 +1345,15 @@ def run_conduit_si(net, cfg, spreading_param=0):
         si_length : int, maximum number of time steps used for the simulation (default: 1000)
         spontaneous_embolism : bln, is spontaneous embolism through bubble expansion allowed (default: False)
         spontaneous_embolism_probability : float, probability of spontaneous embolism
+        bpp_type: str, how the bubble propagation pressure is calculated; options: 'young-laplace' (i.e. as in Mrad et al. 2018) and 'young-laplace_with_constrictions' (i.e. as in Kaack et al. 2021)
+        N_constrictions: int, the number of constrictions per pore; only used if bpp_type == 'young-laplace_with_constrictions'
+        truncnorm_center: float, center value of the truncated normal distribution; only used if bpp_type == 'young-laplace_with_constrictions'
+        truncnorm_std : float, standard deviation of the distribution; only used if bpp_type == 'young-laplace_with_constrictions'
+        truncnorm_a: float, startpoint of the left truncation; only used if bpp_type == 'young-laplace_with_constrictions'
+        truncnorm_b: float, optional, startpoint of the right truncation, default value np.inf gives left-only truncated distribution; only used if bpp_type == 'young-laplace_with_constrictions'
+        surface_tension: float, optional, surface tension of sap in the xylem conduits (default: the value given in the parameter file); only used if bpp_type == 'young-laplace_with_constrictions'
+        pore_shape_correction: float, correction factor applied to compensate for the inaccurately assumed round shape of all pores, default 0.5 (from Kaack et al. 2021); only used if bpp_type == 'young-laplace_with_constrictions'
+        gas_contact_angle: float, optional, the contact angle between gas and xylem sap in radians, default 0 (from Kaack et al. 2021); only used if bpp_type == 'young-laplace_with_constrictions'
     spreading_param : float
         parameter that controls the spreading speed, specifically
         if si_type == 'stochastic', spreading_param is the probability at which embolism spreads to neighbouring conduits (default: 0.1)
@@ -1333,6 +1388,8 @@ def run_conduit_si(net, cfg, spreading_param=0):
 
     """
     assert len(net['pore.diameter']) > 0, 'pore diameters not defined; please define pore diameters before running percolation'
+    bpp_type = cfg['bpp_type']
+    assert bpp_type in ['young-laplace', 'young-laplace_with_constrictions'], 'unknown BPP type; please select young-laplace or young-laplace_with_constrictions'
     conduit_element_length = cfg.get('conduit_element_length', params.Lce)
     heartwood_d = cfg.get('heartwood_d', params.heartwood_d)
     cec_indicator = cfg.get('cec_indicator', params.cec_indicator)
@@ -1406,7 +1463,10 @@ def run_conduit_si(net, cfg, spreading_param=0):
 
     orig_pore_diameter = np.copy(net['pore.diameter'])
     if si_type == 'physiological':
-        bpp = calculate_bpp(net, conduits, 1 - cec_mask, cfg)
+        if bpp_type == 'young-laplace':
+            bpp = calculate_bpp(net, conduits, 1 - cec_mask, cfg)
+        elif bpp_type == 'young-laplace_with_constrictions':
+            bpp = pit_membrane.calculate_BPP_for_constriction_pores(net, conduits, 1 - cec_mask, cfg)
         conduit_neighbour_bpp = {}
         for i, conduit in enumerate(conduits):
             iccs = conns[np.where(1 - cec_mask)]
@@ -2156,8 +2216,8 @@ def calculate_bpp(net, conduits, icc_mask, cfg):
     for i, icc in enumerate(iccs):
         start_conduit = np.where((conduits[:, 0] <= icc[0]) & (icc[0] <= conduits[:, 1]))[0][0]
         end_conduit = np.where((conduits[:, 0] <= icc[1]) & (icc[1] <= conduits[:, 1]))[0][0] 
-        Am = 0.5 * (conduit_areas[start_conduit] / icc_count[start_conduit] + conduit_areas[end_conduit] / icc_count[end_conduit]) * fc * fpf
-        pit_count = Am / average_pit_area
+        Am = 0.5 * (conduit_areas[start_conduit] / icc_count[start_conduit] + conduit_areas[end_conduit] / icc_count[end_conduit]) * fc * fpf # Mrad et al. 2018, Eq. 2
+        pit_count = Am / average_pit_area # Mrad et al. 2018, Eq. 3 (using average pit area as input instead of average pit diameter)
         bpp[i] = (weibull_a / pit_count**(1 / weibull_b)) * np.random.weibull(weibull_b) # this is BPP solved from Mrad et al. equation 8
         
     return bpp

@@ -43,7 +43,7 @@ if fixed_random:
     seed_ICC_rad = 63083
     seed_ICC_tan = 73956
     
-# dimensions of conduit elements
+# anatomical + physiological parameters
 Lce = 0.42E-3 # m; average conduit element length in Betula pendula branches; from Bhat & Kärkkäinen 1981
 Dc = 23.5261E-6 # m; diameter of a conduit element in Betula pendula branches; from Held et al. (in preparation)
 Dc_std = 13.1038E-6 # m; standard deviation of conduit element diameter in Betula pendula branches; from Held et al. (in preparation)
@@ -62,17 +62,26 @@ pore_diameters = 1E-9 * np.array([13.284, 27.234, 33.805, 63.84, 33.542, 104.234
                   35.219, 14.431, 82.702, 34.647, 64.713, 54.059, 60.852, 50.936, 75.162, 38, 76.067, 107.631, 19.31, 54.895, 68.195, 92.235, 106.55, 
                   110.409, 122.917, 114.778, 8.224, 111.476, 45.735]) # m; pore diameter in Betula pendula, from Jansen et al. 2009
 icc_length = mrad_params.icc_length
+
+# params for calculating bubble propagation pressure across pit membrane
+# Mrad's method:
 weibull_a = 9083441.686765894
 weibull_b = 29.345799999996878
-
+# method from Kaack et al. 2021, New Phytologist:
+N_constrictions = int(np.ceil((Tm*1E9 + 20) / 40)) # calculated following the caption of Table 1 in Kaack et al. 20201
+truncnorm_center = 10.E-9 # m; center value of truncated normal distribution; from Kaack et al. 2021, New Phytologist
+truncnorm_std = 7.5E-9 # m, standard deviation of truncated normal distribution; from Kaack et al. 2021, New Phytologist
+truncnorm_a = 2.5E-9 # m, beginning of the left truncation; from Kaack et al. 2021, New Phytologist
+pore_shape_correction = 0.5 # factor for correcting the assumption of round shape of all pores; from Kaack et al. 2021, New Phytologist
+gas_contact_angle = 0 # radians; the contact angle between gas and xylem sap; from Kaack et al. 2021, New Phytologist
 
 target_conduit_density = 630.817129361309/(1e-3)**2 # 1/m^2; conduit density in large branches of Betula pendula; from Lintunen & Kalliokoski 2010
 target_grouping_index = 2.47 # grouping index in branches of Betula pendula; from Alber et al., Trees 33, 2019
     
 
 # paths for saving
-triton = True
-identifier = 'small_net_b_pendula_test'
+triton = False
+identifier = 'small_net_b_pendula_kaack_bpp_test'
 pooled_optimized_spreading_probability_save_name = 'pooled_optimized_spreading_probability.pkl'
 
 if triton:
@@ -115,6 +124,7 @@ else:
 # percolation parameters
 percolation_type = 'si'
 si_type = 'physiological'
+bpp_type = 'young-laplace_with_constrictions'
 break_nonfunctional_components = False
 spontaneous_embolism = False
 si_length = 1000
