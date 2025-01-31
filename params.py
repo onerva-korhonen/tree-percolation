@@ -131,9 +131,7 @@ si_length = 1000
 si_tolerance_length = 20
 spreading_probability = 0.15100000000000002
 start_conduits = 'random_per_component' # options: 'random', 'random_per_component' (= one random seed in all network components), 'none' (= no start conduits set, only spontaneous embolism), int, and 'bottom' (= all conduits with a pore at the first row, allowed only when percolation_type == 'drainage')
-# contact angle and surface tension values are from OpenPNM tutorial (https://openpnm.org/examples/tutorials/09_simulating_invasion.html)
-air_contact_angle = 120 # degrees
-surface_tension = 0.072 # Newtons/meter
+surface_tension = 0.025 # Newtons/meter; from Kaack et al. 2021
 pressure = 100 # number of pressure steps used by the drainage algorithm
 pressure_diff = 3.5e6 # Pa, the difference between water and air (bubble) pressures, delta P in the Mrad et al. article
 nCPUs = 5

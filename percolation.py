@@ -1662,7 +1662,7 @@ def run_physiological_conduit_drainage(net, cfg, start_conduits):
         cec_indicator: int, value used to indicate that the type of a throat is CE
         tf: float, microfibril strand thickness (m)
         icc_length: float, length of an ICC throat (m)
-        air_contact_angle: float, the contact angle between the water and air phases (degrees)
+        gas_contact_angle: float, the contact angle between the water and air phases (radians)
         surface_tension: float, the surface tension betweent he water and air phases (Newtons/meter)
         inlet_pressure: float, pressure at the inlet conduit elements (Pa)
         outlet_pressure: float, pressure at the outlet conduit elements (Pa) 
@@ -1701,6 +1701,7 @@ def run_physiological_conduit_drainage(net, cfg, start_conduits):
         fraction of embolized conduits at each infection step
 
     """    
+    cfg['gas_contact_angle'] = np.pi * cfg['gas_contact_angle'] / 180 # transformation from radians to degrees
     if not cfg['conduit_diameters'] == 'inherit_from_net':
         print("NOTE: pore diameters re-defined in percolation; you may want to set cfg['conduit_diameters'] to 'inherit_from_net' to avoid this")
     conduit_element_length = cfg.get('conduit_element_length', params.Lce)

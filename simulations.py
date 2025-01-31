@@ -138,7 +138,7 @@ def simulate_drainage(sim_net, start_pores, cfg):
         pores from which the drainage starts
     cfg : dic
         contains:
-        air_contact_angle : float, the contact angle between the water and air phases (degrees)
+        gas_contact_angle : float, the contact angle between the water and air phases (degrees)
         surface_tension : float, the surface tension betweent he water and air phases (Newtons/meter)
         pressure : int or array-like, the frequency steps to investigate (if an int is given, a log-range with the corresponding number of steps is used)
         
@@ -150,7 +150,7 @@ def simulate_drainage(sim_net, start_pores, cfg):
     pressure = cfg.get('pressure', params.pressure)
     # creating the air phase
     air = op.phase.Air(network=sim_net)
-    air['pore.contact_angle'] = cfg.get('air_contact_angle', params.air_contact_angle)
+    air['pore.contact_angle'] = cfg.get('gas_contact_angle')
     air['pore.surface_tension'] = cfg.get('surface_tension', params.surface_tension)
     f = op.models.physics.capillary_pressure.washburn
     air.add_model(propname = 'throat.entry_pressure', model = f, surface_tension = 'throat.surface_tension',
