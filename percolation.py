@@ -65,14 +65,7 @@ def run_percolation(net, cfg, percolation_type='bond', removal_order='random', b
         weibull_a : float, Weibull distribution scale parameter (used for simulating pressure-difference-based embolism spreading); only used if bpp_type == 'young-laplace'
         weibull_b : float, Weibull distribution shape parameter (used for simulating pressure-difference-based embolism spreading); only used if bpp_type == 'young-laplace'
         bpp_type: str, how the bubble propagation pressure is calculated; options: 'young-laplace' (i.e. as in Mrad et al. 2018) and 'young-laplace_with_constrictions' (i.e. as in Kaack et al. 2021)
-        N_constrictions: int, the number of constrictions per pore; only used if bpp_type == 'young-laplace_with_constrictions'
-        truncnorm_center: float, center value of the truncated normal distribution; only used if bpp_type == 'young-laplace_with_constrictions'
-        truncnorm_std : float, standard deviation of the distribution; only used if bpp_type == 'young-laplace_with_constrictions'
-        truncnorm_a: float, startpoint of the left truncation; only used if bpp_type == 'young-laplace_with_constrictions'
-        truncnorm_b: float, optional, startpoint of the right truncation, default value np.inf gives left-only truncated distribution; only used if bpp_type == 'young-laplace_with_constrictions'
-        surface_tension: float, optional, surface tension of sap in the xylem conduits (default: the value given in the parameter file); only used if bpp_type == 'young-laplace_with_constrictions'
-        pore_shape_correction: float, correction factor applied to compensate for the inaccurately assumed round shape of all pores, default 0.5 (from Kaack et al. 2021); only used if bpp_type == 'young-laplace_with_constrictions'
-        gas_contact_angle: float, optional, the contact angle between gas and xylem sap in radians, default 0 (from Kaack et al. 2021); only used if bpp_type == 'young-laplace_with_constrictions'
+        bpp_data_path : str, optional, path, to which the BPP data has been saved; only used if bpp_type == 'young-laplace_with_constrictions'
     percolation type : str, optional
         type of the percolation, 'bond' to remove throats, 'site' to remove pores, 'conduit' to remove conduits,
         'si' to simulate the spreading of embolism between conduits using the SI model or 'drainage' to simulate the spreading of embolism with the openpnm drainage algorithm (default: 'bond')
@@ -175,14 +168,7 @@ def construct_vulnerability_curve(net, cfg, x_range, start_conduits, si_length=1
         average_pit_area : float, the average area of a pit
         nCPUs : int, number of CPUs used for parallel computing (default 5)
         bpp_type: str, how the bubble propagation pressure is calculated; options: 'young-laplace' (i.e. as in Mrad et al. 2018) and 'young-laplace_with_constrictions' (i.e. as in Kaack et al. 2021)
-        N_constrictions: int, the number of constrictions per pore; only used if bpp_type == 'young-laplace_with_constrictions'
-        truncnorm_center: float, center value of the truncated normal distribution; only used if bpp_type == 'young-laplace_with_constrictions'
-        truncnorm_std : float, standard deviation of the distribution; only used if bpp_type == 'young-laplace_with_constrictions'
-        truncnorm_a: float, startpoint of the left truncation; only used if bpp_type == 'young-laplace_with_constrictions'
-        truncnorm_b: float, optional, startpoint of the right truncation, default value np.inf gives left-only truncated distribution; only used if bpp_type == 'young-laplace_with_constrictions'
-        surface_tension: float, optional, surface tension of sap in the xylem conduits (default: the value given in the parameter file); only used if bpp_type == 'young-laplace_with_constrictions'
-        pore_shape_correction: float, correction factor applied to compensate for the inaccurately assumed round shape of all pores, default 0.5 (from Kaack et al. 2021); only used if bpp_type == 'young-laplace_with_constrictions'
-        gas_contact_angle: float, optional, the contact angle between gas and xylem sap in radians, default 0 (from Kaack et al. 2021); only used if bpp_type == 'young-laplace_with_constrictions'
+        bpp_data_path : str, optional, path, to which the BPP data has been saved; only used if bpp_type == 'young-laplace_with_constrictions'
     x_range : np.array
         x axis values of the VC; spreading probabilities in case of stochastic SI and pressure differences in case of physiological SI
     start_conduits : str or array-like of ints
@@ -279,14 +265,7 @@ def optimize_spreading_probability(net, cfg, pressure_difference, spreading_prob
            if 'random_per_component', a single start conduit per network component is selected at random
            if an array-like of ints is given, the ints are used as indices of the start conduits
         bpp_type: str, how the bubble propagation pressure is calculated; options: 'young-laplace' (i.e. as in Mrad et al. 2018) and 'young-laplace_with_constrictions' (i.e. as in Kaack et al. 2021)
-        N_constrictions: int, the number of constrictions per pore; only used if bpp_type == 'young-laplace_with_constrictions'
-        truncnorm_center: float, center value of the truncated normal distribution; only used if bpp_type == 'young-laplace_with_constrictions'
-        truncnorm_std : float, standard deviation of the distribution; only used if bpp_type == 'young-laplace_with_constrictions'
-        truncnorm_a: float, startpoint of the left truncation; only used if bpp_type == 'young-laplace_with_constrictions'
-        truncnorm_b: float, optional, startpoint of the right truncation, default value np.inf gives left-only truncated distribution; only used if bpp_type == 'young-laplace_with_constrictions'
-        surface_tension: float, optional, surface tension of sap in the xylem conduits (default: the value given in the parameter file); only used if bpp_type == 'young-laplace_with_constrictions'
-        pore_shape_correction: float, correction factor applied to compensate for the inaccurately assumed round shape of all pores, default 0.5 (from Kaack et al. 2021); only used if bpp_type == 'young-laplace_with_constrictions'
-        gas_contact_angle: float, optional, the contact angle between gas and xylem sap in radians, default 0 (from Kaack et al. 2021); only used if bpp_type == 'young-laplace_with_constrictions'
+        bpp_data_path : str, optional, path, to which the BPP data has been saved; only used if bpp_type == 'young-laplace_with_constrictions'
     pressure_difference : float
         pressure difference between water in conduits and air (bubble)
     spreading_probability_range : array-like
@@ -390,14 +369,7 @@ def run_spreading_iteration(net, cfg, pressure_differences, save_path, spreading
             if 'random_per_component', a single start conduit per network component is selected at random
             if an array-like of ints is given, the ints are used as indices of the start conduits
         bpp_type: str, how the bubble propagation pressure is calculated; options: 'young-laplace' (i.e. as in Mrad et al. 2018) and 'young-laplace_with_constrictions' (i.e. as in Kaack et al. 2021)
-        N_constrictions: int, the number of constrictions per pore; only used if bpp_type == 'young-laplace_with_constrictions'
-        truncnorm_center: float, center value of the truncated normal distribution; only used if bpp_type == 'young-laplace_with_constrictions'
-        truncnorm_std : float, standard deviation of the distribution; only used if bpp_type == 'young-laplace_with_constrictions'
-        truncnorm_a: float, startpoint of the left truncation; only used if bpp_type == 'young-laplace_with_constrictions'
-        truncnorm_b: float, optional, startpoint of the right truncation, default value np.inf gives left-only truncated distribution; only used if bpp_type == 'young-laplace_with_constrictions'
-        surface_tension: float, optional, surface tension of sap in the xylem conduits (default: the value given in the parameter file); only used if bpp_type == 'young-laplace_with_constrictions'
-        pore_shape_correction: float, correction factor applied to compensate for the inaccurately assumed round shape of all pores, default 0.5 (from Kaack et al. 2021); only used if bpp_type == 'young-laplace_with_constrictions'
-        gas_contact_angle: float, optional, the contact angle between gas and xylem sap in radians, default 0 (from Kaack et al. 2021); only used if bpp_type == 'young-laplace_with_constrictions'
+        bpp_data_path : str, optional, path, to which the BPP data has been saved; only used if bpp_type == 'young-laplace_with_constrictions'
     pressure_differences : iterable of float
         pressure differences between water in conduits and air (bubble), with which the physiological SI is simulated
     save_path : str
@@ -804,14 +776,7 @@ def run_conduit_si_repeatedly(net, net_proj, cfg, spreading_param=0):
         average_pit_area : float, the average area of a pit
         nCPUs : int, number of CPUs used for parallel computing (default 5)
         bpp_type: str, how the bubble propagation pressure is calculated; options: 'young-laplace' (i.e. as in Mrad et al. 2018) and 'young-laplace_with_constrictions' (i.e. as in Kaack et al. 2021)
-        N_constrictions: int, the number of constrictions per pore; only used if bpp_type == 'young-laplace_with_constrictions'
-        truncnorm_center: float, center value of the truncated normal distribution; only used if bpp_type == 'young-laplace_with_constrictions'
-        truncnorm_std : float, standard deviation of the distribution; only used if bpp_type == 'young-laplace_with_constrictions'
-        truncnorm_a: float, startpoint of the left truncation; only used if bpp_type == 'young-laplace_with_constrictions'
-        truncnorm_b: float, optional, startpoint of the right truncation, default value np.inf gives left-only truncated distribution; only used if bpp_type == 'young-laplace_with_constrictions'
-        surface_tension: float, optional, surface tension of sap in the xylem conduits (default: the value given in the parameter file); only used if bpp_type == 'young-laplace_with_constrictions'
-        pore_shape_correction: float, correction factor applied to compensate for the inaccurately assumed round shape of all pores, default 0.5 (from Kaack et al. 2021); only used if bpp_type == 'young-laplace_with_constrictions'
-        gas_contact_angle: float, optional, the contact angle between gas and xylem sap in radians, default 0 (from Kaack et al. 2021); only used if bpp_type == 'young-laplace_with_constrictions'
+        bpp_data_path : str, optional, path, to which the BPP data has been saved; only used if bpp_type == 'young-laplace_with_constrictions'
     spreading_param : float
         parameter that controls the spreading speed, specifically
         if si_type == 'stochastic', spreading_param is the probability at which embolism spreads to neighbouring conduits (default: 0.1)
@@ -1346,14 +1311,7 @@ def run_conduit_si(net, cfg, spreading_param=0):
         spontaneous_embolism : bln, is spontaneous embolism through bubble expansion allowed (default: False)
         spontaneous_embolism_probability : float, probability of spontaneous embolism
         bpp_type: str, how the bubble propagation pressure is calculated; options: 'young-laplace' (i.e. as in Mrad et al. 2018) and 'young-laplace_with_constrictions' (i.e. as in Kaack et al. 2021)
-        N_constrictions: int, the number of constrictions per pore; only used if bpp_type == 'young-laplace_with_constrictions'
-        truncnorm_center: float, center value of the truncated normal distribution; only used if bpp_type == 'young-laplace_with_constrictions'
-        truncnorm_std : float, standard deviation of the distribution; only used if bpp_type == 'young-laplace_with_constrictions'
-        truncnorm_a: float, startpoint of the left truncation; only used if bpp_type == 'young-laplace_with_constrictions'
-        truncnorm_b: float, optional, startpoint of the right truncation, default value np.inf gives left-only truncated distribution; only used if bpp_type == 'young-laplace_with_constrictions'
-        surface_tension: float, optional, surface tension of sap in the xylem conduits (default: the value given in the parameter file); only used if bpp_type == 'young-laplace_with_constrictions'
-        pore_shape_correction: float, correction factor applied to compensate for the inaccurately assumed round shape of all pores, default 0.5 (from Kaack et al. 2021); only used if bpp_type == 'young-laplace_with_constrictions'
-        gas_contact_angle: float, optional, the contact angle between gas and xylem sap in radians, default 0 (from Kaack et al. 2021); only used if bpp_type == 'young-laplace_with_constrictions'
+        bpp_data_path : str, optional, path, to which the BPP data has been saved; only used if bpp_type == 'young-laplace_with_constrictions'
     spreading_param : float
         parameter that controls the spreading speed, specifically
         if si_type == 'stochastic', spreading_param is the probability at which embolism spreads to neighbouring conduits (default: 0.1)
@@ -1390,6 +1348,8 @@ def run_conduit_si(net, cfg, spreading_param=0):
     assert len(net['pore.diameter']) > 0, 'pore diameters not defined; please define pore diameters before running percolation'
     bpp_type = cfg['bpp_type']
     assert bpp_type in ['young-laplace', 'young-laplace_with_constrictions'], 'unknown BPP type; please select young-laplace or young-laplace_with_constrictions'
+    if bpp_type == 'young-laplace_with_constrictions':
+        bpp_data_path = cfg['bpp_data_path']
     conduit_element_length = cfg.get('conduit_element_length', params.Lce)
     heartwood_d = cfg.get('heartwood_d', params.heartwood_d)
     cec_indicator = cfg.get('cec_indicator', params.cec_indicator)
@@ -1466,7 +1426,7 @@ def run_conduit_si(net, cfg, spreading_param=0):
         if bpp_type == 'young-laplace':
             bpp = calculate_bpp(net, conduits, 1 - cec_mask, cfg)
         elif bpp_type == 'young-laplace_with_constrictions':
-            bpp = pit_membrane.calculate_BPP_for_constriction_pores(net, conduits, 1 - cec_mask, cfg)
+            bpp = pit_membrane.read_constriction_bpp(bpp_data_path, net, conduits, 1 - cec_mask, cfg)
         conduit_neighbour_bpp = {}
         for i, conduit in enumerate(conduits):
             iccs = conns[np.where(1 - cec_mask)]

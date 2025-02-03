@@ -53,6 +53,7 @@ cfg['pressure'] = params.pressure
 cfg['nCPUs'] = params.nCPUs
 cfg['spontaneous_embolism'] = params.spontaneous_embolism
 cfg['bpp_type'] = params.bpp_type
+cfg['bpp_data_path'] = params.bubble_propagation_pressure_data_path
 # TODO: check that the followig params match the physiology of betula pendula
 #cfg['weibull_a'] = mrad_params.weibull_a
 #cfg['weibull_b'] = mrad_params.weibull_b
