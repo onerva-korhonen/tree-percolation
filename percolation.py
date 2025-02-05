@@ -513,7 +513,7 @@ def optimize_spreadig_probability_from_data(simulation_data_save_folder, simulat
     Returns
     -------
     None.
-    """    
+    """   
     data_files = [os.path.join(simulation_data_save_folder, file) for file in os.listdir(simulation_data_save_folder) if os.path.isfile(os.path.join(simulation_data_save_folder, file))]
     data_files = [data_file for data_file in data_files if simulation_data_save_name_base in data_file]
     if pooled_data_save_path in data_files:
@@ -569,10 +569,8 @@ def optimize_spreadig_probability_from_data(simulation_data_save_folder, simulat
         physiological_n_inlets.append(data['physiological_n_inlets'])
         physiological_n_outlets.append(data['physiological_n_outlets'])
         if spontaneous_embolism:
-            stochastic_effective_conductances = np.zeros((len(spreading_probability_range), len(pressure_differences), len(data_files))) # spreading probabilities x pressures x iterations
             stochastic_effective_conductances[:, :, i] = data['stochastic_effective_conductances']
         else:
-            stochastic_effective_conductances = np.zeros((len(spreading_probability_range), len(data_files))) # spreading probabilities x iterations
             stochastic_effective_conductances[:, i] = data['stochastic_effective_conductances']
         stochastic_prevalences.append(data['stochastic_prevalences'])
         stochastic_prevalences_due_to_spontaneous_embolism.append(data['stochastic_prevalences_due_to_spontaneous_embolism'])
