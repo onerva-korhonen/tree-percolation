@@ -22,7 +22,7 @@ import simulations
 import bubble_expansion
 import pit_membrane
 
-def run_percolation(net, cfg, percolation_type='bond', removal_order='random', break_nonfunctional_components=True):
+def run_percolation(net, cfg, percolation_type='bond', removal_order='random', break_nonfunctional_components=True, include_orig_values=False):
     """
     Removes throats (bond percolation) or pores (site percolation) from an OpenPNM network object in a given (or random) order and calculates 
     a number of measures, including effective conductance and largest component size, after removal (see below for details). If order is given,
@@ -74,6 +74,8 @@ def run_percolation(net, cfg, percolation_type='bond', removal_order='random', b
         should match the number of pores. string 'random' can be given to indicate removal in random order.
     break_nonfunctional_components : bln, optional
         can links/nodes in components that are nonfunctional (i.e. not connected to inlet or outlet) be removed (default: True)
+    include_orig_values : bln, optional
+        should the output arrays include also values calculated for the intact network in addition to the values after each removal (default: False)
 
     Returns
     -------
@@ -112,7 +114,7 @@ def run_percolation(net, cfg, percolation_type='bond', removal_order='random', b
             spreading_param = cfg.get('spreading_probability', 0.1)
         elif cfg['si_type'] == 'physiological':
             spreading_param = cfg.get('pressure_diff', 0)
-        effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence, prevalence_due_to_spontaneous_embolism, prevalence_due_to_spreading = run_conduit_si(net, cfg, spreading_param)
+        effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence, prevalence_due_to_spontaneous_embolism, prevalence_due_to_spreading = run_conduit_si(net, cfg, spreading_param, include_orig_values)
     elif percolation_type == 'drainage':
         effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence = run_physiological_conduit_drainage(net, cfg, start_conduits=cfg['start_conduits'])
     elif break_nonfunctional_components:
@@ -326,7 +328,7 @@ def optimize_spreading_probability(net, cfg, pressure_difference, spreading_prob
     else:
         return output
     
-def run_spreading_iteration(net, cfg, pressure_differences, save_path, spreading_probability_range=np.arange(0.001, 1, step=0.1), si_length=1000):
+def run_spreading_iteration(net, cfg, pressure_differences, save_path, spreading_probability_range=np.arange(0.001, 1, step=0.1), si_length=1000, include_orig_values=False):
     """
     Runs physiological conduit SI for a range of pressure difference values and stochastic conduit SI for a range of spreading probability values and saves the effective conductance
     value and prevalence curve of each simulation. Used for creating the data for optimizing spreading probability.
@@ -378,6 +380,8 @@ def run_spreading_iteration(net, cfg, pressure_differences, save_path, spreading
         the spreading probability values, with which the stochastic SI is simulated
     si_length : int, optional
         maximum number of time steps used for the simulation. The default is 1000.
+    include_orig_values : bln, optional
+        should the saved arrays include also values calculated for the intact network in addition to the values after each removal (default: False)
 
     Returns
     -------
@@ -432,7 +436,7 @@ def run_spreading_iteration(net, cfg, pressure_differences, save_path, spreading
     for i, pressure_difference in enumerate(pressure_differences):
         if spontaneous_embolism:
             cfg['spontaneous_embolism_probability'] = spontaneous_embolism_probabilities[pressure_difference]
-        effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence, prevalence_due_to_spontaneous_embolism, prevalence_due_to_spreading = run_conduit_si(net, cfg, pressure_difference)
+        effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence, prevalence_due_to_spontaneous_embolism, prevalence_due_to_spreading = run_conduit_si(net, cfg, pressure_difference, include_orig_values)
         physiological_effective_conductances[i] = effective_conductances[-1]
         physiological_full_effective_conductances.append(effective_conductances)
         physiological_prevalences.append(prevalence)
@@ -453,7 +457,7 @@ def run_spreading_iteration(net, cfg, pressure_differences, save_path, spreading
         for i, spreading_probability in enumerate(spreading_probability_range):
             for j, pressure_difference in enumerate(pressure_differences):
                 cfg['spontaneous_embolism_probability'] = spontaneous_embolism_probabilities[pressure_difference]
-                effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence, prevalence_due_to_spontaneous_embolism, prevalence_due_to_spreading = run_conduit_si(net, cfg, spreading_probability)
+                effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence, prevalence_due_to_spontaneous_embolism, prevalence_due_to_spreading = run_conduit_si(net, cfg, spreading_probability, include_orig_values)
                 stochastic_effective_conductances[i, j] = effective_conductances[-1]
                 stochastic_full_effective_conductances[i].append(effective_conductances)
                 stochastic_prevalences[i].append(prevalence)
@@ -469,7 +473,7 @@ def run_spreading_iteration(net, cfg, pressure_differences, save_path, spreading
                 stochastic_n_outlets[i].append(n_outlets)
     else:
         for i, spreading_probability in enumerate(spreading_probability_range):
-            effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence, prevalence_due_to_spontaneous_embolism, prevalence_due_to_spreading = run_conduit_si(net, cfg, spreading_probability)
+            effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence, prevalence_due_to_spontaneous_embolism, prevalence_due_to_spreading = run_conduit_si(net, cfg, spreading_probability, include_orig_values)
             stochastic_effective_conductances[i] = effective_conductances[-1]
             stochastic_full_effective_conductances.append(effective_conductances)
             stochastic_prevalences.append(prevalence)
@@ -751,7 +755,7 @@ def optimize_spreadig_probability_from_data(simulation_data_save_folder, simulat
         pickle.dump(data, f)
     f.close()
     
-def run_conduit_si_repeatedly(net, net_proj, cfg, spreading_param=0):
+def run_conduit_si_repeatedly(net, net_proj, cfg, spreading_param=0, include_orig_values=False):
     """
     Re-initializes all objects of op.Network().project to have given initial properties and
     calls run_conduit_si. This is a helper function used by optimize_spreading_probability.
@@ -795,6 +799,8 @@ def run_conduit_si_repeatedly(net, net_proj, cfg, spreading_param=0):
         parameter that controls the spreading speed, specifically
         if si_type == 'stochastic', spreading_param is the probability at which embolism spreads to neighbouring conduits (default: 0.1)
         if si_type == 'physiological', spreading param is difference between water pressure and vapour-air bubble pressure, delta P in the Mrad et al. article (default 0)
+    include_orig_values : bln, optional
+        should the output arrays include also values calculated for the intact network in addition to the values after each removal (default: False)
 
     Returns
     -------
@@ -827,7 +833,7 @@ def run_conduit_si_repeatedly(net, net_proj, cfg, spreading_param=0):
         for prop in member_properties.keys():
             net.project[proj_member][prop] = member_properties[prop]
 
-    effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_volume, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence, prevalence_due_to_spontaneous_embolism, prevalence_due_to_spreading = run_conduit_si(net, cfg, spreading_param)
+    effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_volume, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence, prevalence_due_to_spontaneous_embolism, prevalence_due_to_spreading = run_conduit_si(net, cfg, spreading_param, include_orig_values)
     return effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_volume, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence
         
 def run_graph_theoretical_element_percolation(net, cfg, percolation_type='bond', removal_order='random'):
@@ -1279,7 +1285,7 @@ def run_physiological_conduit_percolation(net, cfg, removal_order='random'):
                 raise
     return effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume
 
-def run_conduit_si(net, cfg, spreading_param=0):
+def run_conduit_si(net, cfg, spreading_param=0, include_orig_values=False):
     """
     Starting from a given conduit, simulates an SI (embolism) spreading process on the conduit network. The spreading can be stochastic (at each step, each conduit is
     embolized at a certain probability that depends on if their neighbours have been removed) or physiological (at each step, each conduit is
@@ -1330,6 +1336,8 @@ def run_conduit_si(net, cfg, spreading_param=0):
         parameter that controls the spreading speed, specifically
         if si_type == 'stochastic', spreading_param is the probability at which embolism spreads to neighbouring conduits (default: 0.1)
         if si_type == 'physiological', spreading param is difference between water pressure and vapour-air bubble pressure, delta P in the Mrad et al. article (default 0)
+    include_orig_values : bln, optional
+        should the output arrays include also values calculated for the intact network in addition to the values after each removal (default: False)
     
     Returns:
     --------
@@ -1460,7 +1468,23 @@ def run_conduit_si(net, cfg, spreading_param=0):
     last_removed_by_embolism = False
     n_embolized_through_spreading = len(start_conduits)
     n_spontaneously_embolized = 0
-       
+    
+    if include_orig_values:
+        orig_effective_conductance, _ = simulations.simulate_water_flow(perc_net, cfg, visualize=False, return_water=False)
+        orig_lcc_size, orig_susceptibility = get_conduit_lcc_size(net=perc_net, use_cylindrical_coords=use_cylindrical_coords, 
+                                                                  conduit_element_length=conduit_element_length, 
+                                                                  heartwood_d=heartwood_d, cec_indicator=cec_indicator)
+        orig_functional_lcc_size = orig_lcc_size
+        orig_functional_susceptibility = orig_susceptibility
+        orig_nonfunctional_component_size = 0
+        orig_n_inlets, orig_n_outlets = get_n_inlets(perc_net, (cfg['net_size'][0] - 1)*conduit_element_length, cec_indicator=cec_indicator, 
+                                                     conduit_element_length=conduit_element_length, heartwood_d=heartwood_d,
+                                                     use_cylindrical_coords=use_cylindrical_coords)
+        orig_nonfunctional_component_volume = 0
+        orig_prevalence = 0
+        orig_prevalence_due_to_spontaneous_embolism = 0
+        orig_prevalence_due_to_spreading = 0
+         
     while (prevalence_diff > 0) & (time_step < si_length):
             
         pores_to_remove = []
@@ -1611,7 +1635,24 @@ def run_conduit_si(net, cfg, spreading_param=0):
             prevalence_diff = np.abs(prevalence[time_step] - prevalence[time_step - si_tolerance_length])
             
         time_step += 1
-    return effective_conductances[0:time_step], lcc_size[0:time_step], functional_lcc_size[0:time_step], nonfunctional_component_size[0:time_step], susceptibility[0:time_step], functional_susceptibility[0:time_step], n_inlets[0:time_step], n_outlets[0:time_step], nonfunctional_component_volume[0:time_step], prevalence[0:time_step], prevalence_due_to_spontaneous_embolism[0:time_step], prevalence_due_to_spreading[0:time_step]
+    
+    if include_orig_values:
+        effective_conductances = np.append(np.array([orig_effective_conductance]), effective_conductances[0:time_step])
+        lcc_size = np.append(np.array([orig_lcc_size]), lcc_size[0:time_step])
+        functional_lcc_size = np.append(np.array([orig_functional_lcc_size]), functional_lcc_size[0:time_step])
+        nonfunctional_component_size = np.append(np.array([orig_nonfunctional_component_size]), nonfunctional_component_size[0:time_step])
+        susceptibility = np.append(np.array([orig_susceptibility]), susceptibility[0:time_step])
+        functional_susceptibility = np.append(np.array([orig_functional_susceptibility]), functional_susceptibility[0:time_step])
+        n_inlets = np.append(np.array([orig_n_inlets]), n_inlets[0:time_step])
+        n_outlets = np.append(np.array([orig_n_outlets]), n_outlets[0:time_step])
+        nonfunctional_component_volume = np.append(np.array([orig_nonfunctional_component_volume]), nonfunctional_component_volume[0:time_step])
+        prevalence = np.append(np.array([orig_prevalence]), prevalence[0:time_step])
+        prevalence_due_to_spontaneous_embolism = np.append(np.array([orig_prevalence_due_to_spontaneous_embolism]), prevalence_due_to_spontaneous_embolism[0:time_step])
+        prevalence_due_to_spreading = np.append(np.array([orig_prevalence_due_to_spreading]), prevalence_due_to_spreading[0:time_step])
+        
+        return effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence, prevalence_due_to_spontaneous_embolism, prevalence_due_to_spreading
+    else:
+        return effective_conductances[0:time_step], lcc_size[0:time_step], functional_lcc_size[0:time_step], nonfunctional_component_size[0:time_step], susceptibility[0:time_step], functional_susceptibility[0:time_step], n_inlets[0:time_step], n_outlets[0:time_step], nonfunctional_component_volume[0:time_step], prevalence[0:time_step], prevalence_due_to_spontaneous_embolism[0:time_step], prevalence_due_to_spreading[0:time_step]
 
 def run_physiological_conduit_drainage(net, cfg, start_conduits):
     """
