@@ -61,11 +61,11 @@ cfg['bpp_data_path'] = params.bubble_propagation_pressure_data_path
 cfg['use_cylindrical_coords'] = False
 cfg['fixed_random'] = True
 
-simulate_single_param_spreading = True
+simulate_single_param_spreading = False
 construct_VC = False
 optimize_spreading_probability = False
 create_optimization_data = False
-combine_optimization_data = False
+combine_optimization_data = True
 time = False
 
 #print(cfg['net_size'])
