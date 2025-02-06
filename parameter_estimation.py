@@ -152,13 +152,14 @@ def optimize_parameters_from_data(target_density, target_length, target_grouping
     start_range, end_range, Pes_rad, Pes_tan, conduit_densities, conduit_lengths, grouping_indices = read_and_combine_data(data_files)
 
 
-    density_landscape = np.argsort(np.abs(conduit_densities - target_density), axis=None) # rank of absolute difference
+    density_landscape = np.argsort(np.abs(conduit_densities - target_density), axis=None).argsort() # rank of absolute difference
     if target_length > 0: # TODO: remove this case after setting target length
-        length_landscape = np.argsort(np.abs(conduit_lengths - target_length), axis=None)
+        length_landscape = np.argsort(np.abs(conduit_lengths - target_length), axis=None).argsort()
     else:
         length_landscape = np.zeros(conduit_lengths.size)
-    grouping_index_landscape = np.argsort(np.abs(grouping_indices - target_grouping_index), axis=None)
+    grouping_index_landscape = np.argsort(np.abs(grouping_indices - target_grouping_index), axis=None).argsort()
     optimization_landscape = density_landscape + length_landscape + grouping_index_landscape
+
     optimization_landscape = np.reshape(optimization_landscape, conduit_densities.shape) # the optimal parameter combination minimizes the rank sum of conduit density, conduit length, and grouping index
      
     optimal_NPc_indices, optimal_Pc_indices, optimal_Pe_rad_indices, optimal_Pe_tan_indices = np.where(optimization_landscape == np.amin(optimization_landscape)) 
