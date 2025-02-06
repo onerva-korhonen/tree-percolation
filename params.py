@@ -42,6 +42,12 @@ if fixed_random:
     assert len(seeds_Pc) == net_size[1], 'number of Pc seeds should match the number of network columns'
     seed_ICC_rad = 63083
     seed_ICC_tan = 73956
+
+# probabilities for network construction
+NPc = 0.8 # probability to start a new conduit
+Pc = 0.9 # probability to end an existing conduit
+Pe_rad = np.array([0.02, 0.02]) # probability of radial connection
+Pe_tan = np.array([0.9, 0.9]) # probability of tangential connection
     
 # anatomical + physiological parameters
 Lce = 0.42E-3 # m; average conduit element length in Betula pendula branches; from Bhat & Kärkkäinen 1981
