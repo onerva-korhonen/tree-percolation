@@ -1470,8 +1470,9 @@ def run_conduit_si(net, cfg, spreading_param=0, include_orig_values=False):
     n_spontaneously_embolized = 0
     
     if include_orig_values:
+        mrad_model.prepare_simulation_network(perc_net, cfg, update_coords=False)
         orig_effective_conductance, _ = simulations.simulate_water_flow(perc_net, cfg, visualize=False, return_water=False)
-        orig_lcc_size, orig_susceptibility = get_conduit_lcc_size(net=perc_net, use_cylindrical_coords=use_cylindrical_coords, 
+        orig_lcc_size, orig_susceptibility, _ = get_conduit_lcc_size(net=perc_net, use_cylindrical_coords=use_cylindrical_coords, 
                                                                   conduit_element_length=conduit_element_length, 
                                                                   heartwood_d=heartwood_d, cec_indicator=cec_indicator)
         orig_functional_lcc_size = orig_lcc_size
