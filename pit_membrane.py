@@ -158,7 +158,7 @@ def calculate_bpp_for_constriction_pores(cfg, Am_space=[], net=None, conduits=[]
     gas_contact_angle = cfg.get('gas_contact_angle', 0)
     
     bpp_dic = {}
-    
+
     if net != None:
         conns = net['throat.conns']
     
@@ -247,16 +247,15 @@ def read_constriction_bpp(bpp_data_path, net, conduits, icc_mask, cfg):
         Ams[i] = Am
         Am_key = Am_space[np.argmin(np.abs(Am_space - Am))]
         bpp[i] = bpp_data[Am_key]
-    
 
     return bpp
 
 if __name__=='__main__':
-    Am_space = np.logspace(np.log10(1E-9), np.log10(4E-8), num=100)
+    Am_space = np.logspace(np.log10(5E-10), np.log10(7E-8), num=1000)
     
     cfg = {}
     cfg['net_size'] = params.net_size
-    cfg['conduit_diameters'] = 'lognormal'#mrad_params.conduit_diameters
+    cfg['conduit_diameters'] = 'lognormal'
     cfg['Dc'] = params.Dc
     cfg['Dc_cv'] = params.Dc_cv
     cfg['conduit_element_length'] = params.Lce
@@ -289,6 +288,8 @@ if __name__=='__main__':
     cfg['spontaneous_embolism'] = params.spontaneous_embolism
     cfg['bpp_type'] = params.bpp_type
     cfg['bpp_data_path'] = params.bubble_propagation_pressure_data_path
+
+    cfg['fixed_random'] = False
     
     bpps = calculate_bpp_for_constriction_pores(cfg, Am_space=Am_space, bpp_save_path=cfg['bpp_data_path'])
 

@@ -13,7 +13,7 @@ from scipy.stats import norm
 import mrad_params
 
 # params for network creation
-net_size = np.array([11,10,56])
+net_size = np.array([100,100,100])
 fixed_random = True
 if fixed_random:
     if net_size[1] == 10:
@@ -80,8 +80,8 @@ target_grouping_index = 2.47 # grouping index in branches of Betula pendula; fro
     
 
 # paths for saving
-triton = False
-identifier = 'small_net_b_pendula_kaack_bpp_test'
+triton = True
+identifier = 'large_net_3fold_splitted_medium_space'
 pooled_optimized_spreading_probability_save_name = 'pooled_optimized_spreading_probability.pkl'
 
 if triton:
@@ -99,7 +99,7 @@ if triton:
     optimized_vc_plot_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/vc_optimized_spreading_probability_' + identifier + '.pdf' 
     optimized_prevalence_plot_save_path_base = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/prevalence/prevalence_all_pressure_diffs_' + identifier 
     param_optimization_fig_save_path_base = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/parameter_optimization_' + identifier 
-    bubble_propagation_pressure_dave_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/bubble_propagation_pressure_data.pkl'
+    bubble_propagation_pressure_data_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/bubble_propagation_pressure_data.pkl'
     
     single_param_visualization_data_paths = ['/m/cs/scratch/networks/aokorhon/tree-percolation/output/percolation_3D_' + identifier + '_data.pkl']
     optimized_vc_plot_data_save_path_bases = ['/m/cs/scratch/networks/aokorhon/tree-percolation/output/optimized_spreading_probability/' + identifier + '/optimized_spreading_probability_' + identifier]
