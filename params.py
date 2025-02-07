@@ -44,8 +44,8 @@ if fixed_random:
     seed_ICC_tan = 73956
 
 # probabilities for network construction
-NPc = 0.8 # probability to start a new conduit
-Pc = 0.9 # probability to end an existing conduit
+NPc = np.array([0.8, 0.8]) # probability to start a new conduit
+Pc = np.array([0.9, 0.9]) # probability to end an existing conduit
 Pe_rad = np.array([0.02, 0.02]) # probability of radial connection
 Pe_tan = np.array([0.9, 0.9]) # probability of tangential connection
     
