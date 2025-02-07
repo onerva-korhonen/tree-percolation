@@ -695,7 +695,7 @@ def optimize_spreadig_probability_from_data(simulation_data_save_folder, simulat
                     pressure_diff_phys_probs[p] = np.concatenate((probs, probs[-1] * np.ones(physiological_prevalence_length - len(probs))))
             pressure_diff_phys_probs = np.array(pressure_diff_phys_probs)
             phys_av.append(np.mean(pressure_diff_phys_probs, axis=0))
-            phys_stds.append(np.std(pressure_diff_phys_probs, axis=0))
+            phys_std.append(np.std(pressure_diff_phys_probs, axis=0))
     
         if spontaneous_embolism:
             pressure_difference_stoch_prevalences = [prevalences[optimized_spreading_probability_index][i] for prevalences in stochastic_prevalences]
