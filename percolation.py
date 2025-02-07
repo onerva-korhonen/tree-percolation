@@ -747,7 +747,7 @@ def optimize_spreadig_probability_from_data(simulation_data_save_folder, simulat
             'average_stochastic_functional_lcc_size': av_stoch_functional_lcc_size, 'std_stochastic_functional_lcc_size': std_stoch_functional_lcc_size, 'average_stochastic_nonfunctional_component_size': av_stoch_nonfunctional_component_size,
             'std_stochastic_nonfunctional_component_size': std_stoch_nonfunctional_component_size, 'average_stochastic_nonfunctional_component_volume': av_stoch_nonfunctional_component_volume, 'std_stochastic_nonfunctional_component_volume': std_stoch_nonfunctional_component_volume,
             'average_stochastic_susceptibility': av_stoch_susceptibility, 'std_stochastical_susceptibility': std_stoch_susceptibility, 'average_stochastic_functional_susceptibility': av_stoch_functional_susceptibility, 'std_stochastic_functional_susceptibility': std_stoch_functional_susceptibility,
-            'average_stochastic_n_inlets': av_stoch_n_inlets, 'std_stochastic_n_inlets': std_stoch_n_inlets, 'average_stochastic_n_outlets': av_stoch_n_outlets, 'std_stoch_n_outlets': std_stoch_n_outlets,
+            'average_stochastic_n_inlets': av_stoch_n_inlets, 'std_stochastic_n_inlets': std_stoch_n_inlets, 'average_stochastic_n_outlets': av_stoch_n_outlets, 'std_stochastic_n_outlets': std_stoch_n_outlets,
             'average_physiological_full_effective_conductances': average_phys_full_effective_conductances, 'std_physiological_full_effective_conductances': std_phys_full_effective_conductances,
             'average_stochastic_full_effective_conductances': average_stoch_full_effective_conductances, 'std_stochastic_full_effective_conductances': std_stoch_full_effective_conductances}
     
