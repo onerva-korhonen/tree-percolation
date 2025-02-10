@@ -498,7 +498,7 @@ def run_spreading_iteration(net, cfg, pressure_differences, save_path, spreading
             'physiological_functional_susceptibility': physiological_functional_susceptibility, 'physiological_n_inlets': physiological_n_inlets,
             'physiological_n_outlets': physiological_n_outlets, 'stochastic_lcc_size': stochastic_lcc_size, 'stochastic_functional_lcc_size': stochastic_functional_lcc_size, 'stochastic_nonfunctional_component_size': stochastic_nonfunctional_component_size,
             'stochastic_nonfunctional_component_volume': stochastic_nonfunctional_component_volume, 'stochastic_susceptibility': stochastic_susceptibility, 'stochastic_functional_susceptibility': stochastic_functional_susceptibility,
-            'stochastic_n_inlets': stochastic_n_inlets, 'stochastic_n_outlets': stochastic_n_outlets, 'physiological_full_effective_conductances': physiological_full_effective_conductances, 'stochastic_full_effective_conductances': stochastic_full_effective_conductances}
+            'stochastic_n_inlets': stochastic_n_inlets, 'stochastic_n_outlets': stochastic_n_outlets, 'physiological_full_effective_conductances': physiological_full_effective_conductances, 'stochastic_full_effective_conductances': stochastic_full_effective_conductances, 'cfg':cfg}
     save_folder = save_path.rsplit('/', 1)[0]
     if not os.path.exists(save_folder):
         os.mkdir(save_folder)
