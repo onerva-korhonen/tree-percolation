@@ -46,7 +46,7 @@ if fixed_random:
 # probabilities for network construction
 NPc = np.array([0.8, 0.8]) # probability to start a new conduit
 Pc = np.array([0.9, 0.9]) # probability to end an existing conduit
-Pe_rad = np.array([0.02, 0.02]) # probability of radial connection
+Pe_rad = np.array([0.01, 0.01]) # probability of radial connection
 Pe_tan = np.array([0.8, 0.8]) # probability of tangential connection
     
 # anatomical + physiological parameters
