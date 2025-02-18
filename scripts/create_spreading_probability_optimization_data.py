@@ -56,7 +56,7 @@ cfg['net_size'] = [100, 100, 100]
 cfg['bpp_type'] = 'young-laplace_with_constrictions'
 cfg['spontaneous_embolism'] = False
 
-vulnerability_pressure_range = np.arange(0, 5, step=0.25)*1E6
+vulnerability_pressure_range = np.arange(0, 8, step=0.25)*1E6
 spreading_probability_range = np.logspace(np.log10(0.0001), np.log10(0.02), 15)
 
 include_orig_values = True
