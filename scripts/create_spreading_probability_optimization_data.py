@@ -29,7 +29,7 @@ cfg['fc'] = params.fc
 cfg['average_pit_area'] = params.average_pit_membrane_area
 cfg['fpf'] = params.fpf
 cfg['tf'] = params.tf
-cfg['Dp'] = params.Dp
+cfg['Dp'] = params.truncnorm_center
 cfg['Tm'] = params.Tm
 cfg['n_constrictions'] = params.n_constrictions
 cfg['truncnorm_center'] = params.truncnorm_center
@@ -83,7 +83,7 @@ if __name__=='__main__':
     iteration_index = int(np.floor(index / n_pressures))
 
     pressure = pressures[index - n_pressures * iteration_index]
-    probability = probabilities[index - n_presssures * iteration_index]
+    probability = probabilities[index - n_pressures * iteration_index]
     save_path = params.optimized_spreading_probability_save_path_base + '_' + str(index) + '.pkl'
 
     cfg['conduit_diameters'] = 'lognormal'
