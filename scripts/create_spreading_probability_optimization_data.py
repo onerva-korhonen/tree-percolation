@@ -70,20 +70,20 @@ percolation_type = 'si'
 removal_order = 'random'
 break_nonfunctional_components = False
 
-n_iterations = 100
+#n_iterations = 100
 pressures = [[pressure] for pressure in vulnerability_pressure_range] + [[] for i in range(len(spreading_probability_range))]
 probabilities = [[] for i in range(len(vulnerability_pressure_range))] + [[probability] for probability in spreading_probability_range]
+n_pressures = len(pressures)
 
 # NOTE: do not modify any parameters below this point
 
 if __name__=='__main__':
 
     index = int(sys.argv[1])
+    iteration_index = int(np.floor(index / n_pressures))
 
-    iteration_index = int(np.floor(index / n_iterations))
-
-    pressure = pressures[index - n_iterations * iteration_index]
-    probability = probabilities[index - n_iterations * iteration_index]
+    pressure = pressures[index - n_pressures * iteration_index]
+    probability = probabilities[index - n_presssures * iteration_index]
     save_path = params.optimized_spreading_probability_save_path_base + '_' + str(index) + '.pkl'
 
     cfg['conduit_diameters'] = 'lognormal'
