@@ -29,7 +29,7 @@ cfg['fc'] = params.fc
 cfg['average_pit_area'] = params.average_pit_membrane_area
 cfg['fpf'] = params.fpf
 cfg['tf'] = params.tf
-cfg['Dp'] = params.Dp
+cfg['Dp'] = params.truncnorm_center
 cfg['Tm'] = params.Tm
 cfg['n_constrictions'] = params.n_constrictions
 cfg['truncnorm_center'] = params.truncnorm_center
@@ -56,7 +56,7 @@ cfg['net_size'] = [100, 100, 100]
 cfg['bpp_type'] = 'young-laplace_with_constrictions'
 cfg['spontaneous_embolism'] = False
 
-vulnerability_pressure_range = np.arange(0, 5, step=0.25)*1E6
+vulnerability_pressure_range = np.arange(0, 8, step=0.25)*1E6
 spreading_probability_range = np.logspace(np.log10(0.0001), np.log10(0.02), 15)
 
 include_orig_values = True
@@ -70,13 +70,20 @@ percolation_type = 'si'
 removal_order = 'random'
 break_nonfunctional_components = False
 
-n_iterations = 100
+#n_iterations = 100
+pressures = [[pressure] for pressure in vulnerability_pressure_range] + [[] for i in range(len(spreading_probability_range))]
+probabilities = [[] for i in range(len(vulnerability_pressure_range))] + [[probability] for probability in spreading_probability_range]
+n_pressures = len(pressures)
 
 # NOTE: do not modify any parameters below this point
 
 if __name__=='__main__':
 
     index = int(sys.argv[1])
+    iteration_index = int(np.floor(index / n_pressures))
+
+    pressure = pressures[index - n_pressures * iteration_index]
+    probability = probabilities[index - n_pressures * iteration_index]
     save_path = params.optimized_spreading_probability_save_path_base + '_' + str(index) + '.pkl'
 
     cfg['conduit_diameters'] = 'lognormal'
@@ -89,7 +96,7 @@ if __name__=='__main__':
 
     cfg['conduit_diameters'] = 'inherit_from_net'
 
-    percolation.run_spreading_iteration(net, cfg, vulnerability_pressure_range, save_path, 
-                                        spreading_probability_range=spreading_probability_range, 
+    percolation.run_spreading_iteration(net, cfg, pressure, save_path, 
+                                        spreading_probability_range=probability, 
                                         si_length=cfg['si_length'], include_orig_values=True)
 
