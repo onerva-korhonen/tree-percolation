@@ -102,7 +102,7 @@ def calculate_pit_bpp(target_total_area, tf, n_constrictions, truncnorm_center, 
 def calculate_bpp_for_constriction_pores(cfg, Am_space=[], net=None, conduits=[], icc_mask=[], bpp_save_path=''):
     """
     Calculates bubble propagation pressure based on the pit membrane model of Kaack et al. 2021:
-    each pore is a 3D structure with several objects, the pore diameter is defined by its smallest
+    each pore is a 3D structure with several constrictions, the pore diameter is defined by its smallest
     constriction, and the maximum pore diameter defines the BPP across the pit membrane. BPP can
     be calculated either for a given set of pit field area values or for all ICCs of a network. If a save path is given,
     BPPs are also saved as .pkl.
