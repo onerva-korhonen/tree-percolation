@@ -87,7 +87,7 @@ target_grouping_index = 2.47 # grouping index in branches of Betula pendula; fro
 
 # paths for saving
 triton = True
-identifier = 'large_net_3fold_splitted_medium_space'
+identifier = 'spreading_probability_optimization_large_net_no_spontaneous_embolism'
 pooled_optimized_spreading_probability_save_name = 'pooled_optimized_spreading_probability.pkl'
 
 if triton:

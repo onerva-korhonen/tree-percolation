@@ -665,10 +665,10 @@ def optimize_spreadig_probability_from_data(simulation_data_save_folder, simulat
     av_stoch_n_outlets = []
     std_stoch_n_outlets = []
     
-    phys_probs = [physiological_full_effective_conductances, physiological_lcc_size, physiological_functional_lcc_size, physiological_nonfunctional_component_size, physiological_nonfunctional_component_volume, physiological_susceptibility, physiological_functional_susceptibility, physiological_n_inlets, physiological_n_outlets]
+    phys_props = [physiological_full_effective_conductances, physiological_lcc_size, physiological_functional_lcc_size, physiological_nonfunctional_component_size, physiological_nonfunctional_component_volume, physiological_susceptibility, physiological_functional_susceptibility, physiological_n_inlets, physiological_n_outlets]
     phys_avs = [average_phys_full_effective_conductances, av_phys_lcc_size, av_phys_functional_lcc_size, av_phys_nonfunctional_component_size, av_phys_nonfunctional_component_volume, av_phys_susceptibility, av_phys_functional_susceptibility, av_phys_n_inlets, av_phys_n_outlets]
     phys_stds = [std_phys_full_effective_conductances, std_phys_lcc_size, std_phys_functional_lcc_size, std_phys_nonfunctional_component_size, std_phys_nonfunctional_component_volume, std_phys_susceptibility, std_phys_functional_susceptibility, std_phys_n_inlets, std_phys_n_outlets]
-    stoch_probs = [stochastic_full_effective_conductances, stochastic_lcc_size, stochastic_functional_lcc_size, stochastic_nonfunctional_component_size, stochastic_nonfunctional_component_volume, stochastic_susceptibility, stochastic_functional_susceptibility, stochastic_n_inlets, stochastic_n_outlets]
+    stoch_props = [stochastic_full_effective_conductances, stochastic_lcc_size, stochastic_functional_lcc_size, stochastic_nonfunctional_component_size, stochastic_nonfunctional_component_volume, stochastic_susceptibility, stochastic_functional_susceptibility, stochastic_n_inlets, stochastic_n_outlets]
     stoch_avs = [average_stoch_full_effective_conductances, av_stoch_lcc_size, av_stoch_functional_lcc_size, av_stoch_nonfunctional_component_size, av_stoch_nonfunctional_component_volume, av_stoch_susceptibility, av_stoch_functional_susceptibility, av_stoch_n_inlets, av_stoch_n_outlets]
     stoch_stds = [std_stoch_full_effective_conductances, std_stoch_lcc_size, std_stoch_functional_lcc_size, std_stoch_nonfunctional_component_size, std_stoch_nonfunctional_component_volume, std_stoch_susceptibility, std_stoch_functional_susceptibility, std_stoch_n_inlets, std_stoch_n_outlets]
     
@@ -680,8 +680,8 @@ def optimize_spreadig_probability_from_data(simulation_data_save_folder, simulat
             averaged_stochastic_effective_conductances = np.mean(stochastic_effective_conductances[:, i, :], axis=1) # TODO: modify this after adding the spontaneous embolism option for read_and_combine_spreading_probability_optimization_data
         elif i == 0:
             averaged_stochastic_effective_conductances = np.zeros(stochastic_effective_conductances.shape[0])
-            for j, stochastic_effective_conductance, n_probability_iterations in enumerate(zip(stochastic_effective_conductances, realized_n_probability_iterations)):
-                averaged_stochastic_effective_conductances[j] = np.mean(stochastic_effective_conductance[:realized_n_probability_iterations])
+            for j, (stochastic_effective_conductance, n_probability_iterations) in enumerate(zip(stochastic_effective_conductances, realized_n_probability_iterations)):
+                averaged_stochastic_effective_conductances[j] = np.mean(stochastic_effective_conductance[:n_probability_iterations])
         optimized_spreading_probability_index = np.argmin(np.abs(averaged_stochastic_effective_conductances - physiological_effective_conductance))
         optimized_spreading_probabilities[i] = spreading_probability_range[optimized_spreading_probability_index]
         optimized_stochastic_effective_conductances[i] = averaged_stochastic_effective_conductances[optimized_spreading_probability_index]
@@ -692,7 +692,11 @@ def optimize_spreadig_probability_from_data(simulation_data_save_folder, simulat
         pressure_difference_phys_prevalences_due_to_spreading = [prevalences[i] for prevalences in physiological_prevalences_due_to_spreading]
         physiological_prevalence_length = max([len(prevalence) for prevalence in pressure_difference_phys_prevalences])
         for p, (prevalence, prevalence_due_to_spontaneous_embolism, prevalence_due_to_spreading) in enumerate(zip(pressure_difference_phys_prevalences, pressure_difference_phys_prevalences_due_to_spontaneous_embolism, pressure_difference_phys_prevalences_due_to_spreading)):
-            if len(prevalence) < physiological_prevalence_length:
+            if len(prevalence) == 0:
+                pressure_difference_phys_prevalences[p] = np.zeros(physiological_prevalence_length)
+                pressure_difference_phys_prevalences_due_to_spontaneous_embolism[p] = np.zeros(physiological_prevalence_length)
+                pressure_difference_phys_prevalences_due_to_spreading[p] = np.zeros(physiological_prevalence_length)
+            elif len(prevalence) < physiological_prevalence_length: 
                 pressure_difference_phys_prevalences[p] = np.concatenate((prevalence, prevalence[-1] * np.ones(physiological_prevalence_length - len(prevalence))))
                 pressure_difference_phys_prevalences_due_to_spontaneous_embolism[p] = np.concatenate((prevalence_due_to_spontaneous_embolism, prevalence_due_to_spontaneous_embolism[-1] * np.ones(physiological_prevalence_length - len(prevalence_due_to_spontaneous_embolism))))
                 pressure_difference_phys_prevalences_due_to_spreading[p] = np.concatenate((prevalence_due_to_spreading, prevalence_due_to_spreading[-1] * np.ones(physiological_prevalence_length - len(prevalence_due_to_spreading))))
@@ -706,14 +710,16 @@ def optimize_spreadig_probability_from_data(simulation_data_save_folder, simulat
         average_phys_prevalences_due_to_spreading.append(np.mean(pressure_difference_phys_prevalences_due_to_spreading[:n_pressure_iterations], axis=0))
         std_phys_prevalences_due_to_spreading.append(np.std(pressure_difference_phys_prevalences_due_to_spreading, axis=0))
         
-        for phys_prob, phys_av, phys_std in zip(phys_probs, phys_avs, phys_stds):
-            pressure_diff_phys_probs = [probs[i] for probs in phys_prob]
-            for p, probs in enumerate(pressure_diff_phys_probs):
-                if len(probs) < physiological_prevalence_length:
-                    pressure_diff_phys_probs[p] = np.concatenate((probs, probs[-1] * np.ones(physiological_prevalence_length - len(probs))))
-            pressure_diff_phys_probs = np.array(pressure_diff_phys_probs)
-            phys_av.append(np.mean(pressure_diff_phys_probs[:n_pressure_iterations], axis=0))
-            phys_std.append(np.std(pressure_diff_phys_probs[:n_pressure_iterations], axis=0))
+        for phys_prop, phys_av, phys_std in zip(phys_props, phys_avs, phys_stds):
+            pressure_diff_phys_props = [props[i] for props in phys_prop]
+            for p, props in enumerate(pressure_diff_phys_props):
+                if len(props) == 0:
+                    pressure_diff_phys_props[p] = np.zeros(physiological_prevalence_length)
+                elif len(props) < physiological_prevalence_length:
+                    pressure_diff_phys_props[p] = np.concatenate((props, props[-1] * np.ones(physiological_prevalence_length - len(props))))
+            pressure_diff_phys_props = np.array(pressure_diff_phys_props)
+            phys_av.append(np.mean(pressure_diff_phys_props[:n_pressure_iterations], axis=0))
+            phys_std.append(np.std(pressure_diff_phys_props[:n_pressure_iterations], axis=0))
     
         if spontaneous_embolism:
             pressure_difference_stoch_prevalences = [prevalences[optimized_spreading_probability_index][i] for prevalences in stochastic_prevalences]
@@ -725,7 +731,11 @@ def optimize_spreadig_probability_from_data(simulation_data_save_folder, simulat
             pressure_difference_stoch_prevalences_due_to_spreading = [prevalences[optimized_spreading_probability_index] for prevalences in stochastic_prevalences_due_to_spreading]
         stochastic_prevalence_length = max([len(prevalence) for prevalence in pressure_difference_stoch_prevalences])
         for p, (prevalence, prevalence_due_to_spontaneous_embolism, prevalence_due_to_spreading) in enumerate(zip(pressure_difference_stoch_prevalences, pressure_difference_stoch_prevalences_due_to_spontaneous_embolism, pressure_difference_stoch_prevalences_due_to_spreading)):
-            if len(prevalence) < stochastic_prevalence_length:
+            if len(prevalence) == 0:
+                pressure_difference_stoch_prevalences[p] = np.zeros(stochastic_prevalence_length)
+                pressure_difference_stoch_prevalences_due_to_spontaneous_embolism[p] = np.zeros(stochastic_prevalence_length)
+                pressure_difference_stoch_prevalences_due_to_spreading[p] = np.zeros(stochastic_prevalence_length)
+            elif len(prevalence) < stochastic_prevalence_length:
                 pressure_difference_stoch_prevalences[p] = np.concatenate((prevalence, prevalence[-1] * np.ones(stochastic_prevalence_length - len(prevalence))))
                 pressure_difference_stoch_prevalences_due_to_spontaneous_embolism[p] = np.concatenate((prevalence_due_to_spontaneous_embolism, prevalence_due_to_spontaneous_embolism[-1] * np.ones(stochastic_prevalence_length - len(prevalence_due_to_spontaneous_embolism))))
                 pressure_difference_stoch_prevalences_due_to_spreading[p] = np.concatenate((prevalence_due_to_spreading, prevalence_due_to_spreading[-1] * np.ones(stochastic_prevalence_length - len(prevalence_due_to_spreading))))
@@ -739,17 +749,19 @@ def optimize_spreadig_probability_from_data(simulation_data_save_folder, simulat
         average_stoch_prevalences_due_to_spreading.append(np.mean(pressure_difference_stoch_prevalences_due_to_spreading[:optimized_n_probability_iterations], axis=0))
         std_stoch_prevalences_due_to_spreading.append(np.std(pressure_difference_stoch_prevalences_due_to_spreading[:optimized_n_probability_iterations], axis=0))
         
-        for stoch_prob, stoch_av, stoch_std in zip(stoch_probs, stoch_avs, stoch_stds):
+        for stoch_prop, stoch_av, stoch_std in zip(stoch_props, stoch_avs, stoch_stds):
             if spontaneous_embolism:
-                pressure_diff_stoch_probs = [probs[optimized_spreading_probability_index][i] for probs in stoch_prob]
+                pressure_diff_stoch_props = [props[optimized_spreading_probability_index][i] for props in stoch_prop]
             else:
-                pressure_diff_stoch_probs = [probs[optimized_spreading_probability_index] for probs in stoch_prob]
-            for p, probs in enumerate(pressure_diff_stoch_probs):
-                if len(probs) < stochastic_prevalence_length:
-                    pressure_diff_stoch_probs[p] = np.concatenate((probs, probs[-1] * np.ones(stochastic_prevalence_length - len(probs))))
-            pressure_diff_stoch_probs = np.array(pressure_diff_stoch_probs)
-            stoch_av.append(np.mean(pressure_diff_stoch_probs[:optimized_n_probability_iterations], axis=0))
-            stoch_std.append(np.std(pressure_diff_stoch_probs[:optimized_n_probability_iterations], axis=0))
+                pressure_diff_stoch_props = [props[optimized_spreading_probability_index] for props in stoch_prop]
+            for p, props in enumerate(pressure_diff_stoch_props):
+                if len(props) == 0:
+                    pressure_diff_stoch_props[p] = np.zeros(stochastic_prevalence_length)
+                elif len(props) < stochastic_prevalence_length:
+                    pressure_diff_stoch_props[p] = np.concatenate((props, props[-1] * np.ones(stochastic_prevalence_length - len(props))))
+            pressure_diff_stoch_props = np.array(pressure_diff_stoch_props)
+            stoch_av.append(np.mean(pressure_diff_stoch_props[:optimized_n_probability_iterations], axis=0))
+            stoch_std.append(np.std(pressure_diff_stoch_props[:optimized_n_probability_iterations], axis=0))
     
     data = {'pressure_differences': pressure_differences, 'optimized_spreading_probabilities': optimized_spreading_probabilities, 'physiological_effective_conductances': averaged_physiological_effective_conductances,
             'stochastic_effective_conductances': optimized_stochastic_effective_conductances, 'average_physiological_prevalences': average_phys_prevalences, 'std_physiological_prevalences': std_phys_prevalences,
@@ -927,6 +939,8 @@ def read_and_combine_spreading_probability_optimization_data(simulation_data_sav
         n_iterations = max(np.amax(realized_n_pressure_iterations), np.amax(realized_n_probability_iterations))
     else:
         n_iterations = max_n_iterations
+        realized_n_pressure_iterations[np.where(realized_n_pressure_iterations > max_n_iterations)] = max_n_iterations
+        realized_n_probability_iterations[np.where(realized_n_probability_iterations > max_n_iterations)] = max_n_iterations
             
     pressure_differences = np.sort(pressure_differences)
     spreading_probability_range = np.sort(spreading_probability_range)
@@ -970,7 +984,7 @@ def read_and_combine_spreading_probability_optimization_data(simulation_data_sav
     phys_iteration = np.zeros(len(pressure_differences), dtype=int)
     
     for i, data_pressure_diff in enumerate(data_pressure_differences):
-        pressure_diff = np.round(pressure_diff, decimals=10) # rounding because of float accuracy issues
+        data_pressure_diff = np.round(data_pressure_diff, decimals=10) # rounding because of float accuracy issues
         index = np.where(pressure_differences == data_pressure_diff)[0][0]
         if (not max_n_iterations == None) and (phys_iteration[index] >= max_n_iterations):
             continue

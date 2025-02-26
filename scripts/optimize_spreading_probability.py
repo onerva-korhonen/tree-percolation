@@ -8,7 +8,7 @@ Written by Onerva Korhonen
 import params
 import percolation
 
-max_n_iterations = 10
+max_n_iterations = 20 
 
 if __name__=='__main__':
     simulation_data_save_folder = params.optimized_spreading_probability_save_path_base.rsplit('/', 1)[0]
