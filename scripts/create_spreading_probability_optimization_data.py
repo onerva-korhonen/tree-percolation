@@ -17,6 +17,7 @@ import simulations
 import numpy as np
 import openpnm as op
 import sys
+import pickle
 
 # general parameters; these are common for all runs
 # NOTE: do not change these parameters here; to modify parameters, change params.py
@@ -70,6 +71,9 @@ percolation_type = 'si'
 removal_order = 'random'
 break_nonfunctional_components = False
 
+create_networks = False
+prepare_simulation_networks = True # set to False if network creation includes simulation network preparation
+
 #n_iterations = 100
 pressures = [[pressure] for pressure in vulnerability_pressure_range] + [[] for i in range(len(spreading_probability_range))]
 probabilities = [[] for i in range(len(vulnerability_pressure_range))] + [[probability] for probability in spreading_probability_range]
@@ -86,13 +90,24 @@ if __name__=='__main__':
     probability = probabilities[index - n_pressures * iteration_index]
     save_path = params.optimized_spreading_probability_save_path_base + '_' + str(index) + '.pkl'
 
-    cfg['conduit_diameters'] = 'lognormal'
+    if create_networks:
 
-    # creating the xylem network following Mrad and preparing it for simulations with OpenPN
-    conduit_elements, conns = mrad_model.create_mrad_network(cfg)
-    net = mrad_model.mrad_to_openpnm(conduit_elements, conns)
-    net_cleaned, _ = mrad_model.clean_network(net, conduit_elements, cfg['net_size'][0] - 1)
-    mrad_model.prepare_simulation_network(net_cleaned, cfg, update_coords=True)
+        cfg['conduit_diameters'] = 'lognormal'
+
+        # creating the xylem network following Mrad and preparing it for simulations with OpenPN
+        conduit_elements, conns = mrad_model.create_mrad_network(cfg)
+        net = mrad_model.mrad_to_openpnm(conduit_elements, conns)
+        net_cleaned, _ = mrad_model.clean_network(net, conduit_elements, cfg['net_size'][0] - 1)
+        mrad_model.prepare_simulation_network(net_cleaned, cfg, update_coords=True)
+
+    else:
+        network_save_path = params.spreading_probability_optimization_network_save_path_base + '_' + str(iteration_index) + '.pkl' 
+        with open(network_save_path, 'rb') as f:
+            network_data = pickle.load(f)
+            f.close()
+        net = network_data['network']
+        start_conduits = network_data['start_conduits_random_per_component']
+        cfg['start_conduits'] = start_conduits
 
     cfg['conduit_diameters'] = 'inherit_from_net'
 

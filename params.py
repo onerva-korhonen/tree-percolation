@@ -92,6 +92,7 @@ pooled_optimized_spreading_probability_save_name = 'pooled_optimized_spreading_p
 
 if triton:
     parameter_optimization_save_path_base = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/param_optimization/' + identifier + '/param_optimization_' + identifier
+    spreading_probability_optimization_network_save_path_base = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/optimized_spreading_probability/' + identifier + '_networks/spreading_probability_optimization_network_' + identifier
     network_save_file = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/netpoints'
     percolation_plot_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/percolation_3D_' + identifier + '.pdf'
     nonfunctional_component_size_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/percolation_3D_' + identifier + '_nonfunc_volume.pdf'
@@ -111,6 +112,7 @@ if triton:
     optimized_vc_plot_data_save_path_bases = ['/m/cs/scratch/networks/aokorhon/tree-percolation/output/optimized_spreading_probability/' + identifier + '/optimized_spreading_probability_' + identifier]
 else:
     parameter_optimization_save_path_base = '/home/onervak/projects/hidrogat/output/param_optimization/' + identifier + '/param_optimization_' + identifier
+    spreading_probability_optimization_network_save_path_base = '/home/onervak/projects/hidrogat/output/optimized_spreading_probability/' + identifier + '_networks/spreading_probability_optimization_network_' + identifier
     network_save_file = '/home/onervak/projects/hidrogat/output/netpoints'
     percolation_plot_save_path = '/home/onervak/projects/hidrogat/output/percolation_3D_' + identifier + '.pdf'
     nonfunctional_component_size_save_path = '/home/onervak/projects/hidrogat/output/percolation_3D_' + identifier + '_nonfunc_volume.pdf'

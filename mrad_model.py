@@ -1005,15 +1005,16 @@ def get_conduit_diameters(net, diameter_type, conduits, Dc_cv=params.Dc_cv, Dc=p
     pore_diameters : np.array
         diameter of each pore; all pores of a conduit have the same diameter
     """
-    if diameter_type == 'inherit_from_net': # pore diameters are read from the network
-        pore_diameters = net['pore.diameter']
-        diameters_per_conduit = [pore_diameters[conduit[0]] for conduit in conduits] # all pores of a conduit have same diameter; the diameter of first pore is used for defining conduit diameter
-    elif diameter_type == 'lognormal':
-        Dc_std = Dc_cv*Dc
-        Dc_m = np.log(Dc**2 / np.sqrt(Dc_std**2 + Dc**2))
-        Dc_s = np.sqrt(np.log(Dc_std**2 / (Dc**2) + 1))
-        Dcs = np.random.lognormal(Dc_m, Dc_s, len(conduits)) # diameters of conduits drawn from a lognormal distribution
-        diameters_per_conduit = get_sorted_conduit_diameters(conduits, Dcs)
+    if isinstance(diameter_type, str):
+        if diameter_type == 'inherit_from_net': # pore diameters are read from the network
+            pore_diameters = net['pore.diameter']
+            diameters_per_conduit = [pore_diameters[conduit[0]] for conduit in conduits] # all pores of a conduit have same diameter; the diameter of first pore is used for defining conduit diameter
+        elif diameter_type == 'lognormal':
+            Dc_std = Dc_cv*Dc
+            Dc_m = np.log(Dc**2 / np.sqrt(Dc_std**2 + Dc**2))
+            Dc_s = np.sqrt(np.log(Dc_std**2 / (Dc**2) + 1))
+            Dcs = np.random.lognormal(Dc_m, Dc_s, len(conduits)) # diameters of conduits drawn from a lognormal distribution
+            diameters_per_conduit = get_sorted_conduit_diameters(conduits, Dcs)
     else:
         diameters_per_conduit = diameter_type
     
