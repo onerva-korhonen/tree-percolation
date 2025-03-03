@@ -58,7 +58,9 @@ cfg['bpp_type'] = 'young-laplace_with_constrictions'
 cfg['spontaneous_embolism'] = False
 
 vulnerability_pressure_range = np.arange(0, 8, step=0.25)*1E6
-spreading_probability_range = np.logspace(np.log10(0.0001), np.log10(0.02), 15)
+small_spreading_probability_range = np.logspace(np.log10(0.0001), np.log10(0.02), 15)
+large_spreading_probability_range = np.arange(0.1, 1.025, step=0.025)
+# using two probability ranges is a hack for combining data calculated in different spaces
 
 include_orig_values = True
 
@@ -72,22 +74,37 @@ removal_order = 'random'
 break_nonfunctional_components = False
 
 create_networks = False
-prepare_simulation_networks = True # set to False if network creation includes simulation network preparation
 
 #n_iterations = 100
-pressures = [[pressure] for pressure in vulnerability_pressure_range] + [[] for i in range(len(spreading_probability_range))]
-probabilities = [[] for i in range(len(vulnerability_pressure_range))] + [[probability] for probability in spreading_probability_range]
-n_pressures = len(pressures)
+small_pressures = [[pressure] for pressure in vulnerability_pressure_range] + [[] for i in range(len(small_spreading_probability_range))]
+large_pressures = [[] for i in range(len(large_spreading_probability_range))]
+small_probabilities = [[] for i in range(len(vulnerability_pressure_range))] + [[probability] for probability in small_spreading_probability_range]
+large_probabilities = [[probability] for probability in large_spreading_probability_range]
+n_small_pressures = len(small_pressures)
+n_large_pressures = len(large_pressures)
+small_large_limit = 4699
 
 # NOTE: do not modify any parameters below this point
 
 if __name__=='__main__':
-
     index = int(sys.argv[1])
-    iteration_index = int(np.floor(index / n_pressures))
+    if index <= small_large_limit:
+        pressures = small_pressures
+        probabilities = small_probabilities
+        n_pressures = n_small_pressures
 
-    pressure = pressures[index - n_pressures * iteration_index]
-    probability = probabilities[index - n_pressures * iteration_index]
+        iteration_index = int(np.floor(index / n_pressures))
+        pressure_index = index - n_pressures * iteration_index
+    else:
+        pressures = large_pressures
+        probabilities = large_probabilities
+        n_pressures = n_large_pressures
+
+        iteration_index = int(np.floor((index - small_large_limit - 1) / n_pressures))
+        pressure_index = (index - small_large_limit - 1) - n_pressures * iteration_index
+
+    pressure = pressures[pressure_index]
+    probability = probabilities[pressure_index]
     save_path = params.optimized_spreading_probability_save_path_base + '_' + str(index) + '.pkl'
 
     if create_networks:

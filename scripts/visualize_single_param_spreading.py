@@ -35,7 +35,7 @@ ninlet_colors = [params.percolation_ninlet_color, params.percolation_noutlet_col
 ninlet_labels = [params.percolation_ninlet_label, params.percolation_noutlet_label]
 ninlet_alphas = [params.percolation_ninlet_alpha, params.percolation_noutlet_alpha]
 
-pressure_differences = [3.E6] # TODO: add the desired pressure differences
+pressure_differences = [3.E6, 5.5E6, 7E6] # TODO: add the desired pressure differences
 
 def rmse(x1, x2): # helper function for calculating RMSE
     max_dim = max(len(x1), len(x2))
