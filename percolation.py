@@ -805,11 +805,11 @@ def optimize_spreading_probability_against_empirical_vc(simulation_data_save_fol
     -------
     None.
     """
-    pressure_differences, spreading_probability_range, physiological_PLCs, _, _, _, _, _, _, _, _, _, _, _, _, \
+    pressure_differences, spreading_probability_range, _, _, _, _, _, _, _, _, _, _, _, _, _, \
     stochastic_effective_conductances, stochastic_full_effective_conductances, stochastic_prevalences, \
     stochastic_prevalences_due_to_spontaneous_embolism, stochastic_prevalences_due_to_spreading, stochastic_lcc_size, stochastic_functional_lcc_size, stochastic_nonfunctional_component_size, stochastic_nonfunctional_component_volume, \
     stochastic_susceptibility, stochastic_functional_susceptibility, stochastic_n_inlets, stochastic_n_outlets, spontaneous_embolism, _, \
-    realized_n_probability_iterations = read_and_combine_spreading_probability_optimization_data(simulation_data_save_folder, simulation_data_save_name_base, pooled_data_save_path, max_n_iterations=max_n_iterations, empirical_physiological_data=True, empirical_physiological_data_path=empirical_physiological_data_path)
+    realized_n_probability_iterations, physiological_PLCs = read_and_combine_spreading_probability_optimization_data(simulation_data_save_folder, simulation_data_save_name_base, pooled_data_save_path, max_n_iterations=max_n_iterations, empirical_physiological_data=True, empirical_physiological_data_path=empirical_physiological_data_path)
     
     optimized_spreading_probabilities = np.zeros(len(pressure_differences))
     optimized_stochastic_PLCs = np.zeros(len(pressure_differences))
@@ -850,11 +850,13 @@ def optimize_spreading_probability_against_empirical_vc(simulation_data_save_fol
             averaged_stochastic_effective_conductances = np.zeros(stochastic_effective_conductances.shape[0])
             for j, (stochastic_effective_conductance, n_probability_iterations) in enumerate(zip(stochastic_effective_conductances, realized_n_probability_iterations)):
                 averaged_stochastic_effective_conductances[j] = np.mean(stochastic_effective_conductance[:n_probability_iterations])
-        stochastic_PLCs = 100 * (np.amax(averaged_stochastic_effective_conductances) - averaged_stochastic_effective_conductances) / np.amax(averaged_stochastic_effective_conductances)        
+            stochastic_PLCs = (np.amax(averaged_stochastic_effective_conductances) - averaged_stochastic_effective_conductances) / np.amax(averaged_stochastic_effective_conductances)        
+            if np.amax(physiological_PLCs) > 1:
+                stochastic_PLCs = 100 * stochastic_PLCs # if physiological PLC is given as percentage (between 0 and 100), stochastic PLC should be percentage as well
                 
         optimized_spreading_probability_index = np.argmin(np.abs(stochastic_PLCs - physiological_PLC))
         optimized_spreading_probabilities[i] = spreading_probability_range[optimized_spreading_probability_index]
-        optimized_stochastic_PLCs[i] = averaged_stochastic_effective_conductances[optimized_spreading_probability_index]
+        optimized_stochastic_PLCs[i] = stochastic_PLCs[optimized_spreading_probability_index]
         optimized_n_probability_iterations = realized_n_probability_iterations[optimized_spreading_probability_index]
 
     if spontaneous_embolism:
@@ -1003,6 +1005,9 @@ def read_and_combine_spreading_probability_optimization_data(simulation_data_sav
         for each pressure difference, the number of iterations read
     realized_n_probability_iterations : np.array of ints
         for each spreading probability, the numver of iterations read
+    physiological_PLC : np.array  of floats
+        for each pressure differences, the empirical percentage of lost conductance. Note that PLC values are returned only if empirical_physiological_data == True, otherwise
+        [] is returned instead
     """
     raw_phys_eff_conductances = []
     raw_phys_full_eff_conductances = []
@@ -1030,6 +1035,8 @@ def read_and_combine_spreading_probability_optimization_data(simulation_data_sav
     raw_stoch_func_susceptibility = []
     raw_stoch_n_inlets = []
     raw_stoch_n_outlets = []
+
+    physiological_PLC = []
     
     data_pressure_differences = []
     data_spreading_probabilities = []
@@ -1051,7 +1058,8 @@ def read_and_combine_spreading_probability_optimization_data(simulation_data_sav
             empirical_data = pickle.load(f)
             f.close()
         data_pressure_differences = empirical_data['pressure_differences']
-        raw_phys_eff_conductances = empirical_data['PLC']
+        physiological_PLC.extend(empirical_data['PLC'])
+        physiological_PLC = np.array(physiological_PLC)
         
     data_files = [os.path.join(simulation_data_save_folder, file) for file in os.listdir(simulation_data_save_folder) if os.path.isfile(os.path.join(simulation_data_save_folder, file))]
     data_files = [data_file for data_file in data_files if simulation_data_save_name_base in data_file]
@@ -1126,17 +1134,18 @@ def read_and_combine_spreading_probability_optimization_data(simulation_data_sav
     phys_properties.remove(raw_phys_eff_conductances)
     stoch_properties.remove(raw_stoch_eff_conductances)
     
-    phys_iteration = np.zeros(len(pressure_differences), dtype=int)
+    if not empirical_physiological_data:
+        phys_iteration = np.zeros(len(pressure_differences), dtype=int)
     
-    for i, data_pressure_diff in enumerate(data_pressure_differences):
-        data_pressure_diff = np.round(data_pressure_diff, decimals=10) # rounding because of float accuracy issues
-        index = np.where(pressure_differences == data_pressure_diff)[0][0]
-        if (not max_n_iterations == None) and (phys_iteration[index] >= max_n_iterations):
-            continue
-        physiological_effective_conductances[index, phys_iteration[index]] = raw_phys_eff_conductances[i]
-        for phys_prop, out_phys_prop in zip(phys_properties, out_phys_properties):
-            out_phys_prop[phys_iteration[index]][index] = phys_prop[i]
-        phys_iteration[index] += 1
+        for i, data_pressure_diff in enumerate(data_pressure_differences):
+            data_pressure_diff = np.round(data_pressure_diff, decimals=10) # rounding because of float accuracy issues
+            index = np.where(pressure_differences == data_pressure_diff)[0][0]
+            if (not max_n_iterations == None) and (phys_iteration[index] >= max_n_iterations):
+                continue
+            physiological_effective_conductances[index, phys_iteration[index]] = raw_phys_eff_conductances[i]
+            for phys_prop, out_phys_prop in zip(phys_properties, out_phys_properties):
+                out_phys_prop[phys_iteration[index]][index] = phys_prop[i]
+            phys_iteration[index] += 1
         
     stoch_iteration = np.zeros(len(spreading_probability_range), dtype=int)
     
@@ -1155,7 +1164,7 @@ def read_and_combine_spreading_probability_optimization_data(simulation_data_sav
            physiological_functional_susceptibility, physiological_n_inlets, physiological_n_outlets, stochastic_effective_conductances, stochastic_full_effective_conductances, stochastic_prevalences, \
            stochastic_prevalences_due_to_spontaneous_embolism, stochastic_prevalences_due_to_spreading, stochastic_lcc_size, stochastic_functional_lcc_size, stochastic_nonfunctional_component_size, stochastic_nonfunctional_component_volume, \
            stochastic_susceptibility, stochastic_functional_susceptibility, stochastic_n_inlets, stochastic_n_outlets, spontaneous_embolism, realized_n_pressure_iterations, \
-           realized_n_probability_iterations
+           realized_n_probability_iterations, physiological_PLC
     
 def run_conduit_si_repeatedly(net, net_proj, cfg, spreading_param=0, include_orig_values=False):
     """
