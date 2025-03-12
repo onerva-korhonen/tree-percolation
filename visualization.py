@@ -288,12 +288,12 @@ def plot_optimized_vulnerability_curve(data_save_folders, physiological_color, s
                 std_phys_prevalences_spontaneous = data['std_physiological_prevalences_due_to_spontaneous_embolism']
                 average_phys_prevalences_spreading = data['average_physiological_prevalences_due_to_spreading']
                 std_phys_prevalences_spreading = data['std_physiological_prevalences_due_to_spreading']
-            average_stoch_prevalences = data['average_stochastic_prevalences']
-            std_stoch_prevalences = data['std_stochastic_prevalences']
-            average_stoch_prevalences_spontaneous = data['average_stochastic_prevalences_due_to_spontaneous_embolism']
-            std_stoch_prevalences_spontaneous = data['std_stochastic_prevalences_due_to_spontaneous_embolism']
-            average_stoch_prevalences_spreading = data['average_stochastic_prevalences_due_to_spreading']
-            std_stoch_prevalences_spreading = data['std_stochastic_prevalences_due_to_spreading']
+                average_stoch_prevalences = data['average_stochastic_prevalences']
+                std_stoch_prevalences = data['std_stochastic_prevalences']
+                average_stoch_prevalences_spontaneous = data['average_stochastic_prevalences_due_to_spontaneous_embolism']
+                std_stoch_prevalences_spontaneous = data['std_stochastic_prevalences_due_to_spontaneous_embolism']
+                average_stoch_prevalences_spreading = data['average_stochastic_prevalences_due_to_spreading']
+                std_stoch_prevalences_spreading = data['std_stochastic_prevalences_due_to_spreading']
         else:
             data_files = [os.path.join(data_save_folder, file) for file in os.listdir(data_save_folder) if os.path.isfile(os.path.join(data_save_folder, file))]
             pressure_diffs = np.zeros(len(data_files))
@@ -327,17 +327,16 @@ def plot_optimized_vulnerability_curve(data_save_folders, physiological_color, s
         ax.plot(pressure_diffs, physiological_plc, color=physiological_color, alpha=physiological_alpha, ls=line_style, label='physiological ' + label)
         ax.plot(pressure_diffs, stochastic_plc, color=stochastic_color, alpha=stochastic_alpha, ls=line_style, label='stochastic ' + label)
         
-        if pooled_data: # prevalence information is included only in the pooled data
+        if pooled_data and not plc_in_file: # prevalence information is included only in the pooled data
             for i, (av_phys_prevalence, std_phys_prevalence, av_phys_prevalence_spontaneous, std_phys_prevalence_spontaneous, av_phys_prevalence_spreading, std_phys_prevalence_spreading, av_stoch_prevalence, std_stoch_prevalence, av_stoch_prevalence_spontaneous, std_stoch_prevalence_spontaneous, av_stoch_prevalence_spreading, std_stoch_prevalence_spreading) in enumerate(zip(average_phys_prevalences, std_phys_prevalences, average_phys_prevalences_spontaneous, std_phys_prevalences_spontaneous, average_phys_prevalences_spreading, std_phys_prevalences_spreading, average_stoch_prevalences, std_stoch_prevalences, average_stoch_prevalences_spontaneous, std_stoch_prevalences_spontaneous, average_stoch_prevalences_spreading, std_stoch_prevalences_spreading)):
                 prevalence_fig = plt.figure()
                 prevalence_ax = prevalence_fig.add_subplot(111)
-                if not plc_in_file:
-                    prevalence_ax.plot(av_phys_prevalence, color=physiological_color, alpha=physiological_alpha, ls=tot_prevalence_ls, label='phys total ' + label)
-                    prevalence_ax.fill_between(np.arange(len(av_phys_prevalence)), av_phys_prevalence - std_phys_prevalence, av_phys_prevalence + std_phys_prevalence, color=physiological_color, alpha=std_alpha)
-                    prevalence_ax.plot(av_phys_prevalence_spontaneous, color=physiological_color, alpha=physiological_alpha, ls=spontaneous_prevalence_ls, label='phys spontaneous ' + label)
-                    prevalence_ax.fill_between(np.arange(len(av_phys_prevalence_spontaneous)), av_phys_prevalence_spontaneous - std_phys_prevalence_spontaneous, av_phys_prevalence_spontaneous + std_phys_prevalence_spontaneous, color=physiological_color, alpha=std_alpha)
-                    prevalence_ax.plot(av_phys_prevalence_spreading, color=physiological_color, alpha=physiological_alpha, ls=spreading_prevalence_ls, label='phys spreading ' + label)
-                    prevalence_ax.fill_between(np.arange(len(av_phys_prevalence_spreading)), av_phys_prevalence_spreading - std_phys_prevalence_spreading, av_phys_prevalence_spreading + std_phys_prevalence_spreading, color=physiological_color, alpha=std_alpha)
+                prevalence_ax.plot(av_phys_prevalence, color=physiological_color, alpha=physiological_alpha, ls=tot_prevalence_ls, label='phys total ' + label)
+                prevalence_ax.fill_between(np.arange(len(av_phys_prevalence)), av_phys_prevalence - std_phys_prevalence, av_phys_prevalence + std_phys_prevalence, color=physiological_color, alpha=std_alpha)
+                prevalence_ax.plot(av_phys_prevalence_spontaneous, color=physiological_color, alpha=physiological_alpha, ls=spontaneous_prevalence_ls, label='phys spontaneous ' + label)
+                prevalence_ax.fill_between(np.arange(len(av_phys_prevalence_spontaneous)), av_phys_prevalence_spontaneous - std_phys_prevalence_spontaneous, av_phys_prevalence_spontaneous + std_phys_prevalence_spontaneous, color=physiological_color, alpha=std_alpha)
+                prevalence_ax.plot(av_phys_prevalence_spreading, color=physiological_color, alpha=physiological_alpha, ls=spreading_prevalence_ls, label='phys spreading ' + label)
+                prevalence_ax.fill_between(np.arange(len(av_phys_prevalence_spreading)), av_phys_prevalence_spreading - std_phys_prevalence_spreading, av_phys_prevalence_spreading + std_phys_prevalence_spreading, color=physiological_color, alpha=std_alpha)
                 
                 prevalence_ax.plot(av_stoch_prevalence, color=stochastic_color, alpha=stochastic_alpha, ls=tot_prevalence_ls, label='stoch tot ' + label)
                 prevalence_ax.fill_between(np.arange(len(av_stoch_prevalence)), av_stoch_prevalence - std_stoch_prevalence, av_stoch_prevalence + std_stoch_prevalence, color=stochastic_color, alpha=std_alpha)

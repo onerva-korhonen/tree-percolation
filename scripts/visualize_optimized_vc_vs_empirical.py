@@ -17,4 +17,4 @@ if __name__=='__main__':
                                                      params.physiological_vc_alpha, params.stochastic_vc_alpha, params.optimized_vc_linestyles, params.optimized_vc_labels,
                                                      params.optimized_vc_plot_vs_empirical_save_path, pooled_data=True, pooled_data_save_name=params.pooled_optimized_spreading_probability_vs_empirical_save_name,
                                                      std_alpha=params.std_alpha, prevalence_linestyles=params.prevalence_linestyles,
-                                                     prevalence_plot_save_path_base=params.optimized_prevalence_plot_vs_empirical_save_path_base)
+                                                     prevalence_plot_save_path_base=params.optimized_prevalence_plot_vs_empirical_save_path_base, plc_in_file=True)
