@@ -35,7 +35,7 @@ ninlet_colors = [params.percolation_ninlet_color, params.percolation_noutlet_col
 ninlet_labels = [params.percolation_ninlet_label, params.percolation_noutlet_label]
 ninlet_alphas = [params.percolation_ninlet_alpha, params.percolation_noutlet_alpha]
 
-pressure_differences = [3.E6, 5.5E6, 7E6] # TODO: add the desired pressure differences
+pressure_differences = [3.E6, 4.5E6, 7E6] # TODO: add the desired pressure differences
 
 def rmse(x1, x2): # helper function for calculating RMSE
     max_dim = max(len(x1), len(x2))
@@ -65,6 +65,10 @@ if __name__=='__main__':
         saved_pressure_differences = data['pressure_differences']
         saved_spreading_probabilities = data['optimized_spreading_probabilities']
 
+        mins = [] # TODO: remove
+        maxs = []
+
+
         for pressure_difference in pressure_differences:
             index = np.where(saved_pressure_differences == pressure_difference)[0][0]
             spreading_probability = saved_spreading_probabilities[index]
@@ -72,12 +76,13 @@ if __name__=='__main__':
             # 1) Physiological spreading
 
             # i) prevalence
+
             av_phys_prevalence = data['average_physiological_prevalences'][index]
             std_phys_prevalence = data['std_physiological_prevalences'][index]
             av_phys_prevalence_spontaneous = data['average_physiological_prevalences_due_to_spontaneous_embolism'][index]
-            std_phys_prevalence_spontaneous = data['average_physiological_prevalences_due_to_spontaneous_embolism'][index]
+            std_phys_prevalence_spontaneous = data['std_physiological_prevalences_due_to_spontaneous_embolism'][index]
             av_phys_prevalence_spreading = data['average_physiological_prevalences_due_to_spreading'][index]
-            std_phys_prevalence_spreading = data['average_physiological_prevalences_due_to_spreading'][index]
+            std_phys_prevalence_spreading = data['std_physiological_prevalences_due_to_spreading'][index]
             av_prevalences = [av_phys_prevalence, av_phys_prevalence_spontaneous, av_phys_prevalence_spreading]
             std_prevalences = [std_phys_prevalence, std_phys_prevalence_spontaneous, std_phys_prevalence_spreading]
 
@@ -88,6 +93,7 @@ if __name__=='__main__':
                 prevalence_ax.plot(av_prevalence, ls=ls, color=prevalence_color, label=label + ', ' + prevalence_label)
                 prevalence_ax.fill_between(np.arange(len(av_prevalence)), av_prevalence - std_prevalence, av_prevalence + std_prevalence, color=prevalence_color, alpha=std_alpha)
 
+            plt.ylim((params.prevalence_ylims[0], params.prevalence_ylims[1]))
             prevalence_ax.set_xlabel('Time')
             prevalence_ax.set_ylabel('Prevalence (fraction of embolised conduits)')
             prevalence_ax.legend()
@@ -117,10 +123,14 @@ if __name__=='__main__':
             for av_percolation_outcome, std_percolation_outcome, color, percolation_label, percolation_alpha, axindex in zip(av_percolation_outcomes, std_percolation_outcomes, percolation_outcome_colors, percolation_outcome_labels, percolation_outcome_alphas, percolation_outcome_axindex):
                 axes[axindex].plot(av_percolation_outcome, ls=ls, color=color, label=label + ', ' + percolation_label, alpha=percolation_alpha)
                 axes[axindex].fill_between(np.arange(len(av_percolation_outcome)), av_percolation_outcome - std_percolation_outcome, av_percolation_outcome + std_percolation_outcome, color=color, alpha=std_alpha * percolation_alpha)
-
+                mins.append(np.amin(av_percolation_outcome - std_percolation_outcome)) # TODO: remove
+                maxs.append(np.amax(av_percolation_outcome + std_percolation_outcome))
+            
+            eff_conductance_ax.set_ylim((params.keff_ylims[0], params.keff_ylims[1]))
             eff_conductance_ax.set_xlabel('Time')
             eff_conductance_ax.set_ylabel(percolation_outcome_ylabels[0])
             lcc_size_ax.set_ylabel(percolation_outcome_ylabels[1])
+            lcc_size_ax.set_ylim((params.lcc_ylims[0], params.lcc_ylims[1]))
             eff_conductance_ax.legend()
 
             percolation_plot_save_path = percolation_plot_save_path_base + '_phys_' + str(pressure_difference).replace('.','_') + '.pdf'
@@ -136,6 +146,7 @@ if __name__=='__main__':
             nonfunc_volume_ax.plot(av_phys_nonfunc_volume, ls=ls, color=nonfunc_volume_color, alpha=nonfunc_volume_alpha, label=label + ', ' + nonfunc_volume_label)
             nonfunc_volume_ax.fill_between(np.arange(len(av_phys_nonfunc_volume)), av_phys_nonfunc_volume - std_phys_nonfunc_volume, av_phys_nonfunc_volume + std_phys_nonfunc_volume, color=nonfunc_volume_color, alpha=std_alpha * nonfunc_volume_alpha)
 
+            plt.ylim((params.nonfunc_volume_ylims[0], params.nonfunc_volume_ylims[1]))
             nonfunc_volume_ax.set_xlabel('Time')
             nonfunc_volume_ax.set_ylabel('Nonfunctional component volume (m^3)')
             nonfunc_volume_ax.legend()
@@ -159,6 +170,7 @@ if __name__=='__main__':
                 ninlet_ax.plot(av_n, ls=ls, color=ncolor, label=label + ', ' + nlabel, alpha=nalpha)
                 ninlet_ax.fill_between(np.arange(len(av_n)), av_n - std_n, av_n + std_n, color=ncolor, alpha=std_alpha * nalpha)
 
+            plt.ylim((params.ninlet_ylims[0], params.ninlet_ylims[1]))
             ninlet_ax.set_xlabel('Time')
             ninlet_ax.legend()
 
@@ -171,9 +183,9 @@ if __name__=='__main__':
             av_stoch_prevalence = data['average_stochastic_prevalences'][index]
             std_stoch_prevalence = data['std_stochastic_prevalences'][index]
             av_stoch_prevalence_spontaneous = data['average_stochastic_prevalences_due_to_spontaneous_embolism'][index]
-            std_stoch_prevalence_spontaneous = data['average_stochastic_prevalences_due_to_spontaneous_embolism'][index]
+            std_stoch_prevalence_spontaneous = data['std_stochastic_prevalences_due_to_spontaneous_embolism'][index]
             av_stoch_prevalence_spreading = data['average_stochastic_prevalences_due_to_spreading'][index]
-            std_stoch_prevalence_spreading = data['average_stochastic_prevalences_due_to_spreading'][index]
+            std_stoch_prevalence_spreading = data['std_stochastic_prevalences_due_to_spreading'][index]
             av_prevalences = [av_stoch_prevalence, av_stoch_prevalence_spontaneous, av_stoch_prevalence_spreading]
             std_prevalences = [std_stoch_prevalence, std_stoch_prevalence_spontaneous, std_stoch_prevalence_spreading]
  
@@ -184,6 +196,7 @@ if __name__=='__main__':
                 prevalence_ax.plot(av_prevalence, ls=ls, color=prevalence_color, label=label + ', ' + prevalence_label)
                 prevalence_ax.fill_between(np.arange(len(av_prevalence)), av_prevalence - std_prevalence, av_prevalence + std_prevalence, color=prevalence_color, alpha=std_alpha)
  
+            plt.ylim((params.prevalence_ylims[0], params.prevalence_ylims[1]))
             prevalence_ax.set_xlabel('Time')
             prevalence_ax.set_ylabel('Prevalence (fraction of embolised conduits)')
             prevalence_ax.legend()
@@ -213,9 +226,13 @@ if __name__=='__main__':
             for av_percolation_outcome, std_percolation_outcome, color, percolation_label, percolation_alpha, axindex in zip(av_percolation_outcomes, std_percolation_outcomes, percolation_outcome_colors, percolation_outcome_labels, percolation_outcome_alphas, percolation_outcome_axindex):
                 axes[axindex].plot(av_percolation_outcome, ls=ls, color=color, label=label + ', ' + percolation_label, alpha=percolation_alpha)
                 axes[axindex].fill_between(np.arange(len(av_percolation_outcome)), av_percolation_outcome - std_percolation_outcome, av_percolation_outcome + std_percolation_outcome, color=color, alpha=std_alpha * percolation_alpha)
+                mins.append(np.amin(av_percolation_outcome - std_percolation_outcome)) # TODO: remove
+                maxs.append(np.amax(av_percolation_outcome + std_percolation_outcome))
 
+            eff_conductance_ax.set_ylim((params.keff_ylims[0], params.keff_ylims[1]))
             eff_conductance_ax.set_xlabel('Time')
             eff_conductance_ax.set_ylabel(percolation_outcome_ylabels[0])
+            lcc_size_ax.set_ylim((params.lcc_ylims[0], params.lcc_ylims[1]))
             lcc_size_ax.set_ylabel(percolation_outcome_ylabels[1])
             eff_conductance_ax.legend()
  
@@ -232,6 +249,7 @@ if __name__=='__main__':
             nonfunc_volume_ax.plot(av_stoch_nonfunc_volume, ls=ls, color=nonfunc_volume_color, alpha=nonfunc_volume_alpha, label=label + ', ' + nonfunc_volume_label)
             nonfunc_volume_ax.fill_between(np.arange(len(av_stoch_nonfunc_volume)), av_stoch_nonfunc_volume - std_stoch_nonfunc_volume, av_stoch_nonfunc_volume + std_stoch_nonfunc_volume, color=nonfunc_volume_color, alpha=std_alpha * nonfunc_volume_alpha)
 
+            plt.ylim((params.nonfunc_volume_ylims[0], params.nonfunc_volume_ylims[1]))
             nonfunc_volume_ax.set_xlabel('Time')
             nonfunc_volume_ax.set_ylabel('Nonfunctional component volume (m^3)')
             nonfunc_volume_ax.legend()
@@ -254,7 +272,8 @@ if __name__=='__main__':
             for av_n, std_n, ncolor, nlabel, nalpha in zip(av_ns, std_ns, ninlet_colors, ninlet_labels, ninlet_alphas):
                 ninlet_ax.plot(av_n, ls=ls, color=ncolor, label=label + ', ' + nlabel, alpha=nalpha)
                 ninlet_ax.fill_between(np.arange(len(av_n)), av_n - std_n, av_n + std_n, color=ncolor, alpha=std_alpha * nalpha)
- 
+  
+            plt.ylim((params.ninlet_ylims[0], params.ninlet_ylims[1]))
             ninlet_ax.set_xlabel('Time')
             ninlet_ax.legend()
  

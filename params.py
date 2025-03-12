@@ -190,3 +190,8 @@ prevalence_labels = ['total', 'spontaneous', 'spreading']
 prevalence_colors = ['b', 'r', 'g']
 param_optimization_conduit_color = 'r'
 
+prevalence_ylims = [0, 1.2]
+ninlet_ylims = [0, 2750]
+nonfunc_volume_ylims = [0, 2.5E-8]
+keff_ylims = [-0.2E-15, 1.2E-15]
+lcc_ylims = [-7000, 40000] # TODO: update

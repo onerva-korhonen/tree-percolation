@@ -707,7 +707,7 @@ def optimize_spreading_probability_from_data(simulation_data_save_folder, simula
         std_phys_prevalences_due_to_spontaneous_embolism.append(np.std(pressure_difference_phys_prevalences_due_to_spontaneous_embolism[:n_pressure_iterations], axis=0))
         pressure_difference_phys_prevalences_due_to_spreading = np.array(pressure_difference_phys_prevalences_due_to_spreading)
         average_phys_prevalences_due_to_spreading.append(np.mean(pressure_difference_phys_prevalences_due_to_spreading[:n_pressure_iterations], axis=0))
-        std_phys_prevalences_due_to_spreading.append(np.std(pressure_difference_phys_prevalences_due_to_spreading, axis=0))
+        std_phys_prevalences_due_to_spreading.append(np.std(pressure_difference_phys_prevalences_due_to_spreading[:n_pressure_iterations], axis=0))
         
         for phys_prop, phys_av, phys_std in zip(phys_props, phys_avs, phys_stds):
             pressure_diff_phys_props = [props[i] for props in phys_prop]
@@ -747,7 +747,7 @@ def optimize_spreading_probability_from_data(simulation_data_save_folder, simula
         pressure_difference_stoch_prevalences_due_to_spreading = np.array(pressure_difference_stoch_prevalences_due_to_spreading)
         average_stoch_prevalences_due_to_spreading.append(np.mean(pressure_difference_stoch_prevalences_due_to_spreading[:optimized_n_probability_iterations], axis=0))
         std_stoch_prevalences_due_to_spreading.append(np.std(pressure_difference_stoch_prevalences_due_to_spreading[:optimized_n_probability_iterations], axis=0))
-        
+
         for stoch_prop, stoch_av, stoch_std in zip(stoch_props, stoch_avs, stoch_stds):
             if spontaneous_embolism:
                 pressure_diff_stoch_props = [props[optimized_spreading_probability_index][i] for props in stoch_prop]
@@ -761,7 +761,7 @@ def optimize_spreading_probability_from_data(simulation_data_save_folder, simula
             pressure_diff_stoch_props = np.array(pressure_diff_stoch_props)
             stoch_av.append(np.mean(pressure_diff_stoch_props[:optimized_n_probability_iterations], axis=0))
             stoch_std.append(np.std(pressure_diff_stoch_props[:optimized_n_probability_iterations], axis=0))
-    
+
     data = {'pressure_differences': pressure_differences, 'optimized_spreading_probabilities': optimized_spreading_probabilities, 'physiological_effective_conductances': averaged_physiological_effective_conductances,
             'stochastic_effective_conductances': optimized_stochastic_effective_conductances, 'average_physiological_prevalences': average_phys_prevalences, 'std_physiological_prevalences': std_phys_prevalences,
             'average_stochastic_prevalences': average_stoch_prevalences, 'std_stochastic_prevalences': std_stoch_prevalences, 'average_physiological_prevalences_due_to_spontaneous_embolism': average_phys_prevalences_due_to_spontaneous_embolism,
