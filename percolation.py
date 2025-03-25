@@ -1918,16 +1918,18 @@ def run_conduit_si(net, cfg, spreading_param=0, include_orig_values=False):
                 spontaneously_embolized_conduits = np.where(embolization)[0]
                 #for spontaneously_embolized_pore in spontaneously_embolized_pores:
                 for spontaneously_embolized_conduit in spontaneously_embolized_conduits:
+                    if embolization_times[spontaneously_embolized_conduit, 0] > time_step:
                     #spontaneously_embolized_conduit = np.where((conduits[:, 0] <= spontaneously_embolized_pore) & (spontaneously_embolized_pore <= conduits[:, 1]))[0][0]
-                    embolization_times[spontaneously_embolized_conduit, 0] = time_step
-                    if embolization_times[spontaneously_embolized_conduit, 1] > 0: # the spontaneously embolized conduit is functional and will be removed from the network
-                        embolization_times[spontaneously_embolized_conduit, 1] = 0
-                        pores_to_remove.extend(list(np.arange(conduits[spontaneously_embolized_conduit, 0], conduits[spontaneously_embolized_conduit, 1] + 1)))
-                        removed_conduit_indices.append(spontaneously_embolized_conduit)
-                    else: # if a nonfunctional conduit is embolized, nonfunctional component size and volume decrease
-                        nonfunctional_component_size[time_step] -= 1
-                        nonfunctional_component_volume[time_step] -= np.sum(np.pi * 0.5 * orig_pore_diameter[np.arange(orig_conduits[spontaneously_embolized_conduit, 0], orig_conduits[spontaneously_embolized_conduit, 1] + 1)]**2 * conduit_element_length)
-                n_spontaneously_embolized += len(removed_conduit_indices)
+                        embolization_times[spontaneously_embolized_conduit, 0] = time_step
+                        n_spontaneously_embolized += 1
+                        if embolization_times[spontaneously_embolized_conduit, 1] > 0: # the spontaneously embolized conduit is functional and will be removed from the network
+                            embolization_times[spontaneously_embolized_conduit, 1] = 0
+                            pores_to_remove.extend(list(np.arange(conduits[spontaneously_embolized_conduit, 0], conduits[spontaneously_embolized_conduit, 1] + 1)))
+                            removed_conduit_indices.append(spontaneously_embolized_conduit)
+                        else: # if a nonfunctional conduit is embolized, nonfunctional component size and volume decrease
+                            nonfunctional_component_size[time_step] -= 1
+                            nonfunctional_component_volume[time_step] -= np.sum(np.pi * 0.5 * orig_pore_diameter[np.arange(orig_conduits[spontaneously_embolized_conduit, 0], orig_conduits[spontaneously_embolized_conduit, 1] + 1)]**2 * conduit_element_length)
+                #n_spontaneously_embolized += (len(removed_conduit_indices) + n_embolized_nonfunctional)
             
             # embolism spreading
             embolized_conduits = np.where(embolization_times[:, 0] < time_step)[0]
