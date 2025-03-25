@@ -47,7 +47,7 @@ if fixed_random:
 NPc = np.array([0.8, 0.8]) # probability to start a new conduit
 Pc = np.array([0.9, 0.9]) # probability to end an existing conduit
 Pe_rad = np.array([0.01, 0.01]) # probability of radial connection
-Pe_tan = np.array([0.8, 0.8]) # probability of tangential connection
+Pe_tan = np.array([0.9, 0.9]) # probability of tangential connection
     
 # anatomical + physiological parameters
 Lce = 0.42E-3 # m; average conduit element length in Betula pendula branches; from Bhat & Kärkkäinen 1981
