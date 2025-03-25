@@ -50,7 +50,7 @@ cfg['Pe_rad'] = params.Pe_rad
 cfg['Pe_tan'] = params.Pe_tan
 
 # parameters specific to this run
-cfg['net_size'] = [100, 100, 100]
+cfg['net_size'] = [100, 10, 100]
 cfg['bpp_type'] = 'young-laplace_with_constrictions'
 cfg['spontaneous_embolism'] = False
 

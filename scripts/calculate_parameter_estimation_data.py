@@ -12,9 +12,9 @@ import parameter_estimation
 
 in_iterations = 10
 
-start_divider = 1000
-end_divider = 100
-rad_divider = 10
+start_divider = 1210 # len(end_range) * len(Pe_rad_range) * n_iterations
+end_divider = 110 # len(Pe_rad_range) * n_iterations
+rad_divider = 10 # n_iterations
 
 start_range = np.arange(0, 1.1, 0.1) 
 end_range = np.arange(0, 1.1, 0.1)
@@ -25,7 +25,7 @@ Pe_tan_range = np.arange(0, 1.1, 0.1)
 Pes_rad = [[Pe_rad, Pe_rad] for Pe_rad in Pe_rad_range]
 Pes_tan = [[Pe_tan, Pe_tan] for Pe_tan in Pe_tan_range]
 
-optimization_net_size = [100, 100, 100]
+optimization_net_size = [100, 10, 100]
 
 if __name__=='__main__':
     index = int(sys.argv[1])
