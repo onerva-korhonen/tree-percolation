@@ -681,7 +681,7 @@ def optimize_spreading_probability_from_data(simulation_data_save_folder, simula
             averaged_stochastic_effective_conductances = np.zeros(stochastic_effective_conductances.shape[0])
             for j, (stochastic_effective_conductance, n_probability_iterations) in enumerate(zip(stochastic_effective_conductances, realized_n_probability_iterations)):
                 averaged_stochastic_effective_conductances[j] = np.mean(stochastic_effective_conductance[:n_probability_iterations])
-        optimized_spreading_probability_index = np.argmin(np.abs(averaged_stochastic_effective_conductances - physiological_effective_conductance))
+        optimized_spreading_probability_index = np.argmin(np.abs(averaged_stochastic_effective_conductances - physiological_effective_conductance)) # TODO: check that this works when spontaneous_embolism == True
         optimized_spreading_probabilities[i] = spreading_probability_range[optimized_spreading_probability_index]
         optimized_stochastic_effective_conductances[i] = averaged_stochastic_effective_conductances[optimized_spreading_probability_index]
         optimized_n_probability_iterations = realized_n_probability_iterations[optimized_spreading_probability_index]
@@ -1111,7 +1111,7 @@ def read_and_combine_spreading_probability_optimization_data(simulation_data_sav
     physiological_functional_susceptibility = [[[] for pressure_diff in pressure_differences] for i in range(n_iterations)]
     physiological_n_inlets = [[[] for pressure_diff in pressure_differences] for i in range(n_iterations)]
     physiological_n_outlets = [[[] for pressure_diff in pressure_differences] for i in range(n_iterations)]
-    stochastic_effective_conductances = np.zeros((len(spreading_probability_range), n_iterations))
+    stochastic_effective_conductances = np.zeros((len(spreading_probability_range), n_iterations)) # TODO: add a dimension for pressure differences in all stoch properties if spontaneous_embolism == True
     stochastic_full_effective_conductances = [[[] for probability in spreading_probability_range] for i in range(n_iterations)]
     stochastic_prevalences = [[[] for probability in spreading_probability_range] for i in range(n_iterations)]
     stochastic_prevalences_due_to_spontaneous_embolism = [[[] for probability in spreading_probability_range] for i in range(n_iterations)]
@@ -1154,7 +1154,7 @@ def read_and_combine_spreading_probability_optimization_data(simulation_data_sav
         index = np.where(spreading_probability_range == data_probability)[0][0]
         if (not max_n_iterations == None) and (stoch_iteration[index] >= max_n_iterations):
             continue
-        stochastic_effective_conductances[index, stoch_iteration[index]] = raw_stoch_eff_conductances[i]
+        stochastic_effective_conductances[index, stoch_iteration[index]] = raw_stoch_eff_conductances[i] # TODO: add another index for pressure difference is spontaneous_embolism == True
         for stoch_prop, out_stoch_prop in zip(stoch_properties, out_stoch_properties):
             out_stoch_prop[stoch_iteration[index]][index] = stoch_prop[i]
         stoch_iteration[index] += 1
@@ -1907,14 +1907,18 @@ def run_conduit_si(net, cfg, spreading_param=0, include_orig_values=False):
                 pores_to_remove.extend(list(np.arange(conduits[start_conduit][0], conduits[start_conduit][1] + 1)))
                 conduits[start_conduit +1::, 0:2] = conduits[start_conduit +1::, 0:2] - conduits[start_conduit, 2]
             conduits[start_conduits, :] = -1
-        else: # TODO: now spontaneous embolisms are not possible in non-functional conduits since their pores are not included in water['pore.pressure'] and in conduits
+        else: # TODO: now spontaneous embolisms are not possible in non-functional conduits since their pores are not included in the conduits array
+              # an obvious solution would be to pick spontaneously embolised conduits instead of pores (that is, to evaluate test < spontaneous_embolism_probability for conduits instead of pores)
+              # requires testing
             # spontaneous embolism due to bubble expansion
             if spontaneous_embolism:
-                test = np.random.rand(perc_net['pore.coords'].shape[0])
+                #test = np.random.rand(perc_net['pore.coords'].shape[0])
+                test = np.random.rand(conduits.shape[0])
                 embolization = test < spontaneous_embolism_probability
-                spontaneously_embolized_pores = np.where(embolization)[0]
-                for spontaneously_embolized_pore in spontaneously_embolized_pores:
-                    spontaneously_embolized_conduit = np.where((conduits[:, 0] <= spontaneously_embolized_pore) & (spontaneously_embolized_pore <= conduits[:, 1]))[0][0]
+                spontaneously_embolized_conduits = np.where(embolization)[0]
+                #for spontaneously_embolized_pore in spontaneously_embolized_pores:
+                for spontaneously_embolized_conduit in spontaneously_embolized_conduits:
+                    #spontaneously_embolized_conduit = np.where((conduits[:, 0] <= spontaneously_embolized_pore) & (spontaneously_embolized_pore <= conduits[:, 1]))[0][0]
                     embolization_times[spontaneously_embolized_conduit, 0] = time_step
                     if embolization_times[spontaneously_embolized_conduit, 1] > 0: # the spontaneously embolized conduit is functional and will be removed from the network
                         embolization_times[spontaneously_embolized_conduit, 1] = 0
@@ -1979,7 +1983,7 @@ def run_conduit_si(net, cfg, spreading_param=0, include_orig_values=False):
         try:
             op.topotools.trim(perc_net, pores=pores_to_remove)
             prevalence[time_step] = np.sum(embolization_times[:, 0] <= time_step) / conduits.shape[0]
-            prevalence_due_to_spontaneous_embolism[time_step] = n_spontaneously_embolized /conduits.shape[0]
+            prevalence_due_to_spontaneous_embolism[time_step] = n_spontaneously_embolized / conduits.shape[0]
             prevalence_due_to_spreading[time_step] = n_embolized_through_spreading / conduits.shape[0]
 
             lcc_size[time_step], susceptibility[time_step], _ = get_conduit_lcc_size(net=perc_net, use_cylindrical_coords=use_cylindrical_coords, 
@@ -2029,6 +2033,8 @@ def run_conduit_si(net, cfg, spreading_param=0, include_orig_values=False):
                     nonfunctional_component_volume[time_step::] = nonfunctional_component_volume[time_step - 1] + np.sum(np.pi * 0.5 * perc_net['pore.diameter']**2 * conduit_element_length)
                 lcc_size[time_step::] = max_removed_lcc
                 prevalence[time_step::] = np.sum(embolization_times[:, 0] <= time_step) / conduits.shape[0]
+                prevalence_due_to_spontaneous_embolism[time_step::] = n_spontaneously_embolized / conduits.shape[0]
+                prevalence_due_to_spreading[time_step::] = n_embolized_through_spreading / conduits.shape[0]
                 time_step += 1
                 break
             elif (str(e) == "'throat.conns'") and (len(perc_net['throat.all']) == 0): # this is because all links have been removed from the network by op.topotools.trim
@@ -2038,7 +2044,9 @@ def run_conduit_si(net, cfg, spreading_param=0, include_orig_values=False):
                 else:
                     nonfunctional_component_volume[time_step::] = nonfunctional_component_volume[time_step - 1] + np.sum(np.pi * 0.5 * perc_net['pore.diameter'] * conduit_element_length)
                 lcc_size[time_step::] = max_removed_lcc
-                prevalence[time_step::] = conduits.shape[0] - np.sum(embolization_times[:, 0] <= time_step)
+                prevalence[time_step::] = np.sum(embolization_times[:, 0] <= time_step) / conduits.shape[0]
+                prevalence_due_to_spontaneous_embolism[time_step::] = n_spontaneously_embolized / conduits.shape[0]
+                prevalence_due_to_spreading[time_step::] = n_embolized_through_spreading / conduits.shape[0]
                 time_step += 1
                 break
             else:
