@@ -403,7 +403,8 @@ def run_spreading_iteration(net, cfg, pressure_differences, save_path, spreading
     physiological_n_outlets = []
     if spontaneous_embolism:
         spontaneous_embolism_probabilities = cfg['spontaneous_embolism_probabilities']
-        stochastic_effective_conductances = np.zeros((len(spreading_probability_range), len(pressure_differences)))
+        spontaneous_embolism_pressure_differences = np.sort(np.array(list(spontaneous_embolism_probabilities.keys())))
+        stochastic_effective_conductances = np.zeros((len(spreading_probability_range), len(spontaneous_embolism_pressure_differences)))
         stochastic_full_effective_conductances = [[] for spreading_probability in spreading_probability_range]
         stochastic_prevalences = [[] for spreading_probability in spreading_probability_range]
         stochastic_prevalences_due_to_spontaneous_embolism = [[] for spreading_probability in spreading_probability_range]
@@ -455,7 +456,7 @@ def run_spreading_iteration(net, cfg, pressure_differences, save_path, spreading
     cfg['si_type'] = 'stochastic'
     if spontaneous_embolism:
         for i, spreading_probability in enumerate(spreading_probability_range):
-            for j, pressure_difference in enumerate(pressure_differences):
+            for j, pressure_difference in enumerate(spontaneous_embolism_pressure_differences):
                 cfg['spontaneous_embolism_probability'] = spontaneous_embolism_probabilities[pressure_difference]
                 effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence, prevalence_due_to_spontaneous_embolism, prevalence_due_to_spreading = run_conduit_si(net, cfg, spreading_probability, include_orig_values)
                 stochastic_effective_conductances[i, j] = effective_conductances[-1]
@@ -489,7 +490,7 @@ def run_spreading_iteration(net, cfg, pressure_differences, save_path, spreading
             stochastic_n_outlets.append(n_outlets)
      
     # saving simulation outputs
-    data = {'pressure_differences': pressure_differences, 'spreading_probability_range': spreading_probability_range, 'physiological_effective_conductances': physiological_effective_conductances,
+    data = {'pressure_differences': pressure_differences, 'spreading_probability_range': spreading_probability_range, 'spontaneous_embolism_pressure_differences': spontaneous_embolism_pressure_differences, 'physiological_effective_conductances': physiological_effective_conductances,
             'physiological_prevalences': physiological_prevalences, 'stochastic_effective_conductances': stochastic_effective_conductances, 'stochastic_prevalences': stochastic_prevalences,
             'spontaneous_embolism': spontaneous_embolism, 'physiological_prevalences_due_to_spontaneous_embolism': physiological_prevalences_due_to_spontaneous_embolism,
             'physiological_prevalences_due_to_spreading': physiological_prevalences_due_to_spreading, 'stochastic_prevalences_due_to_spontaneous_embolism': stochastic_prevalences_due_to_spontaneous_embolism,

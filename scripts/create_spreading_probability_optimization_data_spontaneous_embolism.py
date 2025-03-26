@@ -105,7 +105,7 @@ if __name__=='__main__':
 
     pressure = pressures[pressure_index]
     probability = probabilities[pressure_index]
-    save_path = params.optimized_spreading_probability_save_path_base + '_spontaneous_embolism_' + str(index) + '.pkl'
+    save_path = params.optimized_spreading_probability_save_path_base + '_' + str(index) + '.pkl'
 
     if create_networks:
 
@@ -128,9 +128,7 @@ if __name__=='__main__':
 
     cfg['conduit_diameters'] = 'inherit_from_net'
 
-    import pdb; pdb.set_trace()
-
-    spontaneous_embolism_probabilities = percolation.get_spontaneous_embolism_probability([pressure])
+    spontaneous_embolism_probabilities = percolation.get_spontaneous_embolism_probability(vulnerability_pressure_range)
     cfg['spontaneous_embolism_probabilities'] = spontaneous_embolism_probabilities
 
 
