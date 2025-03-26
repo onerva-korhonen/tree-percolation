@@ -1041,6 +1041,7 @@ def read_and_combine_spreading_probability_optimization_data(simulation_data_sav
     
     data_pressure_differences = []
     data_spreading_probabilities = []
+    data_spontaneous_embolism_pressure_differences = []
     
     phys_properties = [raw_phys_eff_conductances, raw_phys_full_eff_conductances, raw_phys_func_lcc_size, raw_phys_func_susceptibility, raw_phys_lcc_size, raw_phys_n_inlets, raw_phys_n_outlets, raw_phys_nonfunc_component_size, raw_phys_nonfunc_component_volume,
                   raw_phys_prevalence, raw_phys_prevalence_due_to_spontaneous_embolism, raw_phys_prevalence_due_to_spreading, raw_phys_susceptibility]
@@ -1085,9 +1086,12 @@ def read_and_combine_spreading_probability_optimization_data(simulation_data_sav
             for stoch_prop, stoch_key in zip(stoch_properties, stoch_keys):
                 stoch_prop.extend(data[stoch_key])
             data_spreading_probabilities.extend(data['spreading_probability_range'])
+            data_spontaneous_embolism_pressure_differences.extend(data['spontaneous_embolism_pressure_differences'])
     
     pressure_differences, realized_n_pressure_iterations = np.unique(np.round(data_pressure_differences, decimals=10), return_counts=True) # rounding to avoid float accuracy issues
     spreading_probability_range, realized_n_probability_iterations = np.unique(np.round(data_spreading_probabilities, decimals=10), return_counts=True)
+    spontaneous_embolism_pressure_differences = np.unique(np.round(data_spontaneous_embolism_pressure_differences, decimals=10))
+    assert np.all(spontaneous_embolism_pressure_differences == pressure_differences), 'pressure differences used for calculating spontaneous embolism probabilities do not match the pressure differences used to simulate spreading, please check the data'
     
     if max_n_iterations == None:
         n_iterations = max(np.amax(realized_n_pressure_iterations), np.amax(realized_n_probability_iterations))
@@ -1112,19 +1116,34 @@ def read_and_combine_spreading_probability_optimization_data(simulation_data_sav
     physiological_functional_susceptibility = [[[] for pressure_diff in pressure_differences] for i in range(n_iterations)]
     physiological_n_inlets = [[[] for pressure_diff in pressure_differences] for i in range(n_iterations)]
     physiological_n_outlets = [[[] for pressure_diff in pressure_differences] for i in range(n_iterations)]
-    stochastic_effective_conductances = np.zeros((len(spreading_probability_range), n_iterations)) # TODO: add a dimension for pressure differences in all stoch properties if spontaneous_embolism == True
-    stochastic_full_effective_conductances = [[[] for probability in spreading_probability_range] for i in range(n_iterations)]
-    stochastic_prevalences = [[[] for probability in spreading_probability_range] for i in range(n_iterations)]
-    stochastic_prevalences_due_to_spontaneous_embolism = [[[] for probability in spreading_probability_range] for i in range(n_iterations)]
-    stochastic_prevalences_due_to_spreading = [[[] for probability in spreading_probability_range] for i in range(n_iterations)]
-    stochastic_lcc_size = [[[] for probability in spreading_probability_range] for i in range(n_iterations)]
-    stochastic_functional_lcc_size = [[[] for probability in spreading_probability_range] for i in range(n_iterations)]
-    stochastic_nonfunctional_component_size = [[[] for probability in spreading_probability_range] for i in range(n_iterations)]
-    stochastic_nonfunctional_component_volume = [[[] for probability in spreading_probability_range] for i in range(n_iterations)]
-    stochastic_susceptibility = [[[] for probability in spreading_probability_range] for i in range(n_iterations)]
-    stochastic_functional_susceptibility = [[[] for probability in spreading_probability_range] for i in range(n_iterations)]
-    stochastic_n_inlets = [[[] for probability in spreading_probability_range] for i in range(n_iterations)]
-    stochastic_n_outlets = [[[] for probability in spreading_probability_range] for i in range(n_iterations)]
+    if spontaneous_embolism:
+        stochastic_effective_conductances = np.zeros((len(spreading_probability_range), len(pressure_differences), n_iterations)) # TODO: add a dimension for pressure differences in all stoch properties if spontaneous_embolism == True
+        stochastic_full_effective_conductances = [[[[] for pressure_difference in pressure_differences] for probability in spreading_probability_range] for i in range(n_iterations)]
+        stochastic_prevalences = [[[[] for pressure_difference in pressure_differences] for probability in spreading_probability_range] for i in range(n_iterations)]
+        stochastic_prevalences_due_to_spontaneous_embolism = [[[[] for pressure_difference in pressure_differences] for probability in spreading_probability_range] for i in range(n_iterations)]
+        stochastic_prevalences_due_to_spreading = [[[[] for pressure_difference in pressure_differences] for probability in spreading_probability_range] for i in range(n_iterations)]
+        stochastic_lcc_size = [[[[] for pressure_difference in pressure_differences] for probability in spreading_probability_range] for i in range(n_iterations)]
+        stochastic_functional_lcc_size = [[[[] for pressure_difference in pressure_differences] for probability in spreading_probability_range] for i in range(n_iterations)]
+        stochastic_nonfunctional_component_size = [[[[] for pressure_difference in pressure_differences] for probability in spreading_probability_range] for i in range(n_iterations)]
+        stochastic_nonfunctional_component_volume = [[[[] for pressure_difference in pressure_differences] for probability in spreading_probability_range] for i in range(n_iterations)]
+        stochastic_susceptibility = [[[[] for pressure_difference in pressure_differences] for probability in spreading_probability_range] for i in range(n_iterations)]
+        stochastic_functional_susceptibility = [[[[] for pressure_difference in pressure_differences] for probability in spreading_probability_range] for i in range(n_iterations)]
+        stochastic_n_inlets = [[[[] for pressure_difference in pressure_differences] for probability in spreading_probability_range] for i in range(n_iterations)]
+        stochastic_n_outlets = [[[[] for pressure_difference in pressure_differences] for probability in spreading_probability_range] for i in range(n_iterations)]
+    else:
+        stochastic_effective_conductances = np.zeros((len(spreading_probability_range), n_iterations))
+        stochastic_full_effective_conductances = [[[] for probability in spreading_probability_range] for i in range(n_iterations)]
+        stochastic_prevalences = [[[] for probability in spreading_probability_range] for i in range(n_iterations)]
+        stochastic_prevalences_due_to_spontaneous_embolism = [[[] for probability in spreading_probability_range] for i in range(n_iterations)]
+        stochastic_prevalences_due_to_spreading = [[[] for probability in spreading_probability_range] for i in range(n_iterations)]
+        stochastic_lcc_size = [[[] for probability in spreading_probability_range] for i in range(n_iterations)]
+        stochastic_functional_lcc_size = [[[] for probability in spreading_probability_range] for i in range(n_iterations)]
+        stochastic_nonfunctional_component_size = [[[] for probability in spreading_probability_range] for i in range(n_iterations)]
+        stochastic_nonfunctional_component_volume = [[[] for probability in spreading_probability_range] for i in range(n_iterations)]
+        stochastic_susceptibility = [[[] for probability in spreading_probability_range] for i in range(n_iterations)]
+        stochastic_functional_susceptibility = [[[] for probability in spreading_probability_range] for i in range(n_iterations)]
+        stochastic_n_inlets = [[[] for probability in spreading_probability_range] for i in range(n_iterations)]
+        stochastic_n_outlets = [[[] for probability in spreading_probability_range] for i in range(n_iterations)]
     
     out_phys_properties = [physiological_full_effective_conductances, physiological_functional_lcc_size, physiological_functional_susceptibility, physiological_lcc_size, physiological_n_inlets, physiological_n_outlets, 
                            physiological_nonfunctional_component_size, physiological_nonfunctional_component_volume, physiological_prevalences, physiological_prevalences_due_to_spontaneous_embolism, physiological_prevalences_due_to_spreading, 
@@ -1155,9 +1174,16 @@ def read_and_combine_spreading_probability_optimization_data(simulation_data_sav
         index = np.where(spreading_probability_range == data_probability)[0][0]
         if (not max_n_iterations == None) and (stoch_iteration[index] >= max_n_iterations):
             continue
-        stochastic_effective_conductances[index, stoch_iteration[index]] = raw_stoch_eff_conductances[i] # TODO: add another index for pressure difference is spontaneous_embolism == True
-        for stoch_prop, out_stoch_prop in zip(stoch_properties, out_stoch_properties):
-            out_stoch_prop[stoch_iteration[index]][index] = stoch_prop[i]
+        if spontaneous_embolism:
+            for j, data_pressure_diff in data_pressure_differences: # TODO: check if this works
+                pressure_index = np.where(pressure_differences == data_pressure_diff)[0][0]
+                stochastic_effective_conductances[index, pressure_index, stoch_iteration[index]] = raw_stoch_eff_conductances[i, j]
+                for stoch_prop, out_stoch_prop in zip(stoch_properties, out_stoch_properties):
+                    out_stoch_prop[stoch_iteration[index]][index][pressure_index] = stoch_prop[i][j]
+        else:
+            stochastic_effective_conductances[index, stoch_iteration[index]] = raw_stoch_eff_conductances[i]
+            for stoch_prop, out_stoch_prop in zip(stoch_properties, out_stoch_properties):
+                out_stoch_prop[stoch_iteration[index]][index] = stoch_prop[i]
         stoch_iteration[index] += 1
         
     return pressure_differences, spreading_probability_range, physiological_effective_conductances, physiological_full_effective_conductances, physiological_prevalences, physiological_prevalences_due_to_spontaneous_embolism, \
