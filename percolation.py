@@ -1898,7 +1898,7 @@ def run_conduit_si(net, cfg, spreading_param=0, include_orig_values=False):
         orig_prevalence_due_to_spreading = 0
          
     while (prevalence_diff > 0) & (time_step < si_length):
-            
+
         pores_to_remove = []
         removed_conduit_indices = []
 
@@ -1907,19 +1907,14 @@ def run_conduit_si(net, cfg, spreading_param=0, include_orig_values=False):
                 pores_to_remove.extend(list(np.arange(conduits[start_conduit][0], conduits[start_conduit][1] + 1)))
                 conduits[start_conduit +1::, 0:2] = conduits[start_conduit +1::, 0:2] - conduits[start_conduit, 2]
             conduits[start_conduits, :] = -1
-        else: # TODO: now spontaneous embolisms are not possible in non-functional conduits since their pores are not included in the conduits array
-              # an obvious solution would be to pick spontaneously embolised conduits instead of pores (that is, to evaluate test < spontaneous_embolism_probability for conduits instead of pores)
-              # requires testing
+        else: 
             # spontaneous embolism due to bubble expansion
             if spontaneous_embolism:
-                #test = np.random.rand(perc_net['pore.coords'].shape[0])
                 test = np.random.rand(conduits.shape[0])
                 embolization = test < spontaneous_embolism_probability
                 spontaneously_embolized_conduits = np.where(embolization)[0]
-                #for spontaneously_embolized_pore in spontaneously_embolized_pores:
                 for spontaneously_embolized_conduit in spontaneously_embolized_conduits:
                     if embolization_times[spontaneously_embolized_conduit, 0] > time_step:
-                    #spontaneously_embolized_conduit = np.where((conduits[:, 0] <= spontaneously_embolized_pore) & (spontaneously_embolized_pore <= conduits[:, 1]))[0][0]
                         embolization_times[spontaneously_embolized_conduit, 0] = time_step
                         n_spontaneously_embolized += 1
                         if embolization_times[spontaneously_embolized_conduit, 1] > 0: # the spontaneously embolized conduit is functional and will be removed from the network
@@ -1929,7 +1924,6 @@ def run_conduit_si(net, cfg, spreading_param=0, include_orig_values=False):
                         else: # if a nonfunctional conduit is embolized, nonfunctional component size and volume decrease
                             nonfunctional_component_size[time_step] -= 1
                             nonfunctional_component_volume[time_step] -= np.sum(np.pi * 0.5 * orig_pore_diameter[np.arange(orig_conduits[spontaneously_embolized_conduit, 0], orig_conduits[spontaneously_embolized_conduit, 1] + 1)]**2 * conduit_element_length)
-                #n_spontaneously_embolized += (len(removed_conduit_indices) + n_embolized_nonfunctional)
             
             # embolism spreading
             embolized_conduits = np.where(embolization_times[:, 0] < time_step)[0]
@@ -1950,7 +1944,7 @@ def run_conduit_si(net, cfg, spreading_param=0, include_orig_values=False):
                     break # no further embolizations are possible and the simulation stops
             
             for conduit in conduit_neighbours.keys():
-                if embolization_times[conduit, 0] < time_step:
+                if embolization_times[conduit, 0] <= time_step:
                     continue # conduit is already embolized
                 else:
                     if len(conduit_neighbours[conduit]) > 0:
@@ -2071,7 +2065,7 @@ def run_conduit_si(net, cfg, spreading_param=0, include_orig_values=False):
         prevalence = np.append(np.array([orig_prevalence]), prevalence[0:time_step])
         prevalence_due_to_spontaneous_embolism = np.append(np.array([orig_prevalence_due_to_spontaneous_embolism]), prevalence_due_to_spontaneous_embolism[0:time_step])
         prevalence_due_to_spreading = np.append(np.array([orig_prevalence_due_to_spreading]), prevalence_due_to_spreading[0:time_step])
-        
+       
         return effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence, prevalence_due_to_spontaneous_embolism, prevalence_due_to_spreading
     else:
         return effective_conductances[0:time_step], lcc_size[0:time_step], functional_lcc_size[0:time_step], nonfunctional_component_size[0:time_step], susceptibility[0:time_step], functional_susceptibility[0:time_step], n_inlets[0:time_step], n_outlets[0:time_step], nonfunctional_component_volume[0:time_step], prevalence[0:time_step], prevalence_due_to_spontaneous_embolism[0:time_step], prevalence_due_to_spreading[0:time_step]
