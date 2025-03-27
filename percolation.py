@@ -1083,10 +1083,12 @@ def read_and_combine_spreading_probability_optimization_data(simulation_data_sav
                 data_pressure_differences.extend(data['pressure_differences'])
             
         if len(data['spreading_probability_range']) > 0:
+            if 'spontaneous_embolism_pressure_differences' in data.keys(): # TODO: remove this if clause and read spontaneous_embolism_pressure_differences from all data
+                data_spontaneous_embolism_pressure_differences.extend(data['spontaneous_embolism_pressure_differences'])
             for stoch_prop, stoch_key in zip(stoch_properties, stoch_keys):
                 stoch_prop.extend(data[stoch_key])
             data_spreading_probabilities.extend(data['spreading_probability_range'])
-            data_spontaneous_embolism_pressure_differences.extend(data['spontaneous_embolism_pressure_differences'])
+            #data_spontaneous_embolism_pressure_differences.extend(data['spontaneous_embolism_pressure_differences'])
     
     pressure_differences, realized_n_pressure_iterations = np.unique(np.round(data_pressure_differences, decimals=10), return_counts=True) # rounding to avoid float accuracy issues
     spreading_probability_range, realized_n_probability_iterations = np.unique(np.round(data_spreading_probabilities, decimals=10), return_counts=True)
@@ -1175,7 +1177,7 @@ def read_and_combine_spreading_probability_optimization_data(simulation_data_sav
         if (not max_n_iterations == None) and (stoch_iteration[index] >= max_n_iterations):
             continue
         if spontaneous_embolism:
-            for j, data_pressure_diff in data_pressure_differences: # TODO: check if this works
+            for j, data_pressure_diff in enumerate(data_pressure_differences): # TODO: check if this works
                 pressure_index = np.where(pressure_differences == data_pressure_diff)[0][0]
                 stochastic_effective_conductances[index, pressure_index, stoch_iteration[index]] = raw_stoch_eff_conductances[i, j]
                 for stoch_prop, out_stoch_prop in zip(stoch_properties, out_stoch_properties):
