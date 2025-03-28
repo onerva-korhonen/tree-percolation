@@ -323,6 +323,14 @@ def plot_optimized_vulnerability_curve(data_save_folders, physiological_color, s
             assert pressure_diffs[0] == 0, 'effective conductance at pressure difference 0 required for calculating percentage of conductance lost; values < 0 are not allowed!'
             physiological_plc = 100 * (1 - physiological_effective_conductances / physiological_effective_conductances[0])
             stochastic_plc = 100 * (1 - stochastic_effective_conductances / stochastic_effective_conductances[0]) # normalized by the effective conductance at the spreading probability optimized for pressure difference 0
+            
+        p_25 = pressure_diffs[np.argmin(np.abs(physiological_plc - 25))]
+        p_50 = pressure_diffs[np.argmin(np.abs(physiological_plc - 50))]
+        p_75 = pressure_diffs[np.argmin(np.abs(physiological_plc - 75))]
+        
+        print(f'P_25: {p_25}')
+        print(f'P_50: {p_50}')
+        print(f'P_75: {p_75}')
 
         ax.plot(pressure_diffs, physiological_plc, color=physiological_color, alpha=physiological_alpha, ls=line_style, label='physiological ' + label)
         ax.plot(pressure_diffs, stochastic_plc, color=stochastic_color, alpha=stochastic_alpha, ls=line_style, label='stochastic ' + label)
