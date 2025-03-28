@@ -290,7 +290,6 @@ def optimize_spreading_probability(net, cfg, pressure_difference, spreading_prob
          physiological_effective_conductance : float, the effective conductance at the end of the physiological embolism spreading
          stochastic_effective_conductance : float, the effective conductance at the end of the stochastic embolism spreading
     """
-    # TODO: should same start conduits be used for all pressure_differences? is so, where and how to define start conduits?
     cfg['si_length'] = si_length
     cfg['si_type'] = 'physiological'
     physiological_effective_conductances = np.zeros(n_iterations)
@@ -676,13 +675,14 @@ def optimize_spreading_probability_from_data(simulation_data_save_folder, simula
         n_pressure_iterations = realized_n_pressure_iterations[i]
         physiological_effective_conductance = np.mean(physiological_effective_conductances[i, :n_pressure_iterations])
         averaged_physiological_effective_conductances[i] = physiological_effective_conductance
-        if spontaneous_embolism:
-            averaged_stochastic_effective_conductances = np.mean(stochastic_effective_conductances[:, i, :], axis=1) # TODO: modify this after adding the spontaneous embolism option for read_and_combine_spreading_probability_optimization_data
-        elif i == 0:
+        if i == 0:
             averaged_stochastic_effective_conductances = np.zeros(stochastic_effective_conductances.shape[0])
-            for j, (stochastic_effective_conductance, n_probability_iterations) in enumerate(zip(stochastic_effective_conductances, realized_n_probability_iterations)):
+        for j, (stochastic_effective_conductance, n_probability_iterations) in enumerate(zip(stochastic_effective_conductances, realized_n_probability_iterations)):
+            if spontaneous_embolism:
+                averaged_stochastic_effective_conductances[j] = np.mean(stochastic_effective_conductance[i, :n_probability_iterations])
+            else:
                 averaged_stochastic_effective_conductances[j] = np.mean(stochastic_effective_conductance[:n_probability_iterations])
-        optimized_spreading_probability_index = np.argmin(np.abs(averaged_stochastic_effective_conductances - physiological_effective_conductance)) # TODO: check that this works when spontaneous_embolism == True
+        optimized_spreading_probability_index = np.argmin(np.abs(averaged_stochastic_effective_conductances - physiological_effective_conductance)) 
         optimized_spreading_probabilities[i] = spreading_probability_range[optimized_spreading_probability_index]
         optimized_stochastic_effective_conductances[i] = averaged_stochastic_effective_conductances[optimized_spreading_probability_index]
         optimized_n_probability_iterations = realized_n_probability_iterations[optimized_spreading_probability_index]
@@ -845,11 +845,12 @@ def optimize_spreading_probability_against_empirical_vc(simulation_data_save_fol
     stoch_stds = [std_stoch_full_effective_conductances, std_stoch_lcc_size, std_stoch_functional_lcc_size, std_stoch_nonfunctional_component_size, std_stoch_nonfunctional_component_volume, std_stoch_susceptibility, std_stoch_functional_susceptibility, std_stoch_n_inlets, std_stoch_n_outlets]
     
     for i, (pressure_difference, physiological_PLC) in enumerate(zip(pressure_differences, physiological_PLCs)):
-        if spontaneous_embolism:
-            averaged_stochastic_effective_conductances = np.mean(stochastic_effective_conductances[:, i, :], axis=1) # TODO: modify this after adding the spontaneous embolism option for read_and_combine_spreading_probability_optimization_data
-        elif i == 0:
+        if i == 0:
             averaged_stochastic_effective_conductances = np.zeros(stochastic_effective_conductances.shape[0])
-            for j, (stochastic_effective_conductance, n_probability_iterations) in enumerate(zip(stochastic_effective_conductances, realized_n_probability_iterations)):
+        for j, (stochastic_effective_conductance, n_probability_iterations) in enumerate(zip(stochastic_effective_conductances, realized_n_probability_iterations)):
+            if spontaneous_embolism:
+                averaged_stochastic_effective_conductances[j] = np.mean(stochastic_effective_conductance[i, :n_probability_iterations])
+            else:
                 averaged_stochastic_effective_conductances[j] = np.mean(stochastic_effective_conductance[:n_probability_iterations])
             stochastic_PLCs = (np.amax(averaged_stochastic_effective_conductances) - averaged_stochastic_effective_conductances) / np.amax(averaged_stochastic_effective_conductances)        
             if np.amax(physiological_PLCs) > 1:
@@ -1075,7 +1076,6 @@ def read_and_combine_spreading_probability_optimization_data(simulation_data_sav
             spontaneous_embolism = data['spontaneous_embolism']
         else:
             assert data['spontaneous_embolism'] == spontaneous_embolism, 'Please do not mix spreading probability optimization data with and without spontaneous embolism'
-            # TODO: so far this function only works for data without spontaneous embolism, update for spontaneous embolism data as well
         if not empirical_physiological_data:
             if len(data['pressure_differences']) > 0:
                 for phys_prop, phys_key in zip(phys_properties, phys_keys):
@@ -1083,12 +1083,10 @@ def read_and_combine_spreading_probability_optimization_data(simulation_data_sav
                 data_pressure_differences.extend(data['pressure_differences'])
             
         if len(data['spreading_probability_range']) > 0:
-            if 'spontaneous_embolism_pressure_differences' in data.keys(): # TODO: remove this if clause and read spontaneous_embolism_pressure_differences from all data
-                data_spontaneous_embolism_pressure_differences.extend(data['spontaneous_embolism_pressure_differences'])
             for stoch_prop, stoch_key in zip(stoch_properties, stoch_keys):
                 stoch_prop.extend(data[stoch_key])
             data_spreading_probabilities.extend(data['spreading_probability_range'])
-            #data_spontaneous_embolism_pressure_differences.extend(data['spontaneous_embolism_pressure_differences'])
+            data_spontaneous_embolism_pressure_differences.extend(data['spontaneous_embolism_pressure_differences'])
     
     pressure_differences, realized_n_pressure_iterations = np.unique(np.round(data_pressure_differences, decimals=10), return_counts=True) # rounding to avoid float accuracy issues
     spreading_probability_range, realized_n_probability_iterations = np.unique(np.round(data_spreading_probabilities, decimals=10), return_counts=True)
@@ -1119,7 +1117,7 @@ def read_and_combine_spreading_probability_optimization_data(simulation_data_sav
     physiological_n_inlets = [[[] for pressure_diff in pressure_differences] for i in range(n_iterations)]
     physiological_n_outlets = [[[] for pressure_diff in pressure_differences] for i in range(n_iterations)]
     if spontaneous_embolism:
-        stochastic_effective_conductances = np.zeros((len(spreading_probability_range), len(pressure_differences), n_iterations)) # TODO: add a dimension for pressure differences in all stoch properties if spontaneous_embolism == True
+        stochastic_effective_conductances = np.zeros((len(spreading_probability_range), len(pressure_differences), n_iterations)) 
         stochastic_full_effective_conductances = [[[[] for pressure_difference in pressure_differences] for probability in spreading_probability_range] for i in range(n_iterations)]
         stochastic_prevalences = [[[[] for pressure_difference in pressure_differences] for probability in spreading_probability_range] for i in range(n_iterations)]
         stochastic_prevalences_due_to_spontaneous_embolism = [[[[] for pressure_difference in pressure_differences] for probability in spreading_probability_range] for i in range(n_iterations)]
@@ -1177,9 +1175,9 @@ def read_and_combine_spreading_probability_optimization_data(simulation_data_sav
         if (not max_n_iterations == None) and (stoch_iteration[index] >= max_n_iterations):
             continue
         if spontaneous_embolism:
-            for j, data_pressure_diff in enumerate(data_pressure_differences): # TODO: check if this works
+            for j, data_pressure_diff in enumerate(data_pressure_differences): 
                 pressure_index = np.where(pressure_differences == data_pressure_diff)[0][0]
-                stochastic_effective_conductances[index, pressure_index, stoch_iteration[index]] = raw_stoch_eff_conductances[i, j]
+                stochastic_effective_conductances[index, pressure_index, stoch_iteration[index]] = raw_stoch_eff_conductances[i][j]
                 for stoch_prop, out_stoch_prop in zip(stoch_properties, out_stoch_properties):
                     out_stoch_prop[stoch_iteration[index]][index][pressure_index] = stoch_prop[i][j]
         else:
