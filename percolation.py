@@ -417,6 +417,7 @@ def run_spreading_iteration(net, cfg, pressure_differences, save_path, spreading
         stochastic_n_inlets = [[] for spreading_probability in spreading_probability_range]
         stochastic_n_outlets = [[] for spreading_probability in spreading_probability_range]
     else:
+        spontaneous_embolism_pressure_differences = []
         stochastic_effective_conductances = np.zeros(len(spreading_probability_range))
         stochastic_full_effective_conductances = []
         stochastic_prevalences = []
@@ -1086,12 +1087,14 @@ def read_and_combine_spreading_probability_optimization_data(simulation_data_sav
             for stoch_prop, stoch_key in zip(stoch_properties, stoch_keys):
                 stoch_prop.extend(data[stoch_key])
             data_spreading_probabilities.extend(data['spreading_probability_range'])
-            data_spontaneous_embolism_pressure_differences.extend(data['spontaneous_embolism_pressure_differences'])
+            if spontaneous_embolism:
+                data_spontaneous_embolism_pressure_differences.extend(data['spontaneous_embolism_pressure_differences'])
     
     pressure_differences, realized_n_pressure_iterations = np.unique(np.round(data_pressure_differences, decimals=10), return_counts=True) # rounding to avoid float accuracy issues
     spreading_probability_range, realized_n_probability_iterations = np.unique(np.round(data_spreading_probabilities, decimals=10), return_counts=True)
-    spontaneous_embolism_pressure_differences = np.unique(np.round(data_spontaneous_embolism_pressure_differences, decimals=10))
-    assert np.all(spontaneous_embolism_pressure_differences == pressure_differences), 'pressure differences used for calculating spontaneous embolism probabilities do not match the pressure differences used to simulate spreading, please check the data'
+    if spontaneous_embolism:
+        spontaneous_embolism_pressure_differences = np.unique(np.round(data_spontaneous_embolism_pressure_differences, decimals=10))
+        assert np.all(spontaneous_embolism_pressure_differences == pressure_differences), 'pressure differences used for calculating spontaneous embolism probabilities do not match the pressure differences used to simulate spreading, please check the data'
     
     if max_n_iterations == None:
         n_iterations = max(np.amax(realized_n_pressure_iterations), np.amax(realized_n_probability_iterations))
