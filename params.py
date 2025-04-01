@@ -87,7 +87,7 @@ target_grouping_index = 2.47 # grouping index in branches of Betula pendula; fro
 
 # paths for saving
 triton = True
-identifier = 'spreading_probability_optimization_medium_net_no_spontaneous_embolism'
+identifier = 'spreading_probability_optimization_medium_net_no_spontaneous_embolism_long_si'
 pooled_optimized_spreading_probability_save_name = 'pooled_optimized_spreading_probability.pkl'
 pooled_optimized_spreading_probability_vs_empirical_save_name = 'pooled_optimized_spreading_probability_vs_empirical.pkl'
 
@@ -146,7 +146,7 @@ si_type = 'physiological'
 bpp_type = 'young-laplace_with_constrictions'
 break_nonfunctional_components = False
 spontaneous_embolism = False
-si_length = 1000
+si_length = 10000
 si_tolerance_length = 20
 spreading_probability = 0.15100000000000002
 start_conduits = 'random_per_component' # options: 'random', 'random_per_component' (= one random seed in all network components), 'none' (= no start conduits set, only spontaneous embolism), int, and 'bottom' (= all conduits with a pore at the first row, allowed only when percolation_type == 'drainage')
@@ -192,8 +192,8 @@ prevalence_labels = ['total', 'spontaneous', 'spreading']
 prevalence_colors = ['b', 'r', 'g']
 param_optimization_conduit_color = 'r'
 
-prevalence_ylims = [0, 1.2]
-ninlet_ylims = [0, 2750]
-nonfunc_volume_ylims = [0, 2.5E-8]
-keff_ylims = [-0.2E-15, 1.2E-15]
-lcc_ylims = [-7000, 40000] # TODO: update
+prevalence_ylims = [-0.1, 1.1]
+ninlet_ylims = [-50, 400]
+nonfunc_volume_ylims = [-0.1E-8, 0.3E-8]
+keff_ylims = [-0.11E-15, 0.2E-15]
+lcc_ylims = [-500, 5000] # TODO: update
