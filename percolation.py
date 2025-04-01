@@ -1834,7 +1834,7 @@ def run_conduit_si(net, cfg, spreading_param=0, include_orig_values=False):
     
     assert si_type in ['stochastic', 'physiological'], 'unknown si type, select stochastic or physiological'
     if si_type == 'stochastic':
-        if spreading_param > 0:
+        if spreading_param >= 0:
             spreading_probability = spreading_param
         else:
             spreading_probability = 0.1
