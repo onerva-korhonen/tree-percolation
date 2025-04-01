@@ -254,39 +254,21 @@ if __name__=='__main__':
     Am_space = np.logspace(np.log10(5E-10), np.log10(7E-8), num=1000)
     
     cfg = {}
-    cfg['net_size'] = params.net_size
     cfg['conduit_diameters'] = 'lognormal'
     cfg['Dc'] = params.Dc
     cfg['Dc_cv'] = params.Dc_cv
     cfg['conduit_element_length'] = params.Lce
     cfg['fc'] = params.fc
-    cfg['average_pit_area'] = params.average_pit_membrane_area
     cfg['fpf'] = params.fpf
     cfg['tf'] = params.tf
     cfg['Dp'] = params.Dp
-    cfg['Tm'] = params.Tm
-    cfg['weibull_a'] = params.weibull_a
-    cfg['weibull_b'] = params.weibull_b
     cfg['n_constrictions'] = params.n_constrictions
     cfg['truncnorm_center'] = params.truncnorm_center
     cfg['truncnorm_std'] = params.truncnorm_std
     cfg['truncnorm_a'] = params.truncnorm_a
     cfg['pore_shape_correction'] = params.pore_shape_correction
     cfg['gas_contact_angle'] = params.gas_contact_angle
-    cfg['icc_length'] = params.icc_length
-    cfg['seeds_NPc'] = params.seeds_NPc
-    cfg['seeds_Pc'] = params.seeds_Pc
-    cfg['seed_ICC_rad'] = params.seed_ICC_rad
-    cfg['seed_ICC_tan'] = params.seed_ICC_tan
-    cfg['si_length'] = params.si_length
-    cfg['si_tolerance_length'] = params.si_tolerance_length
-    cfg['si_type'] = params.si_type
-    cfg['start_conduits'] = params.start_conduits
     cfg['surface_tension'] = params.surface_tension
-    cfg['pressure'] = params.pressure
-    cfg['nCPUs'] = params.nCPUs
-    cfg['spontaneous_embolism'] = params.spontaneous_embolism
-    cfg['bpp_type'] = params.bpp_type
     cfg['bpp_data_path'] = params.bubble_propagation_pressure_data_path
 
     cfg['fixed_random'] = False
