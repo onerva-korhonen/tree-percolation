@@ -59,7 +59,7 @@ cfg['spontaneous_embolism'] = False
 
 vulnerability_pressure_range = np.arange(0, 8, step=0.25)*1E6
 small_spreading_probability_range = np.arange(0.01, 0.15, step=0.005)#np.logspace(np.log10(0.0001), np.log10(0.02), 15)
-large_spreading_probability_range = [0.005]#np.arange(0.001, 0.01, step=0.005)
+large_spreading_probability_range = np.arange(0.15, 1.025, step = 0.025)
 # using two probability ranges is a hack for combining data calculated in different spaces
 
 include_orig_values = True
@@ -82,7 +82,7 @@ small_probabilities = [[] for i in range(len(vulnerability_pressure_range))] + [
 large_probabilities = [[probability] for probability in large_spreading_probability_range]
 n_small_pressures = len(small_pressures)
 n_large_pressures = len(large_pressures)
-small_large_limit = 6100 # for using only small_spreading_probability_range, this should be larger than the number of jobs
+small_large_limit = 6199 # for using only small_spreading_probability_range, this should be larger than the number of jobs
 
 # NOTE: do not modify any parameters below this point
 

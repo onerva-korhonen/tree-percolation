@@ -201,10 +201,12 @@ def optimize_parameters_from_data(target_density, target_length, target_grouping
     ylabels = ['NPc', 'Pe_rad', 'NPc', 'Pe_rad', 'NPc', 'Pe_rad']
     xlabels = ['Pc', 'Pe_tan', 'Pc', 'Pe_tan', 'Pc', 'Pe_tan']
     zlabels = ['Conduit density', 'Conduit density', 'Conduit length (m)', 'Conduit length (m)', 'Grouping index', 'Grouping index']
+    vmins = [params.conduit_density_vmin, params.conduit_density_vmin, params.conduit_length_vmin, params.conduit_length_vmin, params.grouping_index_vmin, params.grouping_index_vmin]
+    vmaxs = [params.conduit_density_vmax, params.conduit_density_vmax, params.conduit_length_vmax, params.conduit_length_vmax, params.grouping_index_vmax, params.grouping_index_vmax]
     save_path_identifiers = ['_conduit_density_constant_Pe', '_conduit_density_constant_Pc', '_conduit_length_constant_Pe', '_conduit_length_constant_Pc', '_grouping_index_constant_Pe', '_grouping_index_constant_Pc']
     
     
-    for data, constant_index, x_range, y_range, z_scale, ylabel, xlabel, zlabel, save_path_identifier in zip(viz_data, constant_indices, x_ranges, y_ranges, z_scales, ylabels, xlabels, zlabels, save_path_identifiers):
+    for data, constant_index, x_range, y_range, z_scale, ylabel, xlabel, zlabel, vmin, vmax, save_path_identifier in zip(viz_data, constant_indices, x_ranges, y_ranges, z_scales, ylabels, xlabels, zlabels, vmins, vmaxs, save_path_identifiers):
 
         centers = [x_range.min(), x_range.max(), y_range.min(), y_range.max()]
         
@@ -224,7 +226,7 @@ def optimize_parameters_from_data(target_density, target_length, target_grouping
         ax = fig.add_subplot(111)
     
         plt.contour(np.hstack([np.array([np.amin(x_range) - dx]), x_range, np.array([np.amax(x_range) + dx])]), np.hstack([np.array([np.amin(y_range) + dy]), y_range, np.array([np.amax(y_range) - dy])]), contours, 1, colors=params.param_optimization_conduit_color) # NOTE: dx > 0, dy < 0
-        plt.imshow(data, origin='lower', extent=extent, norm=z_scale)
+        plt.imshow(data, origin='lower', extent=extent, norm=z_scale, vmin=vmin, vmax=vmax)
         try:
             plt.colorbar(label=zlabel)
         except:
