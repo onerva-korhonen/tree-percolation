@@ -21,9 +21,9 @@ import mrad_model
 import mrad_params
 import params
 
-create_parameter_optimization_data = False
-combine_parameter_optimization_data = False
-calculate_weibull_params = True
+create_parameter_optimization_data = True
+combine_parameter_optimization_data = True
+calculate_weibull_params = False
         
 
 def run_parameter_optimization_iteration(save_path, conduit_element_length=mrad_params.Lce, optimization_net_size=[11,10,56], 
@@ -391,9 +391,9 @@ def read_and_combine_data(data_files):
             for Pe_tan in data['Pes_tan']:
                 if not Pe_tan in unique_Pes_tan:
                     unique_Pes_tan.append(Pe_tan)
-            conduit_densities.extend(data['conduit_densities'].ravel())
-            conduit_lengths.extend(data['conduit_lengths'].ravel())
-            grouping_indices.extend(data['grouping_indices'].ravel())
+            conduit_densities.extend(data['conduit_densities'].ravel(order='F'))
+            conduit_lengths.extend(data['conduit_lengths'].ravel(order='F'))
+            grouping_indices.extend(data['grouping_indices'].ravel(order='F'))
             for Pe_tan in data['Pes_tan']: # TODO: try to make this more efficient
                 for Pe_rad in data['Pes_rad']:
                     for Pc in data['end_range']:
@@ -454,7 +454,7 @@ if __name__=='__main__':
         index = int(sys.argv[1])
         save_path = params.parameter_optimization_save_path_base + '_' + str(index) + '.pkl'
         
-        run_parameter_optimization_iteration(save_path, conduit_element_length=mrad_params.Lce, optimization_net_size=[11,10,56], 
+        run_parameter_optimization_iteration(save_path, conduit_element_length=mrad_params.Lce, optimization_net_size=[10,10,10], 
                                                          start_range=start_range, end_range=end_range, Pes_rad=Pes_rad, Pes_tan=Pes_tan)
     if combine_parameter_optimization_data:
         average_diameter = params.Dc
