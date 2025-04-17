@@ -678,11 +678,11 @@ def optimize_spreading_probability_from_data(simulation_data_save_folder, simula
         averaged_physiological_effective_conductances[i] = physiological_effective_conductance
         if i == 0:
             averaged_stochastic_effective_conductances = np.zeros(stochastic_effective_conductances.shape[0])
-        for j, (stochastic_effective_conductance, n_probability_iterations) in enumerate(zip(stochastic_effective_conductances, realized_n_probability_iterations)):
-            if spontaneous_embolism:
-                averaged_stochastic_effective_conductances[j] = np.mean(stochastic_effective_conductance[i, :n_probability_iterations])
-            else:
-                averaged_stochastic_effective_conductances[j] = np.mean(stochastic_effective_conductance[:n_probability_iterations])
+            for j, (stochastic_effective_conductance, n_probability_iterations) in enumerate(zip(stochastic_effective_conductances, realized_n_probability_iterations)):
+                if spontaneous_embolism:
+                    averaged_stochastic_effective_conductances[j] = np.mean(stochastic_effective_conductance[i, :n_probability_iterations])
+                else:
+                    averaged_stochastic_effective_conductances[j] = np.mean(stochastic_effective_conductance[:n_probability_iterations])
         optimized_spreading_probability_index = np.argmin(np.abs(averaged_stochastic_effective_conductances - physiological_effective_conductance)) 
         optimized_spreading_probabilities[i] = spreading_probability_range[optimized_spreading_probability_index]
         optimized_stochastic_effective_conductances[i] = averaged_stochastic_effective_conductances[optimized_spreading_probability_index]
