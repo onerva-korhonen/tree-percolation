@@ -10,7 +10,7 @@ A frontend script for investigating percolation using the Mrad et al. xylem netw
 import mrad_model
 import mrad_params
 import params
-#import visualization
+import visualization
 import percolation
 import simulations
 
@@ -65,8 +65,13 @@ simulate_single_param_spreading = False
 construct_VC = False
 optimize_spreading_probability = False
 create_optimization_data = False
-combine_optimization_data = True
+combine_optimization_data = False
 time = False
+
+cfg['NPc'] = params.NPc
+cfg['Pc'] = params.Pc
+cfg['Pe_rad'] = params.Pe_rad
+cfg['Pe_tan'] = params.Pe_tan
 
 #print(cfg['net_size'])
 if __name__=='__main__':
@@ -83,7 +88,9 @@ if __name__=='__main__':
 
     mrad_model.prepare_simulation_network(net_cleaned, cfg, update_coords=True)
     #visualization.visualize_pores(sim_net)
-    #visualization.visualize_network_with_openpnm(sim_net, params.use_cylindrical_coordinates, mrad_params.Lce, 'pore.coords')
+   #visualization.visualize_network_with_openpnm(net_cleaned, params.use_cylindrical_coordinates, mrad_params.Lce, 'pore.coords')
+    visualization.visualize_network_with_openpnm(net_cleaned, False, mrad_params.Lce, 'pore.coords')
+    
 
     if simulate_single_param_spreading:
         
