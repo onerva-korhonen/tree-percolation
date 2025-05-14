@@ -12,6 +12,7 @@ import numpy as np
 import matplotlib.pylab as plt
 
 if __name__=='__main__':
+
     data_save_folders = [base.rsplit('/', 1)[0] for base in params.optimized_vc_plot_data_save_path_bases]
     visualization.plot_optimized_vulnerability_curve(data_save_folders, params.physiological_vc_color, params.stochastic_vc_color, 
                                                      params.physiological_vc_alpha, params.stochastic_vc_alpha, params.optimized_vc_linestyles, params.optimized_vc_labels,

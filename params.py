@@ -88,6 +88,7 @@ target_grouping_index = 2.47 # grouping index in branches of Betula pendula; fro
 # paths for saving
 triton = True
 identifier = 'spreading_probability_optimization_medium_net_no_spontaneous_embolism_long_si'
+#'parameter_estimation_medium_net_large_space'
 pooled_optimized_spreading_probability_save_name = 'pooled_optimized_spreading_probability.pkl'
 pooled_optimized_spreading_probability_vs_empirical_save_name = 'pooled_optimized_spreading_probability_vs_empirical.pkl'
 
@@ -115,6 +116,7 @@ if triton:
     single_param_visualization_data_paths = ['/m/cs/scratch/networks/aokorhon/tree-percolation/output/percolation_3D_' + identifier + '_data.pkl']
     optimized_vc_plot_data_save_path_bases = ['/m/cs/scratch/networks/aokorhon/tree-percolation/output/optimized_spreading_probability/' + identifier + '/optimized_spreading_probability_' + identifier]
     empirical_vulnerability_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/optimized_spreading_probability/empirical_vc/empirical_vc_b_pendula_gonzales-munoz_2018'
+    degree_distribution_fig_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/degree_distributions_' + identifier + '.pdf'
 else:
     parameter_optimization_save_path_base = '/home/onervak/projects/hidrogat/output/param_optimization/' + identifier + '/param_optimization_' + identifier
     spreading_probability_optimization_network_save_path_base = '/home/onervak/projects/hidrogat/output/optimized_spreading_probability/' + identifier + '_networks/spreading_probability_optimization_network_' + identifier
@@ -139,6 +141,7 @@ else:
     single_param_visualization_data_paths = ['/home/onervak/projects/hidrogat/output/percolation_3D_' + identifier + '_data.pkl']
     optimized_vc_plot_data_save_path_bases = ['/home/onervak/projects/hidrogat/output/optimized_spreading_probability/' + identifier + '/optimized_spreading_probability_' + identifier]
     empirical_vulnerability_save_path = '/home/onervak/projects/hidrogat/tree-percolation/output/optimized_spreading_probability/empirical_vc/empirical_vc_b_pendula_gonzales-munoz_2018'
+    degree_distribution_fig_save_path = '/home/onervak/projects/hidrogat/tree-percolation/output/degree_distribtions_' + identifier + '.pdf'
 
 # percolation parameters
 percolation_type = 'si'
