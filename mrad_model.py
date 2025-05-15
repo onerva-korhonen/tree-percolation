@@ -774,27 +774,27 @@ def get_conduit_degree(conduit_elements, throat_conduits, outlet_row_index):
             4) 1 if the conduit does not touch either inlet or outlet and has
                degree > 1, 0 otherwise
     """    
-    conduit_indices = np.unique(throat_conduits)
-    conduit_degree_info = np.zeros((len(conduit_indices), 4))
-    for i, conduit_index in enumerate(conduit_indices):
-        throat_start_indices = np.where(throat_conduits[:, 0] == conduit_index)
-        throat_end_indices = np.where(throat_conduits[:, 1] == conduit_index)
-        
-        degree = len(np.unique(np.concatenate([throat_conduits[throat_end_indices, 0], 
-                                               throat_conduits[throat_start_indices, 1]], axis=1))) - 1
-        # degree is calculated by finding the conduits starting a throat ending at the present conduit
-        # or ending a throat starting from the present conduit, calculating the number of unique
-        # neighbors. If there are any throats between two elements of the present conduit (almost always),
-        # the conduit itself is listed as a neighbor. Subtracting 1 compensates for this.
-        min_row = np.min(conduit_elements[conduit_elements[:, 3] == conduit_index, 0])
-        max_row = np.max(conduit_elements[conduit_elements[:, 3] == conduit_index, 0])
-        
-        conduit_degree_info[i, 0] = degree
-        conduit_degree_info[i, 1] = min_row
-        conduit_degree_info[i, 2] = max_row
-        if (degree == 1) and ((min_row != 0) and (max_row != outlet_row_index)):
-            conduit_degree_info[i, 3] = 1
-    
+    sorted_throats = np.sort(throat_conduits, axis=1)
+    unique_throats = np.unique(sorted_throats, axis=0)
+    _, degree = np.unique(unique_throats, return_counts=True)
+    degr -= 2 # -2 is needed to compensate the throats inside a conduit (i.e. conduit being counted as its own neighbour)
+
+    conduit_elements_by_row = conduit_elements[conduit_elements[:,0].argsort()]
+    _, conduit_starts = np.unique(conduit_elements_by_row[:,3], return_index=True)
+    min_rows = conduit_elements_by_row[conduit_starts, 0]
+
+    conduit_elements_by_row_reverse = conduit_elements[conduit_elements[:,0].argsort()][::-1]
+    _, conduit_ends = np.unique(conduit_elements_by_row_reverse[:,3], return_index=True)
+    max_rows = conduit_elements_by_row_reverse[conduit_ends, 0]
+
+    degr_1 = degr == 1
+    inlet = min_rows == 0
+    outlet = max_rows == outlet_row_index
+    not_inlet_outlet = 1 - (inlet + outlet)
+    remove = (degr_1 + not_inlet_outlet) == 2
+
+    conduit_degree_info = np.array([degr, min_rows, max_rows, remove]).T
+
     return conduit_degree_info
 
 def mrad_to_cartesian(coords, conduit_element_length=params.Lce, heartwood_d=params.heartwood_d):
