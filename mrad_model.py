@@ -109,7 +109,9 @@ def create_mrad_network(cfg):
         test_cond_end.append(conduit_map_column[1])
     cond_start = np.concatenate(test_cond_start, axis=1)
     cond_end = np.concatenate(test_cond_end, axis=1)
-    
+   
+    #import pdb; pdb.set_trace()
+
     conduit_map = trim_conduit_map(cond_start + cond_end*-1)
     conduit_map = clean_conduit_map(conduit_map)
     
@@ -430,15 +432,22 @@ def clean_conduit_map(conduit_map, start_ind=1, end_ind=-1, reset_ind=0):
                          end point); the first 1 of each column is always a start point,
                          followed by an end point etc.)
     """
-    conduit_map = np.transpose(conduit_map)
-    cleaned_conduit_map = np.zeros(conduit_map.shape)
-    for k, conduit_map_slice in enumerate(conduit_map):
-        for j, conduit_map_column in enumerate(conduit_map_slice):
-            start_or_end_indices = np.nonzero(conduit_map_column)[0]
-            keep = np.ones(len(conduit_map_column)).astype('bool')
-            keep[start_or_end_indices[1:]] = conduit_map_column[start_or_end_indices[1:]]*conduit_map_column[start_or_end_indices[0:-1]] == -1
-            cleaned_conduit_map[k, j, :] = np.abs(conduit_map_column * keep)
-    cleaned_conduit_map = np.transpose(cleaned_conduit_map)
+    flat_conduit_map = np.ravel(conduit_map, order='F')
+    start_or_end_indices = np.nonzero(flat_conduit_map)[0]
+    keep = np.ones(len(flat_conduit_map)).astype('bool')
+    keep[start_or_end_indices[1::]] = flat_conduit_map[start_or_end_indices[1::]] * flat_conduit_map[start_or_end_indices[:-1]] == -1
+    cleaned_conduit_map = np.abs(flat_conduit_map * keep)
+    cleaned_conduit_map = cleaned_conduit_map.reshape(conduit_map.shape, order='F')
+
+    #conduit_map = np.transpose(conduit_map)
+    #cleaned_conduit_map = np.zeros(conduit_map.shape)
+    #for k, conduit_map_slice in enumerate(conduit_map):
+    #    for j, conduit_map_column in enumerate(conduit_map_slice):
+    #        start_or_end_indices = np.nonzero(conduit_map_column)[0]
+    #        keep = np.ones(len(conduit_map_column)).astype('bool')
+    #        keep[start_or_end_indices[1:]] = conduit_map_column[start_or_end_indices[1:]]*conduit_map_column[start_or_end_indices[0:-1]] == -1
+    #        cleaned_conduit_map[k, j, :] = np.abs(conduit_map_column * keep)
+    #cleaned_conduit_map = np.transpose(cleaned_conduit_map)
     return cleaned_conduit_map
 
 # OpenPNM-related accessories
@@ -777,7 +786,7 @@ def get_conduit_degree(conduit_elements, throat_conduits, outlet_row_index):
     sorted_throats = np.sort(throat_conduits, axis=1)
     unique_throats = np.unique(sorted_throats, axis=0)
     _, degree = np.unique(unique_throats, return_counts=True)
-    degr -= 2 # -2 is needed to compensate the throats inside a conduit (i.e. conduit being counted as its own neighbour)
+    degree -= 2 # -2 is needed to compensate the throats inside a conduit (i.e. conduit being counted as its own neighbour)
 
     conduit_elements_by_row = conduit_elements[conduit_elements[:,0].argsort()]
     _, conduit_starts = np.unique(conduit_elements_by_row[:,3], return_index=True)
@@ -787,13 +796,13 @@ def get_conduit_degree(conduit_elements, throat_conduits, outlet_row_index):
     _, conduit_ends = np.unique(conduit_elements_by_row_reverse[:,3], return_index=True)
     max_rows = conduit_elements_by_row_reverse[conduit_ends, 0]
 
-    degr_1 = degr == 1
+    degree_1 = degree == 1
     inlet = min_rows == 0
     outlet = max_rows == outlet_row_index
     not_inlet_outlet = 1 - (inlet + outlet)
-    remove = (degr_1 + not_inlet_outlet) == 2
+    remove = (degree_1 + not_inlet_outlet) == 2
 
-    conduit_degree_info = np.array([degr, min_rows, max_rows, remove]).T
+    conduit_degree_info = np.array([degree, min_rows, max_rows, remove]).T
 
     return conduit_degree_info
 
