@@ -182,7 +182,7 @@ def create_mrad_network(cfg):
                 node2_index = conduit_element_2[4]
                 
                 if (column_distance > 1) and (depth_distance > 1) and (depth2 != max_depth) and (depth != 0):
-                    break # there are no potential connections between the current conduit_element_2 and the following instances of conduit_element_2 are even further away (the array is sorted), so let's break the loop
+                    break # there are no potential connections between the current conduit_element and conduit_element_2, and the following instances of conduit_element_2 are even further away (the array is sorted), so let's break the loop
                 
                 if (row2 == row):
                     if (column2 - column == 1) and (depth2 == depth):
@@ -195,10 +195,7 @@ def create_mrad_network(cfg):
                                                      [row2, column2, depth2, conduit2_index, node2_index]]))
                         
         # picking the actual pit connections
-        try:
-            Pe_rad_rad = (rad_dist*Pe_rad[0] + (1 - rad_dist)*Pe_rad[1])
-        except:
-            import pdb; pdb.set_trace()
+        Pe_rad_rad = (rad_dist*Pe_rad[0] + (1 - rad_dist)*Pe_rad[1])
         Pe_tan_rad = (rad_dist*Pe_tan[0] + (1 - rad_dist)*Pe_tan[1])
         
         if fixed_random:
