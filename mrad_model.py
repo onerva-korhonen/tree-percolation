@@ -124,6 +124,18 @@ def create_mrad_network(cfg):
     conduit_index = 0
     conduit_element_index = 0
 
+    #test_start = start_and_end_coords_sorted[0::2, :]
+    #test_end = start_and_end_coords_sorted[1::2, :]
+    #test_sizes = test_end[:, 0] - test_start[:, 0] + 1
+
+    #row_indices = np.concatenate([np.linspace(start, end, size, dtype=int) for start, end, size in zip(test_start[:, 0], test_end[:, 0], test_sizes)]) 
+    #column_indices = np.concatenate([np.ones(size, dtype=int)*column_index for column_index, size in zip(test_start[:, 1], test_sizes)])
+    #depth_indices = np.concatenate([np.ones(size, dtype=int)*depth_index for depth_index, size in zip(test_start[:, 2], test_sizes)])
+    #conduit_indices = np.concatenate([np.ones(size, dtype=int)*conduit_index for conduit_index, size in zip(np.arange(test_start.shape[0]), test_sizes)])
+    #conduit_element_indices = np.arange(row_indices.shape[0], dtype=int)
+
+    #conduit_elements = np.column_stack((row_indices, column_indices, depth_indices, conduit_indices, conduit_element_indices))
+
     for i in range(0, len(start_and_end_coords_sorted), 2):
         start_row = start_and_end_coords_sorted[i, 0]
         end_row = start_and_end_coords_sorted[i + 1, 0]
@@ -138,7 +150,7 @@ def create_mrad_network(cfg):
         conduit_elements.append(conduit_element)
         
     if len(conduit_elements) > 0: # if any conduits have been created
-        
+
         conduit_elements = np.concatenate(conduit_elements)
         # conduit contain one row for each element belonging to a conduit and 5 columns:
         # 1) the row index of the element
@@ -148,18 +160,21 @@ def create_mrad_network(cfg):
         # 5) the index of the element (from 0 to n_conduit_elements)
         
         # finding axial nodes (= pairs of consequtive, in the row direction, elements that belong to the same conduit)
-        conx_axi = []
         
-        for i in range(1, len(conduit_elements)):
-            if (conduit_elements[i - 1, 3] == conduit_elements[i, 3]):
-                conx_axi.append(np.array([conduit_elements[i - 1, :], conduit_elements[i, :]]))
-            
+        potential_starts = conduit_elements[0:-1, :]
+        potential_ends = conduit_elements[1::, :]
+        axi_starts = potential_starts[potential_starts[:, 3] == potential_ends[:, 3]]
+        axi_ends = potential_ends[potential_starts[:, 3] == potential_ends[:, 3]]
+
         # finding potential pit connections between conduit elements
         
         max_depth = int(np.max(conduit_elements[:, 2]))
         pot_conx_rad = []
         pot_conx_tan = []
         outlet_row_index = n_rows - 1
+
+        pot_conx_rad = []
+        pot_conx_tan = []
         
         for i, conduit_element in enumerate(conduit_elements):
             row = conduit_element[0]
@@ -169,61 +184,59 @@ def create_mrad_network(cfg):
             node_index = conduit_element[4]
             if ((row == 0) or (row == outlet_row_index)):
                 continue # no pit connections in the first and last rows
-                
-            column_distances = np.abs(conduit_elements[:, 1] - column)[i+1:]
-            depth_distances = np.abs(conduit_elements[:, 2] - depth)[i+1:]
-            
+
+            conduit_element_alters = conduit_elements[i + 1:, :][conduit_elements[i + 1:, 0] == row, :] # including only alters at the same row
+            alter_column_distances = np.abs(conduit_element_alters[:, 1] - column)
+            alter_depth_distances = np.abs(conduit_element_alters[:, 2] - depth)
+
             # check if there is an adjacent element in radial (= column) or tangential (= depth) direction
             # that belongs to another conduit (adjacent elements in the vertical (=row) direction belong to the same conduit by default). 
             # The maximal number of potential connections in a 3D networks is 8 for each element (sides and corners).
-            for conduit_element_2, column_distance, depth_distance in zip(conduit_elements[i + 1:], column_distances, depth_distances):
-                row2 = conduit_element_2[0]
-                column2 = conduit_element_2[1]
-                depth2 = conduit_element_2[2]
-                conduit2_index = conduit_element_2[3]
-                node2_index = conduit_element_2[4]
-                
+            for conduit_element_alter, column_distance, depth_distance in zip(conduit_element_alters, alter_column_distances, alter_depth_distances):
+                column2 = conduit_element_alter[1]
+                depth2 = conduit_element_alter[2]
+                conduit2_index = conduit_element_alter[3]
+                node2_index = conduit_element_alter[4]
+
                 if (column_distance > 1) and (depth_distance > 1) and (depth2 != max_depth) and (depth != 0):
                     break # there are no potential connections between the current conduit_element and conduit_element_2, and the following instances of conduit_element_2 are even further away (the array is sorted), so let's break the loop
-                
-                if (row2 == row):
-                    if (column2 - column == 1) and (depth2 == depth):
-                        pot_conx_rad.append(np.array([[row, column, depth, conduit_index, node_index],
-                                                     [row2, column2, depth2, conduit2_index, node2_index]]))
-                    elif (((column2 - column == 1) and (depth2 - depth == 1)) or \
-                         ((depth2 - depth == 1) and (column2 - column <= 1) and (column2 - column >= 0)) or \
-                         ((depth == 0) and (depth2 == max_depth) and (column2 - column <= 1) and (column2 - column >= 0))):  
-                        pot_conx_tan.append(np.array([[row, column, depth, conduit_index, node_index],
-                                                     [row2, column2, depth2, conduit2_index, node2_index]]))
-                        
+         
+                if (column2 - column == 1) and (depth2 == depth):
+                    pot_conx_rad.append(np.array([[row, column, depth, conduit_index, node_index],
+                                                 [row, column2, depth2, conduit2_index, node2_index]]))
+                elif (((column2 - column == 1) and (depth2 - depth == 1)) or \
+                     ((depth2 - depth == 1) and (column2 - column <= 1) and (column2 - column >= 0)) or \
+                     ((depth == 0) and (depth2 == max_depth) and (column2 - column <= 1) and (column2 - column >= 0))):
+                    pot_conx_tan.append(np.array([[row, column, depth, conduit_index, node_index],
+                                                 [row, column2, depth2, conduit2_index, node2_index]]))
+
         # picking the actual pit connections
         Pe_rad_rad = (rad_dist*Pe_rad[0] + (1 - rad_dist)*Pe_rad[1])
         Pe_tan_rad = (rad_dist*Pe_tan[0] + (1 - rad_dist)*Pe_tan[1])
         
         if fixed_random:
             np.random.seed(seed_ICC_rad)
-        prob_rad = np.random.rand(len(pot_conx_rad), 1)
+        prob_rad = np.random.rand(len(pot_conx_rad))
         if fixed_random:
             np.random.seed(seed_ICC_tan)
-        prob_tan = np.random.rand(len(pot_conx_tan), 1)
+        prob_tan = np.random.rand(len(pot_conx_tan))
         
         conx = []
-        
-        for pot_con, p in zip(pot_conx_rad, prob_rad):
-            if (p >= (1 - np.mean(Pe_rad_rad[pot_con[:,1].astype(int)]))):
-                conx.append(pot_con)
-                
-        for pot_con, p in zip(pot_conx_tan, prob_tan):
-            if (p >= (1 - np.mean(Pe_tan_rad[pot_con[:,1].astype(int)]))):
-                conx.append(pot_con)
-                    
-        ICC_conns = np.zeros((len(conx), 5))
-        for i, con in enumerate(conx):
-            ICC_conns[i, 0] = con[0][4].astype(int)
-            ICC_conns[i, 1] = con[1][4].astype(int)
-            ICC_conns[i, 2] = icc_indicator
-            ICC_conns[i, 3] = conduit_elements[con[0][4].astype(int), 3]
-            ICC_conns[i, 4] = conduit_elements[con[1][4].astype(int), 3]
+       
+        pot_conx_rad = np.array(pot_conx_rad)
+        conx_rad = pot_conx_rad[prob_rad >= (1 - np.mean([Pe_rad_rad[pot_conx_rad[:,0,1].astype(int)], Pe_rad_rad[pot_conx_rad[:,1,1].astype(int)]], axis=0))]
+
+        pot_conx_tan = np.array(pot_conx_tan)
+        conx_tan = pot_conx_tan[prob_tan >= (1 - np.mean([Pe_tan_rad[pot_conx_tan[:,0,1].astype(int)], Pe_tan_rad[pot_conx_tan[:,1,1].astype(int)]], axis=0))]
+
+        conx = np.concatenate((conx_rad, conx_tan), axis=0)
+
+        ICC_conns = np.zeros((conx.shape[0], 5))
+        ICC_conns[:, 0] = conx[:, 0, 4].astype(int)
+        ICC_conns[:, 1] = conx[:, 1, 4].astype(int)
+        ICC_conns[:, 2] = icc_indicator
+        ICC_conns[:, 3] = conduit_elements[conx[:, 0, 4].astype(int), 3]
+        ICC_conns[:, 4] = conduit_elements[conx[:, 1, 4].astype(int), 3]
             
         # ICC_conns has for each ICC one row and five columns, containing
         # 1) index of the first conduit element of the ICC
@@ -231,12 +244,11 @@ def create_mrad_network(cfg):
         # 3) constant indicating connection (throat) type
         # 4) index of the first conduit of the ICC
         # 5) index of the second conduit of the ICC
-        
-        CEC_conns = np.zeros((len(conx_axi), 5))
-        for i, con in enumerate(conx_axi):
-            CEC_conns[i, 0] = con[0][4].astype(int)
-            CEC_conns[i, 1] = con[1][4].astype(int)
-            CEC_conns[i, 2] = cec_indicator
+
+        CEC_conns = np.zeros((axi_starts.shape[0], 5))
+        CEC_conns[:, 0] = axi_starts[:, 4].astype(int)
+        CEC_conns[:, 1] = axi_ends[:, 4].astype(int)
+        CEC_conns[:, 2] = cec_indicator
             
         # The three first columns are defined as in ICC_conns. The last two columns are all zeros and added only for getting
         # matching dimensions
