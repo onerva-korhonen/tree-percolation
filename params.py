@@ -194,6 +194,9 @@ prevalence_linestyles = ['-', '--', '-.'] # for total prevalence, prevalence due
 prevalence_labels = ['total', 'spontaneous', 'spreading']
 prevalence_colors = ['b', 'r', 'g']
 param_optimization_conduit_color = 'r'
+p_50_color = 'b'
+p_50_alpha = 1
+p_50_line_style = '--'
 
 prevalence_ylims = [-0.3, 1.1]
 ninlet_ylims = [-50, 400]
