@@ -60,10 +60,10 @@ Dc_alpha = 0.05 # alpha value of Dc_ci
 Dc_z = norm.ppf(1 - (1 - Dc_alpha) / 2)
 fc = 0.31 # average contact fraction between two conduits; the Mrad et al. value for Acer glabrum, evaluated as a reasonable value for B. pendula as well by Lintunen & Held (personal communication)
 Dp = 78.276807125728e-9 # m; average pit membrane pore diameter; from Jansen et al. 2009
-tf = 25.03e-9 # m; microfibril strand thickness; from Jansen et al. 2009
+tf = 20e-9 # m; microfibril strand thickness; from Kaack et al. 2021
 average_pit_membrane_area = 3.68937478230582*(1E-6)**2 # m^2; average pit membrane area; from Held et al. (in preparation)
 fpf = 0.517910375603663 # average pit field fraction between two conduits; from Held et al. (in preparation)
-Tm = 131E-9 # pit membrane thickness; from Jansen et al. 2009
+Tm = 205E-9 # pit membrane thickness; from Kaack et al. 2021
 pore_diameters = 1E-9 * np.array([13.284, 27.234, 33.805, 63.84, 33.542, 104.234, 52.141, 18.277, 20.634, 19.798, 39.639, 69.396, 85.548, 79.804, 51.699, 21.299, 9.307, 
                   35.219, 14.431, 82.702, 34.647, 64.713, 54.059, 60.852, 50.936, 75.162, 38, 76.067, 107.631, 19.31, 54.895, 68.195, 92.235, 106.55, 
                   110.409, 122.917, 114.778, 8.224, 111.476, 45.735]) # m; pore diameter in Betula pendula, from Jansen et al. 2009
