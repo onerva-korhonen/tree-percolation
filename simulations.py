@@ -72,7 +72,7 @@ def simulate_water_flow(sim_net, cfg, visualize=False, water=None, return_water=
     water.add_model(propname='throat.diffusive_conductance',
                     model=op.models.physics.diffusive_conductance.ordinary_diffusion)
     water.add_model(propname='throat.hydraulic_conductance',
-                    model=op.models.physics.hydraulic_conductance.generic_hydraulic)
+                    model=op.models.physics.hydraulic_conductance.generic_hydraulic) # This is the Hagen-Pouseuille equation
     water.add_model(propname='throat.ad_dif_conductance',
                     model=op.models.physics.ad_dif_conductance.ad_dif)
     pit_conductance = (Dp**3 / (24 * water['throat.viscosity']) * (1 + 16 * Tm / (3 * np.pi * Dp))**(-1) * sim_net['throat.npore'])
