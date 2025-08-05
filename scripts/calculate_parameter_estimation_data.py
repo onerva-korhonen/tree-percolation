@@ -12,7 +12,7 @@ import parameter_estimation
 
 n_iterations = 10
 
-n_slices = 25 # into how many slices the probability ranges will be divided
+n_slices = 20 # into how many slices the probability ranges will be divided
 
 start_range = list(np.arange(0, 1, 0.01).reshape(n_slices, -1))
 start_range[-1] = np.concatenate((start_range[-1], np.array([1.])))
