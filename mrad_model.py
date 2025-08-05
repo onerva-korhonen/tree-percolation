@@ -274,6 +274,7 @@ def prepare_simulation_network(net, cfg, update_coords=True):
         contains (all default values match the Mrad et al. article):
             use_cylindrical_coords: bln, should Mrad model coordinates be interpreted as cylindrical ones in visualizations?
             Lce: float, length of a conduit element
+            Dp: float, average pore diameter
             fc: float, average contact fraction between two conduits
             fpf: float, average pit field fraction between two conduits
             conduit_diameters: np.array of floats, diameters of the conduits OR

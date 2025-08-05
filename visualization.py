@@ -202,9 +202,15 @@ def plot_vulnerability_curve(vc, color, alpha, vc_type='physiological', save_pat
     None.
     """
     assert vc_type in ['physiological', 'stochastic'], 'unknown vc type, select physiological or stochastic'
+    if vc_type == 'physiological':
+        x = -1 * vc[0][::-1] # inverting the x axis following the convention of presenting negative pressure differences
+        y = vc[1][::-1]
+    else:
+        x = vc[0]
+        y = vc[1]
     fig = plt.figure()
     ax = fig.add_subplot(111)
-    ax.plot(vc[0], vc[1], color=color, alpha=alpha)
+    ax.plot(x, y, color=color, alpha=alpha)
     if vc_type == 'physiological':
         x_label = 'Pressure difference'
     else:
@@ -214,7 +220,7 @@ def plot_vulnerability_curve(vc, color, alpha, vc_type='physiological', save_pat
     if len(save_path) > 0:
         plt.savefig(save_path, format='pdf', bbox_inches='tight')
         
-def plot_optimized_vulnerability_curve(data_save_folders, physiological_color, stochastic_color, physiological_alpha, stochastic_alpha, line_styles, labels, save_path, pooled_data=False, pooled_data_save_name='', std_alpha=0.5, prevalence_plot_save_path_base='', prevalence_linestyles=[], plc_in_file=False):
+def plot_optimized_vulnerability_curve(data_save_folders, physiological_color, stochastic_color, physiological_alpha, stochastic_alpha, line_styles, labels, p_50_color, p_50_alpha, p_50_line_style, save_path, pooled_data=False, pooled_data_save_name='', std_alpha=0.5, prevalence_plot_save_path_base='', prevalence_linestyles=[], plc_in_file=False):
     """
     Reads from files the optimized SI spreading probabilities and related effective conductance values for a set of pressure difference values, calculates the percentage of
     conductance lost (PLC) values (out of effective conductance at pressure difference 0) and plots the vulnerability curves and prevalence plots for all pressure differences.
@@ -239,6 +245,12 @@ def plot_optimized_vulnerability_curve(data_save_folders, physiological_color, s
         line styles of the vc curve; one style per data_save_folder
     labels : list of strs
         labels of the vc curbes; one label per data_save_folder
+    p_50_color : str
+        color of the lines marking the P_12, P_50, and P_88 values
+    p_50_alpha : float
+        transparency of the lines marking the P_12, P_50, and P_88 values
+    p_50_line_style : str
+        line style of the lines marking the P_12, P_50, and P_88 values
     save_path : str
         path to which to save the plot
     pooled_data : bln, optional
@@ -325,17 +337,30 @@ def plot_optimized_vulnerability_curve(data_save_folders, physiological_color, s
             physiological_plc = 100 * (1 - physiological_effective_conductances / physiological_effective_conductances[0])
             stochastic_plc = 100 * (1 - stochastic_effective_conductances / stochastic_effective_conductances[0]) # normalized by the effective conductance at the spreading probability optimized for pressure difference 0
             
+        pressure_diffs = -1 * pressure_diffs[::-1] # inverting the x axis to follow the convention of presenting negative pressure differences
+        physiological_plc = physiological_plc[::-1]
+        stochastic_plc = stochastic_plc[::-1]
+        optimized_spreading_probabilities = optimized_spreading_probabilities[::-1]
+        
         p_25 = pressure_diffs[np.argmin(np.abs(physiological_plc - 25))]
         p_50 = pressure_diffs[np.argmin(np.abs(physiological_plc - 50))]
         p_75 = pressure_diffs[np.argmin(np.abs(physiological_plc - 75))]
+        p_12 = pressure_diffs[np.argmin(np.abs(physiological_plc - 12))]
+        p_88 = pressure_diffs[np.argmin(np.abs(physiological_plc - 88))]
         
         print(f'P_25: {p_25}')
         print(f'P_50: {p_50}')
         print(f'P_75: {p_75}')
+        print(f'P_12: {p_12}')
+        print(f'P_88: {p_88}')
 
         ax.plot(pressure_diffs, physiological_plc, color=physiological_color, alpha=physiological_alpha, ls=line_style, label='physiological ' + label)
         ax.plot(pressure_diffs, stochastic_plc, color=stochastic_color, alpha=stochastic_alpha, ls=line_style, label='stochastic ' + label)
         ax2.plot(pressure_diffs, optimized_spreading_probabilities, label='optimized spreading probability ' + label)
+        
+        ax.plot([p_12, p_12], [0, 1], color=p_50_color, alpha=p_50_alpha, ls=p_50_line_style)
+        ax.plot([p_50, p_50], [0, 1], color=p_50_color, alpha=p_50_alpha, ls=p_50_line_style)
+        ax.plot([p_88, p_88], [0, 1], color=p_50_color, alpha=p_50_alpha, ls=p_50_line_style)
         
         if pooled_data and not plc_in_file: # prevalence information is included only in the pooled data
             for i, (av_phys_prevalence, std_phys_prevalence, av_phys_prevalence_spontaneous, std_phys_prevalence_spontaneous, av_phys_prevalence_spreading, std_phys_prevalence_spreading, av_stoch_prevalence, std_stoch_prevalence, av_stoch_prevalence_spontaneous, std_stoch_prevalence_spontaneous, av_stoch_prevalence_spreading, std_stoch_prevalence_spreading) in enumerate(zip(average_phys_prevalences, std_phys_prevalences, average_phys_prevalences_spontaneous, std_phys_prevalences_spontaneous, average_phys_prevalences_spreading, std_phys_prevalences_spreading, average_stoch_prevalences, std_stoch_prevalences, average_stoch_prevalences_spontaneous, std_stoch_prevalences_spontaneous, average_stoch_prevalences_spreading, std_stoch_prevalences_spreading)):

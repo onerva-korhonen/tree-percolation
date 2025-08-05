@@ -50,7 +50,7 @@ Pe_rad = np.array([0.01, 0.01]) # probability of radial connection
 Pe_tan = np.array([0.9, 0.9]) # probability of tangential connection
     
 # anatomical + physiological parameters
-Lce = 0.42E-3 # m; average conduit element length in Betula pendula branches; from Bhat & Kärkkäinen 1981
+Lce = 379E-9 # m; average conduit element length in Betula pendula branches; from Karimi 2014
 Dc = 23.5261E-6 # m; diameter of a conduit element in Betula pendula branches; from Held et al. (in preparation)
 Dc_std = 13.1038E-6 # m; standard deviation of conduit element diameter in Betula pendula branches; from Held et al. (in preparation)
 # Note: Linunen & Kalliokoski 2010 would have Dc = 18.18232653752158e-6, Dc_std = 10.76131985221804e-6 
@@ -58,12 +58,12 @@ Dc_std = 13.1038E-6 # m; standard deviation of conduit element diameter in Betul
 Dc_cv = Dc_std / Dc
 Dc_alpha = 0.05 # alpha value of Dc_ci
 Dc_z = norm.ppf(1 - (1 - Dc_alpha) / 2)
-fc = 0.31 # average contact fraction between two conduits; the Mrad et al. value for Acer glabrum, evaluated as a reasonable value for B. pendula as well by Lintunen & Held (personal communication)
+fc = 0.26 # average contact fraction between two conduits; data from Jansen
 Dp = 78.276807125728e-9 # m; average pit membrane pore diameter; from Jansen et al. 2009
-tf = 25.03e-9 # m; microfibril strand thickness; from Jansen et al. 2009
-average_pit_membrane_area = 3.68937478230582*(1E-6)**2 # m^2; average pit membrane area; from Held et al. (in preparation)
+tf = 20e-9 # m; microfibril strand thickness; from Kaack et al. 2021
+average_pit_membrane_area = 1.096*(1E-3)**2 # m^2; average pit membrane area; from Kaack et al. 2021
 fpf = 0.517910375603663 # average pit field fraction between two conduits; from Held et al. (in preparation)
-Tm = 131E-9 # pit membrane thickness; from Jansen et al. 2009
+Tm = 205E-9 # pit membrane thickness; from Kaack et al. 2021
 pore_diameters = 1E-9 * np.array([13.284, 27.234, 33.805, 63.84, 33.542, 104.234, 52.141, 18.277, 20.634, 19.798, 39.639, 69.396, 85.548, 79.804, 51.699, 21.299, 9.307, 
                   35.219, 14.431, 82.702, 34.647, 64.713, 54.059, 60.852, 50.936, 75.162, 38, 76.067, 107.631, 19.31, 54.895, 68.195, 92.235, 106.55, 
                   110.409, 122.917, 114.778, 8.224, 111.476, 45.735]) # m; pore diameter in Betula pendula, from Jansen et al. 2009
@@ -74,7 +74,7 @@ icc_length = mrad_params.icc_length
 weibull_a = 9083441.686765894
 weibull_b = 29.345799999996878
 # method from Kaack et al. 2021, New Phytologist:
-n_constrictions = int(np.ceil((Tm*1E9 + 20) / 40)) # calculated following the caption of Table 1 in Kaack et al. 20201
+n_constrictions = int(np.floor((Tm*1E9 + 20) / 30)) # calculated following the caption of Table 1 in Kaack et al. 2021 but assuming 10 nm between microfibril strands instead of 20 nm
 truncnorm_center = 10.E-9 # m; center value of truncated normal distribution; from Kaack et al. 2021, New Phytologist
 truncnorm_std = 7.5E-9 # m, standard deviation of truncated normal distribution; from Kaack et al. 2021, New Phytologist
 truncnorm_a = 2.5E-9 # m, beginning of the left truncation; from Kaack et al. 2021, New Phytologist
@@ -194,6 +194,9 @@ prevalence_linestyles = ['-', '--', '-.'] # for total prevalence, prevalence due
 prevalence_labels = ['total', 'spontaneous', 'spreading']
 prevalence_colors = ['b', 'r', 'g']
 param_optimization_conduit_color = 'r'
+p_50_color = 'b'
+p_50_alpha = 1
+p_50_line_style = '--'
 
 prevalence_ylims = [-0.3, 1.1]
 ninlet_ylims = [-50, 400]
