@@ -87,7 +87,8 @@ target_grouping_index = 2.47 # grouping index in branches of Betula pendula; fro
 
 # paths for saving
 triton = True
-identifier = 'parameter_estimation_medium_net_large_space'
+identifier = 'spreading_probability_optimization_medium_net_no_spontaneous_embolism_long_si_updated_conduit_anatomy'
+#'parameter_estimation_medium_net_large_space'
 #'spreading_probability_optimization_medium_net_no_spontaneous_embolism_long_si'
 pooled_optimized_spreading_probability_save_name = 'pooled_optimized_spreading_probability.pkl'
 pooled_optimized_spreading_probability_vs_empirical_save_name = 'pooled_optimized_spreading_probability_vs_empirical.pkl'
@@ -110,7 +111,7 @@ if triton:
     optimized_prevalence_plot_save_path_base = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/prevalence/prevalence_all_pressure_diffs_' + identifier 
     optimized_prevalence_plot_vs_empirical_save_path_base = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/prevalence/prevalence_all_pressure_diffs_vs_empirical_' + identifier
     param_optimization_fig_save_path_base = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/parameter_optimization_' + identifier 
-    bubble_propagation_pressure_data_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/bubble_propagation_pressure_data.pkl'
+    bubble_propagation_pressure_data_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/bubble_propagation_pressure_data_' + identifier + '.pkl'
     conduit_length_distribution_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/conduit_length_distribution_' + identifier + '.pdf'
     
     single_param_visualization_data_paths = ['/m/cs/scratch/networks/aokorhon/tree-percolation/output/percolation_3D_' + identifier + '_data.pkl']
@@ -135,7 +136,7 @@ else:
     optimized_prevalence_plot_save_path_base = '/home/onervak/projects/hidrogat/output/prevalence/prevalence_all_pressure_diffs_' + identifier
     optimized_prevalence_plot_vs_empirical_save_path_base = '/home/onervak/projects/hidrogat/output/prevalence/prevalence_all_pressure_diffs_vs_empirical_' + identifier
     param_optimization_fig_save_path_base = '/home/onervak/projects/hidrogat/output/parameter_optimization_' + identifier
-    bubble_propagation_pressure_data_path = '/home/onervak/projects/hidrogat/output/bubble_propagation_pressure_data.pkl'
+    bubble_propagation_pressure_data_path = '/home/onervak/projects/hidrogat/output/bubble_propagation_pressure_data_' + identifier + '.pkl'
     conduit_length_distribution_save_path ='/home/onervak/projects/hidrogat/output/conduit_length_distribution_' + identifier + '.pdf'
     
     single_param_visualization_data_paths = ['/home/onervak/projects/hidrogat/output/percolation_3D_' + identifier + '_data.pkl']
