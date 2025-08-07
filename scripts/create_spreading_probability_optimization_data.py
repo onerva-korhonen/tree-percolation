@@ -58,7 +58,7 @@ cfg['bpp_type'] = 'young-laplace_with_constrictions'
 cfg['spontaneous_embolism'] = False
 
 vulnerability_pressure_range = np.arange(0, 8, step=0.25)*1E6
-small_spreading_probability_range = np.arange(0.01, 0.15, step=0.005)#np.logspace(np.log10(0.0001), np.log10(0.02), 15)
+small_spreading_probability_range = [0.0, 0.005] + list(np.arange(0.01, 0.15, step=0.005))#np.logspace(np.log10(0.0001), np.log10(0.02), 15)
 large_spreading_probability_range = np.arange(0.15, 1.025, step = 0.025)
 # using two probability ranges is a hack for combining data calculated in different spaces
 
