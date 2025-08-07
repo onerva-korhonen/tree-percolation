@@ -50,7 +50,7 @@ Pe_rad = np.array([0.01, 0.01]) # probability of radial connection
 Pe_tan = np.array([0.9, 0.9]) # probability of tangential connection
     
 # anatomical + physiological parameters
-Lce = 379E-9 # m; average conduit element length in Betula pendula branches; from Karimi 2014
+Lce = 379E-6 # m; average conduit element length in Betula pendula branches; from Karimi 2014
 Dc = 23.5261E-6 # m; diameter of a conduit element in Betula pendula branches; from Held et al. (in preparation)
 Dc_std = 13.1038E-6 # m; standard deviation of conduit element diameter in Betula pendula branches; from Held et al. (in preparation)
 # Note: Linunen & Kalliokoski 2010 would have Dc = 18.18232653752158e-6, Dc_std = 10.76131985221804e-6 
