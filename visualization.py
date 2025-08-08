@@ -358,9 +358,9 @@ def plot_optimized_vulnerability_curve(data_save_folders, physiological_color, s
         ax.plot(pressure_diffs, stochastic_plc, color=stochastic_color, alpha=stochastic_alpha, ls=line_style, label='stochastic ' + label)
         ax2.plot(pressure_diffs, optimized_spreading_probabilities, label='optimized spreading probability ' + label)
         
-        ax.plot([p_12, p_12], [0, 1], color=p_50_color, alpha=p_50_alpha, ls=p_50_line_style)
-        ax.plot([p_50, p_50], [0, 1], color=p_50_color, alpha=p_50_alpha, ls=p_50_line_style)
-        ax.plot([p_88, p_88], [0, 1], color=p_50_color, alpha=p_50_alpha, ls=p_50_line_style)
+        ax.plot([p_12, p_12], [0, 100], color=p_50_color, alpha=p_50_alpha, ls=p_50_line_style)
+        ax.plot([p_50, p_50], [0, 100], color=p_50_color, alpha=p_50_alpha, ls=p_50_line_style)
+        ax.plot([p_88, p_88], [0, 100], color=p_50_color, alpha=p_50_alpha, ls=p_50_line_style)
         
         if pooled_data and not plc_in_file: # prevalence information is included only in the pooled data
             for i, (av_phys_prevalence, std_phys_prevalence, av_phys_prevalence_spontaneous, std_phys_prevalence_spontaneous, av_phys_prevalence_spreading, std_phys_prevalence_spreading, av_stoch_prevalence, std_stoch_prevalence, av_stoch_prevalence_spontaneous, std_stoch_prevalence_spontaneous, av_stoch_prevalence_spreading, std_stoch_prevalence_spreading) in enumerate(zip(average_phys_prevalences, std_phys_prevalences, average_phys_prevalences_spontaneous, std_phys_prevalences_spontaneous, average_phys_prevalences_spreading, std_phys_prevalences_spreading, average_stoch_prevalences, std_stoch_prevalences, average_stoch_prevalences_spontaneous, std_stoch_prevalences_spontaneous, average_stoch_prevalences_spreading, std_stoch_prevalences_spreading)):
