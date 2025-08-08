@@ -48,7 +48,7 @@ def calculate_min_constriction_radius(n_constrictions, truncnorm_center, truncno
     return min_constriction_radius
 
 def calculate_pit_bpp(target_total_area, tf, n_constrictions, truncnorm_center, truncnorm_std, truncnorm_a, truncnorm_b=np.inf, 
-                      surface_tension=params.surface_tension, pore_shape_correction=0.5, gas_contact_angle=0):
+                      surface_tension=params.surface_tension, pore_shape_correction=0.5, gas_contact_angle=0, min_radius_type='max'):
     """
     Calculates the bubble propagation pressure of a single pit based on the largest pore radius (defined
     as the smallest constriction radius for each pore, drawn from a truncated normal distribution) in the ICC, 
@@ -76,12 +76,17 @@ def calculate_pit_bpp(target_total_area, tf, n_constrictions, truncnorm_center, 
         correction factor applied to compensate for the inaccurately assumed round shape of all pores, default 0.5 (from Kaack et al. 2021)
     gas_contact_angle : float, optional
         the contact angle between gas and xylem sap in radians, default 0 (from Kaack et al. 2021)
+    min_radius_type : str, optional
+        either 'max' (bpp is calculated using the largest pore radius, R_min_max in Kaack et al. 2021) or 'mean' (bpp is calculated using
+        the mean pore radius, R_min_mean in Kaack et al. 2021), default 'max'
         
     Returns:
     --------
     bpp : float
         bubble propagation pressure across the pit membrane
     """
+    assert min_radius_type in ['max', 'mean'], "Unknown radius type for bpp calculation, please give either 'max' or 'mean'"
+
     n_pores = 2 * int(np.ceil(target_total_area / (np.pi * (truncnorm_center + tf / 2)**2))) # factor 2 compensates for the fact that some drawn radii are smaller than the average radii and thus yield smaller area; thus more radii are needed than if they all were equal to the average; 2 is an arbitrary but empirically high enough factor
 
     truncnorm_a = (truncnorm_a - truncnorm_center) / truncnorm_std
@@ -93,7 +98,11 @@ def calculate_pit_bpp(target_total_area, tf, n_constrictions, truncnorm_center, 
     pore_areas = np.pi * (radii + tf/2)**2
     cum_pore_area = np.cumsum(pore_areas)
     cut_index = np.where(cum_pore_area > target_total_area)[0][0]
-    max_radius = radii[cut_index]
+
+    if min_radius_type == 'mean':
+        max_radius = np.mean(radii[:cut_index])
+    else:
+        max_radius = np.amax(radii[:cut_index])
     
     bpp = (pore_shape_correction * 2 * surface_tension * np.cos(gas_contact_angle)) / max_radius
 
@@ -125,6 +134,8 @@ def calculate_bpp_for_constriction_pores(cfg, Am_space=[], net=None, conduits=[]
         surface_tension: float, optional, surface tension of sap in the xylem conduits (default: the value given in the parameter file)
         pore_shape_correction: float, correction factor applied to compensate for the inaccurately assumed round shape of all pores, default 0.5 (from Kaack et al. 2021)
         gas_contact_angle: float, optional, the contact angle between gas and xylem sap in radians, default 0 (from Kaack et al. 2021)
+        min_radius_type: str, optional, either 'max' (bpp is calculated using the largest pore radius, R_min_max in Kaack et al. 2021) or 'mean' (bpp is calculated using
+        the mean pore radius, R_min_mean in Kaack et al. 2021), default 'max'
     Am_space : np.array of floats, optional
         set of pit field area values, for which the BPP will be calculated, default: []
     net : openpnm.network(), optional
@@ -156,7 +167,8 @@ def calculate_bpp_for_constriction_pores(cfg, Am_space=[], net=None, conduits=[]
     surface_tension = cfg.get('surface_tension', params.surface_tension)
     pore_shape_correction = cfg.get('pore_shape_correction', 0.5)
     gas_contact_angle = cfg.get('gas_contact_angle', 0)
-    
+    min_radius_type = cfg.get('min_radius_type', 'max')
+
     bpp_dic = {}
 
     if net != None:
@@ -174,14 +186,14 @@ def calculate_bpp_for_constriction_pores(cfg, Am_space=[], net=None, conduits=[]
             end_conduit = np.where((conduits[:, 0] <= icc[1]) & (icc[1] <= conduits[:, 1]))[0][0] 
             Am = 0.5 * (conduit_areas[start_conduit] / icc_count[start_conduit] + conduit_areas[end_conduit] / icc_count[end_conduit]) * fc * fpf # Mrad et al. 2018, Eq. 2; surface area of the ICC
             bpp[i] = calculate_pit_bpp(Am, tf, n_constrictions, truncnorm_center, truncnorm_std, truncnorm_a, truncnorm_b=truncnorm_b, surface_tension=surface_tension, 
-                                       pore_shape_correction=pore_shape_correction, gas_contact_angle=gas_contact_angle)
+                                       pore_shape_correction=pore_shape_correction, gas_contact_angle=gas_contact_angle, min_radius_type=min_radius_type)
             bpp_dic[Am] = bpp
             
     else:
         bpp = np.zeros(Am_space.shape)
         for Am in Am_space:
             bpp_dic[Am] = calculate_pit_bpp(Am, tf, n_constrictions, truncnorm_center, truncnorm_std, truncnorm_a, truncnorm_b=truncnorm_b, surface_tension=surface_tension, 
-                                            pore_shape_correction=pore_shape_correction, gas_contact_angle=gas_contact_angle)
+                                            pore_shape_correction=pore_shape_correction, gas_contact_angle=gas_contact_angle, min_radius_type=min_radius_type)
             
     if bpp_save_path != '':
         with open(bpp_save_path, 'wb') as f:
@@ -239,7 +251,7 @@ def read_constriction_bpp(bpp_data_path, net, conduits, icc_mask, cfg):
     
     bpp = np.zeros(iccs.shape[0])
     Ams = np.zeros(iccs.shape[0])
-    
+
     for i, icc in enumerate(iccs):
         start_conduit = np.where((conduits[:, 0] <= icc[0]) & (icc[0] <= conduits[:, 1]))[0][0]
         end_conduit = np.where((conduits[:, 0] <= icc[1]) & (icc[1] <= conduits[:, 1]))[0][0] 
@@ -269,10 +281,11 @@ if __name__=='__main__':
     cfg['pore_shape_correction'] = params.pore_shape_correction
     cfg['gas_contact_angle'] = params.gas_contact_angle
     cfg['surface_tension'] = params.surface_tension
+    cfg['min_radius_type'] = 'max'
     cfg['bpp_data_path'] = params.bubble_propagation_pressure_data_path
 
     cfg['fixed_random'] = False
-    
+   
     bpps = calculate_bpp_for_constriction_pores(cfg, Am_space=Am_space, bpp_save_path=cfg['bpp_data_path'])
 
 
