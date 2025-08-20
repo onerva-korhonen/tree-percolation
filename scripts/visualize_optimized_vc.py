@@ -19,4 +19,5 @@ if __name__=='__main__':
                                                      params.p_50_color, params.p_50_alpha, params.p_50_line_style,
                                                      params.optimized_vc_plot_save_path, pooled_data=True, pooled_data_save_name=params.pooled_optimized_spreading_probability_save_name,
                                                      std_alpha=params.std_alpha, prevalence_linestyles=params.prevalence_linestyles,
-                                                     prevalence_plot_save_path_base=params.optimized_prevalence_plot_save_path_base)
+                                                     prevalence_plot_save_path_base=params.optimized_prevalence_plot_save_path_base, 
+                                                     upper_pressure_limit=params.optimized_vc_upper_pressure_limit)

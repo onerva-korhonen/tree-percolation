@@ -220,7 +220,7 @@ def plot_vulnerability_curve(vc, color, alpha, vc_type='physiological', save_pat
     if len(save_path) > 0:
         plt.savefig(save_path, format='pdf', bbox_inches='tight')
         
-def plot_optimized_vulnerability_curve(data_save_folders, physiological_color, stochastic_color, physiological_alpha, stochastic_alpha, line_styles, labels, p_50_color, p_50_alpha, p_50_line_style, save_path, pooled_data=False, pooled_data_save_name='', std_alpha=0.5, prevalence_plot_save_path_base='', prevalence_linestyles=[], plc_in_file=False):
+def plot_optimized_vulnerability_curve(data_save_folders, physiological_color, stochastic_color, physiological_alpha, stochastic_alpha, line_styles, labels, p_50_color, p_50_alpha, p_50_line_style, save_path, pooled_data=False, pooled_data_save_name='', std_alpha=0.5, prevalence_plot_save_path_base='', prevalence_linestyles=[], plc_in_file=False, upper_pressure_limit=np.inf):
     """
     Reads from files the optimized SI spreading probabilities and related effective conductance values for a set of pressure difference values, calculates the percentage of
     conductance lost (PLC) values (out of effective conductance at pressure difference 0) and plots the vulnerability curves and prevalence plots for all pressure differences.
@@ -266,6 +266,8 @@ def plot_optimized_vulnerability_curve(data_save_folders, physiological_color, s
     plc_in_file : bln, optional
         if True, the pooled data file already contains PLC values instead of effective conductances and PLC should not be precalculated (this is the case if spreading probability has been
         optimized against an empirical vulnerability curve) (default: False)
+    upper_pressure_limit : float, optional
+        upper limit for the pressure range to be visualized (default: np.inf)
     Returns
     -------
     None
@@ -326,6 +328,12 @@ def plot_optimized_vulnerability_curve(data_save_folders, physiological_color, s
                     optimized_spreading_probabilities[i] = data['optimal_spreading_probability'] # backward compatibility case, should be removed
                 else:
                     optimized_spreading_probabilities[i] = data['optimized_spreading_probability']
+
+            included_pressure_indices = np.where(pressure_diffs <= upper_pressure_limit)
+            physiological_effective_conductances = physiological_effective_conductances[included_pressure_indices]
+            stochastic_effective_conductances = stochastic_effective_conductances[included_pressure_indices]
+            optimized_spreading_probabilities = optimized_spreading_probabilities[included_pressure_indices]
+            pressure_diffs = pressure_diffs[included_pressure_indices]
                     
         if not plc_in_file:
             indices = np.argsort(pressure_diffs)

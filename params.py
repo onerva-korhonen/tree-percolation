@@ -190,6 +190,7 @@ stochastic_vc_ls = '--'
 stochastic_vc_alpha = 0.5
 optimized_vc_linestyles = ['-']
 optimized_vc_labels = ['without spontaneous embolism']
+optimized_vc_upper_pressure_limit = 2E6
 std_alpha = 0.5
 prevalence_linestyles = ['-', '--', '-.'] # for total prevalence, prevalence due to spontaneous embolism, prevalence due to spreading
 prevalence_labels = ['total', 'spontaneous', 'spreading']
