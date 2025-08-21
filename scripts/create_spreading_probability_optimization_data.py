@@ -82,13 +82,17 @@ small_probabilities = [[] for i in range(len(vulnerability_pressure_range))] + [
 large_probabilities = [[probability] for probability in large_spreading_probability_range]
 n_small_pressures = len(small_pressures)
 n_large_pressures = len(large_pressures)
-small_large_limit = 11300 # for using only small_spreading_probability_range, this should be larger than the number of jobs
+small_large_limit = 1600 # for using only small_spreading_probability_range, this should be larger than the number of jobs
+zero_index = 9700 # index of the first array job
 
 # NOTE: do not modify any parameters below this point
 
 if __name__=='__main__':
 
     index = int(sys.argv[1])
+    index_str = str(index)
+    if zero_index > 0:
+        index -= zero_index
     if index <= small_large_limit:
         pressures = small_pressures
         probabilities = small_probabilities
@@ -106,7 +110,7 @@ if __name__=='__main__':
 
     pressure = pressures[pressure_index]
     probability = probabilities[pressure_index]
-    save_path = params.optimized_spreading_probability_save_path_base + '_' + str(index) + '.pkl'
+    save_path = params.optimized_spreading_probability_save_path_base + '_' + index_str + '.pkl'
 
     if create_networks:
 
