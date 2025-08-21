@@ -57,7 +57,7 @@ cfg['net_size'] = [100, 10, 100]
 cfg['bpp_type'] = 'young-laplace_with_constrictions'
 cfg['spontaneous_embolism'] = False
 
-vulnerability_pressure_range = np.arange(0.0625, 2, step=0.125)*1E6
+vulnerability_pressure_range = np.arange(1, 1.5, step=0.01)*1E6
 small_spreading_probability_range = []#[0.0, 0.005] + list(np.arange(0.01, 0.15, step=0.005))#np.logspace(np.log10(0.0001), np.log10(0.02), 15)
 large_spreading_probability_range = []#np.arange(0.15, 1.025, step = 0.025)
 # using two probability ranges is a hack for combining data calculated in different spaces
@@ -82,8 +82,8 @@ small_probabilities = [[] for i in range(len(vulnerability_pressure_range))] + [
 large_probabilities = [[probability] for probability in large_spreading_probability_range]
 n_small_pressures = len(small_pressures)
 n_large_pressures = len(large_pressures)
-small_large_limit = 1600 # for using only small_spreading_probability_range, this should be larger than the number of jobs
-zero_index = 9700 # index of the first array job
+small_large_limit = 5000 # for using only small_spreading_probability_range, this should be larger than the number of jobs
+zero_index = 11300 # index of the first array job
 
 # NOTE: do not modify any parameters below this point
 

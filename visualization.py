@@ -220,7 +220,7 @@ def plot_vulnerability_curve(vc, color, alpha, vc_type='physiological', save_pat
     if len(save_path) > 0:
         plt.savefig(save_path, format='pdf', bbox_inches='tight')
         
-def plot_optimized_vulnerability_curve(data_save_folders, physiological_color, stochastic_color, physiological_alpha, stochastic_alpha, line_styles, labels, p_50_color, p_50_alpha, p_50_line_style, save_path, pooled_data=False, pooled_data_save_name='', std_alpha=0.5, prevalence_plot_save_path_base='', prevalence_linestyles=[], plc_in_file=False, upper_pressure_limit=np.inf):
+def plot_optimized_vulnerability_curve(data_save_folders, physiological_color, stochastic_color, physiological_alpha, stochastic_alpha, line_styles, labels, p_50_color, p_50_alpha, p_50_line_style, save_path, pooled_data=False, pooled_data_save_name='', std_alpha=0.5, prevalence_plot_save_path_base='', prevalence_linestyles=[], plc_in_file=False, upper_pressure_limit=np.inf, pressures_to_be_visualized=[]):
     """
     Reads from files the optimized SI spreading probabilities and related effective conductance values for a set of pressure difference values, calculates the percentage of
     conductance lost (PLC) values (out of effective conductance at pressure difference 0) and plots the vulnerability curves and prevalence plots for all pressure differences.
@@ -268,6 +268,8 @@ def plot_optimized_vulnerability_curve(data_save_folders, physiological_color, s
         optimized against an empirical vulnerability curve) (default: False)
     upper_pressure_limit : float, optional
         upper limit for the pressure range to be visualized (default: np.inf)
+    pressures_to_be_visualized : iterable of floats, optional
+        set of pressure values to be included in the visualization (if there are more values in data, they are excluded) (default: [] to include all values)
     Returns
     -------
     None
@@ -310,6 +312,7 @@ def plot_optimized_vulnerability_curve(data_save_folders, physiological_color, s
                 average_stoch_prevalences_spreading = data['average_stochastic_prevalences_due_to_spreading']
                 std_stoch_prevalences_spreading = data['std_stochastic_prevalences_due_to_spreading']
         else:
+
             data_files = [os.path.join(data_save_folder, file) for file in os.listdir(data_save_folder) if os.path.isfile(os.path.join(data_save_folder, file))]
             pressure_diffs = np.zeros(len(data_files))
             physiological_effective_conductances = np.zeros(len(data_files))
@@ -329,11 +332,15 @@ def plot_optimized_vulnerability_curve(data_save_folders, physiological_color, s
                 else:
                     optimized_spreading_probabilities[i] = data['optimized_spreading_probability']
 
+        if len(pressures_to_be_visualized) > 0:
+            included_pressure_indices = np.where(pressure_diff in pressures_to_be_visualized for pressure_diff in pressure_diffs)
+        else:
             included_pressure_indices = np.where(pressure_diffs <= upper_pressure_limit)
-            physiological_effective_conductances = physiological_effective_conductances[included_pressure_indices]
-            stochastic_effective_conductances = stochastic_effective_conductances[included_pressure_indices]
-            optimized_spreading_probabilities = optimized_spreading_probabilities[included_pressure_indices]
-            pressure_diffs = pressure_diffs[included_pressure_indices]
+
+        physiological_effective_conductances = physiological_effective_conductances[included_pressure_indices]
+        stochastic_effective_conductances = stochastic_effective_conductances[included_pressure_indices]
+        optimized_spreading_probabilities = optimized_spreading_probabilities[included_pressure_indices]
+        pressure_diffs = pressure_diffs[included_pressure_indices]
                     
         if not plc_in_file:
             indices = np.argsort(pressure_diffs)
