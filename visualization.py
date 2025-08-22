@@ -331,9 +331,9 @@ def plot_optimized_vulnerability_curve(data_save_folders, physiological_color, s
                     optimized_spreading_probabilities[i] = data['optimal_spreading_probability'] # backward compatibility case, should be removed
                 else:
                     optimized_spreading_probabilities[i] = data['optimized_spreading_probability']
-
+        
         if len(pressures_to_be_visualized) > 0:
-            included_pressure_indices = np.where(pressure_diff in pressures_to_be_visualized for pressure_diff in pressure_diffs)
+            included_pressure_indices = np.where([pressure_diff in pressures_to_be_visualized for pressure_diff in pressure_diffs])
         else:
             included_pressure_indices = np.where(pressure_diffs <= upper_pressure_limit)
 
@@ -341,6 +341,20 @@ def plot_optimized_vulnerability_curve(data_save_folders, physiological_color, s
         stochastic_effective_conductances = stochastic_effective_conductances[included_pressure_indices]
         optimized_spreading_probabilities = optimized_spreading_probabilities[included_pressure_indices]
         pressure_diffs = pressure_diffs[included_pressure_indices]
+
+        average_phys_prevalences = [average_phys_prevalences[index] for index in included_pressure_indices[0]]
+        std_phys_prevalences = [std_phys_prevalences[index] for index in included_pressure_indices[0]]
+        average_phys_prevalences_spontaneous = [average_phys_prevalences_spontaneous[index] for index in included_pressure_indices[0]]
+        std_phys_prevalences_spontaneous = [std_phys_prevalences_spontaneous[index] for index in included_pressure_indices[0]]
+        average_phys_prevalences_spreading = [average_phys_prevalences_spreading[index] for index in included_pressure_indices[0]]
+        std_phys_prevalences_spreading = [std_phys_prevalences_spreading[index] for index in included_pressure_indices[0]]
+        average_stoch_prevalences = [average_stoch_prevalences[index] for index in included_pressure_indices[0]]
+        std_stoch_prevalences = [std_stoch_prevalences[index] for index in included_pressure_indices[0]]
+        average_stoch_prevalences_spontaneous = [average_stoch_prevalences_spontaneous[index] for index in included_pressure_indices[0]]
+        std_stoch_prevalences_spontaneous = [std_stoch_prevalences_spontaneous[index] for index in included_pressure_indices[0]]
+        average_stoch_prevalences_spreading = [average_stoch_prevalences_spreading[index] for index in included_pressure_indices[0]]
+        std_stoch_prevalences_spreading = [std_stoch_prevalences_spreading[index] for index in included_pressure_indices[0]]
+
                     
         if not plc_in_file:
             indices = np.argsort(pressure_diffs)
