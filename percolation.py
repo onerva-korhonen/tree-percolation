@@ -862,47 +862,47 @@ def optimize_spreading_probability_against_empirical_vc(simulation_data_save_fol
         optimized_stochastic_PLCs[i] = stochastic_PLCs[optimized_spreading_probability_index]
         optimized_n_probability_iterations = realized_n_probability_iterations[optimized_spreading_probability_index]
 
-    if spontaneous_embolism:
-        pressure_difference_stoch_prevalences = [prevalences[optimized_spreading_probability_index][i] for prevalences in stochastic_prevalences]
-        pressure_difference_stoch_prevalences_due_to_spontaneous_embolism = [prevalences[optimized_spreading_probability_index][i] for prevalences in stochastic_prevalences_due_to_spontaneous_embolism]
-        pressure_difference_stoch_prevalences_due_to_spreading = [prevalences[optimized_spreading_probability_index][i] for prevalences in stochastic_prevalences_due_to_spreading]
-    else:
-        pressure_difference_stoch_prevalences = [prevalences[optimized_spreading_probability_index] for prevalences in stochastic_prevalences]
-        pressure_difference_stoch_prevalences_due_to_spontaneous_embolism = [prevalences[optimized_spreading_probability_index] for prevalences in stochastic_prevalences_due_to_spontaneous_embolism]
-        pressure_difference_stoch_prevalences_due_to_spreading = [prevalences[optimized_spreading_probability_index] for prevalences in stochastic_prevalences_due_to_spreading]
-    stochastic_prevalence_length = max([len(prevalence) for prevalence in pressure_difference_stoch_prevalences])
-    for p, (prevalence, prevalence_due_to_spontaneous_embolism, prevalence_due_to_spreading) in enumerate(zip(pressure_difference_stoch_prevalences, pressure_difference_stoch_prevalences_due_to_spontaneous_embolism, pressure_difference_stoch_prevalences_due_to_spreading)):
-        if len(prevalence) == 0:
-            pressure_difference_stoch_prevalences[p] = np.zeros(stochastic_prevalence_length)
-            pressure_difference_stoch_prevalences_due_to_spontaneous_embolism[p] = np.zeros(stochastic_prevalence_length)
-            pressure_difference_stoch_prevalences_due_to_spreading[p] = np.zeros(stochastic_prevalence_length)
-        elif len(prevalence) < stochastic_prevalence_length:
-            pressure_difference_stoch_prevalences[p] = np.concatenate((prevalence, prevalence[-1] * np.ones(stochastic_prevalence_length - len(prevalence))))
-            pressure_difference_stoch_prevalences_due_to_spontaneous_embolism[p] = np.concatenate((prevalence_due_to_spontaneous_embolism, prevalence_due_to_spontaneous_embolism[-1] * np.ones(stochastic_prevalence_length - len(prevalence_due_to_spontaneous_embolism))))
-            pressure_difference_stoch_prevalences_due_to_spreading[p] = np.concatenate((prevalence_due_to_spreading, prevalence_due_to_spreading[-1] * np.ones(stochastic_prevalence_length - len(prevalence_due_to_spreading))))
-    pressure_difference_stoch_prevalences = np.array(pressure_difference_stoch_prevalences)
-    average_stoch_prevalences.append(np.mean(pressure_difference_stoch_prevalences[:optimized_n_probability_iterations], axis=0))
-    std_stoch_prevalences.append(np.std(pressure_difference_stoch_prevalences[:optimized_n_probability_iterations], axis=0))
-    pressure_difference_stoch_prevalences_due_to_spontaneous_embolism = np.array(pressure_difference_stoch_prevalences_due_to_spontaneous_embolism)
-    average_stoch_prevalences_due_to_spontaneous_embolism.append(np.mean(pressure_difference_stoch_prevalences_due_to_spontaneous_embolism[:optimized_n_probability_iterations], axis=0))
-    std_stoch_prevalences_due_to_spontaneous_embolism.append(np.std(pressure_difference_stoch_prevalences_due_to_spontaneous_embolism[:optimized_n_probability_iterations], axis=0))
-    pressure_difference_stoch_prevalences_due_to_spreading = np.array(pressure_difference_stoch_prevalences_due_to_spreading)
-    average_stoch_prevalences_due_to_spreading.append(np.mean(pressure_difference_stoch_prevalences_due_to_spreading[:optimized_n_probability_iterations], axis=0))
-    std_stoch_prevalences_due_to_spreading.append(np.std(pressure_difference_stoch_prevalences_due_to_spreading[:optimized_n_probability_iterations], axis=0))
-    
-    for stoch_prop, stoch_av, stoch_std in zip(stoch_props, stoch_avs, stoch_stds):
         if spontaneous_embolism:
-            pressure_diff_stoch_props = [props[optimized_spreading_probability_index][i] for props in stoch_prop]
+            pressure_difference_stoch_prevalences = [prevalences[optimized_spreading_probability_index][i] for prevalences in stochastic_prevalences]
+            pressure_difference_stoch_prevalences_due_to_spontaneous_embolism = [prevalences[optimized_spreading_probability_index][i] for prevalences in stochastic_prevalences_due_to_spontaneous_embolism]
+            pressure_difference_stoch_prevalences_due_to_spreading = [prevalences[optimized_spreading_probability_index][i] for prevalences in stochastic_prevalences_due_to_spreading]
         else:
-            pressure_diff_stoch_props = [props[optimized_spreading_probability_index] for props in stoch_prop]
-        for p, props in enumerate(pressure_diff_stoch_props):
-            if len(props) == 0:
-                pressure_diff_stoch_props[p] = np.zeros(stochastic_prevalence_length)
-            elif len(props) < stochastic_prevalence_length:
-                pressure_diff_stoch_props[p] = np.concatenate((props, props[-1] * np.ones(stochastic_prevalence_length - len(props))))
-        pressure_diff_stoch_props = np.array(pressure_diff_stoch_props)
-        stoch_av.append(np.mean(pressure_diff_stoch_props[:optimized_n_probability_iterations], axis=0))
-        stoch_std.append(np.std(pressure_diff_stoch_props[:optimized_n_probability_iterations], axis=0))
+            pressure_difference_stoch_prevalences = [prevalences[optimized_spreading_probability_index] for prevalences in stochastic_prevalences]
+            pressure_difference_stoch_prevalences_due_to_spontaneous_embolism = [prevalences[optimized_spreading_probability_index] for prevalences in stochastic_prevalences_due_to_spontaneous_embolism]
+            pressure_difference_stoch_prevalences_due_to_spreading = [prevalences[optimized_spreading_probability_index] for prevalences in stochastic_prevalences_due_to_spreading]
+        stochastic_prevalence_length = max([len(prevalence) for prevalence in pressure_difference_stoch_prevalences])
+        for p, (prevalence, prevalence_due_to_spontaneous_embolism, prevalence_due_to_spreading) in enumerate(zip(pressure_difference_stoch_prevalences, pressure_difference_stoch_prevalences_due_to_spontaneous_embolism, pressure_difference_stoch_prevalences_due_to_spreading)):
+            if len(prevalence) == 0:
+                pressure_difference_stoch_prevalences[p] = np.zeros(stochastic_prevalence_length)
+                pressure_difference_stoch_prevalences_due_to_spontaneous_embolism[p] = np.zeros(stochastic_prevalence_length)
+                pressure_difference_stoch_prevalences_due_to_spreading[p] = np.zeros(stochastic_prevalence_length)
+            elif len(prevalence) < stochastic_prevalence_length:
+                pressure_difference_stoch_prevalences[p] = np.concatenate((prevalence, prevalence[-1] * np.ones(stochastic_prevalence_length - len(prevalence))))
+                pressure_difference_stoch_prevalences_due_to_spontaneous_embolism[p] = np.concatenate((prevalence_due_to_spontaneous_embolism, prevalence_due_to_spontaneous_embolism[-1] * np.ones(stochastic_prevalence_length - len(prevalence_due_to_spontaneous_embolism))))
+                pressure_difference_stoch_prevalences_due_to_spreading[p] = np.concatenate((prevalence_due_to_spreading, prevalence_due_to_spreading[-1] * np.ones(stochastic_prevalence_length - len(prevalence_due_to_spreading))))
+        pressure_difference_stoch_prevalences = np.array(pressure_difference_stoch_prevalences)
+        average_stoch_prevalences.append(np.mean(pressure_difference_stoch_prevalences[:optimized_n_probability_iterations], axis=0))
+        std_stoch_prevalences.append(np.std(pressure_difference_stoch_prevalences[:optimized_n_probability_iterations], axis=0))
+        pressure_difference_stoch_prevalences_due_to_spontaneous_embolism = np.array(pressure_difference_stoch_prevalences_due_to_spontaneous_embolism)
+        average_stoch_prevalences_due_to_spontaneous_embolism.append(np.mean(pressure_difference_stoch_prevalences_due_to_spontaneous_embolism[:optimized_n_probability_iterations], axis=0))
+        std_stoch_prevalences_due_to_spontaneous_embolism.append(np.std(pressure_difference_stoch_prevalences_due_to_spontaneous_embolism[:optimized_n_probability_iterations], axis=0))
+        pressure_difference_stoch_prevalences_due_to_spreading = np.array(pressure_difference_stoch_prevalences_due_to_spreading)
+        average_stoch_prevalences_due_to_spreading.append(np.mean(pressure_difference_stoch_prevalences_due_to_spreading[:optimized_n_probability_iterations], axis=0))
+        std_stoch_prevalences_due_to_spreading.append(np.std(pressure_difference_stoch_prevalences_due_to_spreading[:optimized_n_probability_iterations], axis=0))
+        
+        for stoch_prop, stoch_av, stoch_std in zip(stoch_props, stoch_avs, stoch_stds):
+            if spontaneous_embolism:
+                pressure_diff_stoch_props = [props[optimized_spreading_probability_index][i] for props in stoch_prop]
+            else:
+                pressure_diff_stoch_props = [props[optimized_spreading_probability_index] for props in stoch_prop]
+            for p, props in enumerate(pressure_diff_stoch_props):
+                if len(props) == 0:
+                    pressure_diff_stoch_props[p] = np.zeros(stochastic_prevalence_length)
+                elif len(props) < stochastic_prevalence_length:
+                    pressure_diff_stoch_props[p] = np.concatenate((props, props[-1] * np.ones(stochastic_prevalence_length - len(props))))
+            pressure_diff_stoch_props = np.array(pressure_diff_stoch_props)
+            stoch_av.append(np.mean(pressure_diff_stoch_props[:optimized_n_probability_iterations], axis=0))
+            stoch_std.append(np.std(pressure_diff_stoch_props[:optimized_n_probability_iterations], axis=0))
 
     data = {'pressure_differences': pressure_differences, 'optimized_spreading_probabilities': optimized_spreading_probabilities, 'physiological_PLCs': physiological_PLCs,
             'stochastic_PLCs': optimized_stochastic_PLCs, 'average_stochastic_prevalences': average_stoch_prevalences, 'std_stochastic_prevalences': std_stoch_prevalences, 
