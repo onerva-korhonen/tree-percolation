@@ -191,7 +191,7 @@ stochastic_vc_alpha = 0.5
 optimized_vc_linestyles = ['-']
 optimized_vc_labels = ['without spontaneous embolism']
 optimized_vc_upper_pressure_limit = 2E6
-optimized_vc_pressures_to_be_visualized = np.array(list(np.arange(0, 1, step=0.0625)) + list(np.arange(1, 1.5, step=0.01)) + list(np.arange(1.5, 2.0625, step=0.0625)))*1E6 
+optimized_vc_pressures_to_be_visualized = np.array(list(np.arange(0, 1, step=0.125)) + list(np.arange(1, 1.5, step=0.01)) + list(np.arange(1.5, 4.125, step=0.125)))*1E6 
 std_alpha = 0.5
 prevalence_linestyles = ['-', '--', '-.'] # for total prevalence, prevalence due to spontaneous embolism, prevalence due to spreading
 prevalence_labels = ['total', 'spontaneous', 'spreading']

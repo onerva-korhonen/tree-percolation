@@ -277,7 +277,7 @@ def plot_optimized_vulnerability_curve(data_save_folders, physiological_color, s
     fig = plt.figure()
     ax = fig.add_subplot(111)
     ax2 = ax.twinx()
-    
+
     if pooled_data:
         tot_prevalence_ls = prevalence_linestyles[0]
         spontaneous_prevalence_ls = prevalence_linestyles[1]
@@ -337,23 +337,28 @@ def plot_optimized_vulnerability_curve(data_save_folders, physiological_color, s
         else:
             included_pressure_indices = np.where(pressure_diffs <= upper_pressure_limit)
 
-        physiological_effective_conductances = physiological_effective_conductances[included_pressure_indices]
-        stochastic_effective_conductances = stochastic_effective_conductances[included_pressure_indices]
-        optimized_spreading_probabilities = optimized_spreading_probabilities[included_pressure_indices]
         pressure_diffs = pressure_diffs[included_pressure_indices]
+        optimized_spreading_probabilities = optimized_spreading_probabilities[included_pressure_indices]
 
-        average_phys_prevalences = [average_phys_prevalences[index] for index in included_pressure_indices[0]]
-        std_phys_prevalences = [std_phys_prevalences[index] for index in included_pressure_indices[0]]
-        average_phys_prevalences_spontaneous = [average_phys_prevalences_spontaneous[index] for index in included_pressure_indices[0]]
-        std_phys_prevalences_spontaneous = [std_phys_prevalences_spontaneous[index] for index in included_pressure_indices[0]]
-        average_phys_prevalences_spreading = [average_phys_prevalences_spreading[index] for index in included_pressure_indices[0]]
-        std_phys_prevalences_spreading = [std_phys_prevalences_spreading[index] for index in included_pressure_indices[0]]
-        average_stoch_prevalences = [average_stoch_prevalences[index] for index in included_pressure_indices[0]]
-        std_stoch_prevalences = [std_stoch_prevalences[index] for index in included_pressure_indices[0]]
-        average_stoch_prevalences_spontaneous = [average_stoch_prevalences_spontaneous[index] for index in included_pressure_indices[0]]
-        std_stoch_prevalences_spontaneous = [std_stoch_prevalences_spontaneous[index] for index in included_pressure_indices[0]]
-        average_stoch_prevalences_spreading = [average_stoch_prevalences_spreading[index] for index in included_pressure_indices[0]]
-        std_stoch_prevalences_spreading = [std_stoch_prevalences_spreading[index] for index in included_pressure_indices[0]]
+        if plc_in_file:
+            physiological_plc = physiological_plc[included_pressure_indices]
+            stochastic_plc = stochastic_plc[included_pressure_indices]
+        else:
+            physiological_effective_conductances = physiological_effective_conductances[included_pressure_indices]
+            stochastic_effective_conductances = stochastic_effective_conductances[included_pressure_indices]
+
+            average_phys_prevalences = [average_phys_prevalences[index] for index in included_pressure_indices[0]]
+            std_phys_prevalences = [std_phys_prevalences[index] for index in included_pressure_indices[0]]
+            average_phys_prevalences_spontaneous = [average_phys_prevalences_spontaneous[index] for index in included_pressure_indices[0]]
+            std_phys_prevalences_spontaneous = [std_phys_prevalences_spontaneous[index] for index in included_pressure_indices[0]]
+            average_phys_prevalences_spreading = [average_phys_prevalences_spreading[index] for index in included_pressure_indices[0]]
+            std_phys_prevalences_spreading = [std_phys_prevalences_spreading[index] for index in included_pressure_indices[0]]
+            average_stoch_prevalences = [average_stoch_prevalences[index] for index in included_pressure_indices[0]]
+            std_stoch_prevalences = [std_stoch_prevalences[index] for index in included_pressure_indices[0]]
+            average_stoch_prevalences_spontaneous = [average_stoch_prevalences_spontaneous[index] for index in included_pressure_indices[0]]
+            std_stoch_prevalences_spontaneous = [std_stoch_prevalences_spontaneous[index] for index in included_pressure_indices[0]]
+            average_stoch_prevalences_spreading = [average_stoch_prevalences_spreading[index] for index in included_pressure_indices[0]]
+            std_stoch_prevalences_spreading = [std_stoch_prevalences_spreading[index] for index in included_pressure_indices[0]]
 
                     
         if not plc_in_file:
@@ -383,6 +388,10 @@ def plot_optimized_vulnerability_curve(data_save_folders, physiological_color, s
         print(f'P_12: {p_12}')
         print(f'P_88: {p_88}')
 
+        beta_12 = optimized_spreading_probabilities[np.argmin(np.abs(physiological_plc - 12))]
+        beta_50 = optimized_spreading_probabilities[np.argmin(np.abs(physiological_plc - 50))]
+        beta_88 = optimized_spreading_probabilities[np.argmin(np.abs(physiological_plc - 88))]
+
         ax.plot(pressure_diffs, physiological_plc, color=physiological_color, alpha=physiological_alpha, ls=line_style, label='physiological ' + label)
         ax.plot(pressure_diffs, stochastic_plc, color=stochastic_color, alpha=stochastic_alpha, ls=line_style, label='stochastic ' + label)
         ax2.plot(pressure_diffs, optimized_spreading_probabilities, label='optimized spreading probability ' + label)
@@ -390,6 +399,10 @@ def plot_optimized_vulnerability_curve(data_save_folders, physiological_color, s
         ax.plot([p_12, p_12], [0, 100], color=p_50_color, alpha=p_50_alpha, ls=p_50_line_style)
         ax.plot([p_50, p_50], [0, 100], color=p_50_color, alpha=p_50_alpha, ls=p_50_line_style)
         ax.plot([p_88, p_88], [0, 100], color=p_50_color, alpha=p_50_alpha, ls=p_50_line_style)
+
+        print(f'beta_12: {beta_12}')
+        print(f'beta_50: {beta_50}')
+        print(f'beta_88: {beta_88}')
         
         if pooled_data and not plc_in_file: # prevalence information is included only in the pooled data
             for i, (av_phys_prevalence, std_phys_prevalence, av_phys_prevalence_spontaneous, std_phys_prevalence_spontaneous, av_phys_prevalence_spreading, std_phys_prevalence_spreading, av_stoch_prevalence, std_stoch_prevalence, av_stoch_prevalence_spontaneous, std_stoch_prevalence_spontaneous, av_stoch_prevalence_spreading, std_stoch_prevalence_spreading) in enumerate(zip(average_phys_prevalences, std_phys_prevalences, average_phys_prevalences_spontaneous, std_phys_prevalences_spontaneous, average_phys_prevalences_spreading, std_phys_prevalences_spreading, average_stoch_prevalences, std_stoch_prevalences, average_stoch_prevalences_spontaneous, std_stoch_prevalences_spontaneous, average_stoch_prevalences_spreading, std_stoch_prevalences_spreading)):
