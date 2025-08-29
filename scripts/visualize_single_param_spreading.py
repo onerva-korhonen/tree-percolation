@@ -12,7 +12,7 @@ import pickle
 import numpy as np
 import matplotlib.pylab as plt
 
-fixed_variable = 'probability' # TODO: select either 'pressure' or 'probability'; use 'probability' to visualize the spreading fitted to empirical data
+fixed_variable = 'pressure' # TODO: select either 'pressure' or 'probability'; use 'probability' to visualize the spreading fitted to empirical data
 assert fixed_variable in ['pressure', 'probability'], 'unknown fixed variable, select pressure or probability'
 if fixed_variable == 'pressure':
     pooled_data_save_name = params.pooled_optimized_spreading_probability_save_name
@@ -62,7 +62,8 @@ def rmse(x1, x2): # helper function for calculating RMSE
     rmse_cut = np.sqrt(np.sum((x1_cut - x2_cut)**2) / len(x1_cut))
     rmse_padded = np.sqrt(np.sum((x1_padded - x2_padded)**2) / len(x2_padded))
     rmse_resampled = np.sqrt(np.sum((x1_resampled - x2_resampled)**2) / len(x2_resampled))
-    return rmse_cut, rmse_padded, rmse_resampled
+    rmse_resampled_norm = rmse_resampled / np.mean(x1)
+    return rmse_cut, rmse_padded, rmse_resampled, rmse_resampled_norm
 
 if __name__=='__main__':
 
@@ -313,22 +314,22 @@ if __name__=='__main__':
  
             # 3) Calculating RMSE
             if fixed_variable == 'pressure':
-                rmse_cut_prevalence, rmse_padded_prevalence, rmse_resampled_prevalence = rmse(av_phys_prevalence, av_stoch_prevalence)
-                rmse_cut_eff_conductance, rmse_padded_eff_conductance, rmse_resampled_eff_conductance = rmse(av_phys_effective_conductances, av_stoch_effective_conductances)
-                rmse_cut_lcc_size, rmse_padded_lcc_size, rmse_resampled_lcc_size = rmse(av_phys_lcc_size, av_stoch_lcc_size)
-                rmse_cut_func_lcc_size, rmse_padded_func_lcc_size, rmse_resampled_func_lcc_size = rmse(av_phys_func_lcc_size, av_stoch_func_lcc_size)
-                rmse_cut_nonfunc_volume, rmse_padded_nonfunc_volume, rmse_resampled_nonfunc_volume = rmse(av_phys_nonfunc_volume, av_stoch_nonfunc_volume)
-                rmse_cut_ninlets, rmse_padded_ninlets, rmse_resampled_ninlets = rmse(av_phys_ninlets, av_stoch_ninlets)
-                rmse_cut_noutlets, rmse_padded_noutlets, rmse_resampled_noutlets = rmse(av_phys_noutlets, av_stoch_noutlets)
+                rmse_cut_prevalence, rmse_padded_prevalence, rmse_resampled_prevalence, rmse_resampled_norm_prevalence = rmse(av_phys_prevalence, av_stoch_prevalence)
+                rmse_cut_eff_conductance, rmse_padded_eff_conductance, rmse_resampled_eff_conductance, rmse_resampled_norm_eff_conductance = rmse(av_phys_effective_conductances, av_stoch_effective_conductances)
+                rmse_cut_lcc_size, rmse_padded_lcc_size, rmse_resampled_lcc_size, rmse_resampled_norm_lcc_size = rmse(av_phys_lcc_size, av_stoch_lcc_size)
+                rmse_cut_func_lcc_size, rmse_padded_func_lcc_size, rmse_resampled_func_lcc_size, rmse_resampled_norm_func_lcc_size = rmse(av_phys_func_lcc_size, av_stoch_func_lcc_size)
+                rmse_cut_nonfunc_volume, rmse_padded_nonfunc_volume, rmse_resampled_nonfunc_volume, rmse_resampled_norm_nonfunc_volume  = rmse(av_phys_nonfunc_volume, av_stoch_nonfunc_volume)
+                rmse_cut_ninlets, rmse_padded_ninlets, rmse_resampled_ninlets, rmse_resampled_norm_ninlets = rmse(av_phys_ninlets, av_stoch_ninlets)
+                rmse_cut_noutlets, rmse_padded_noutlets, rmse_resampled_noutlets, rmse_resampled_norm_noutlets = rmse(av_phys_noutlets, av_stoch_noutlets)
  
                 print(f'At pressure difference {pressure_difference}, optimal SI spreading probability is {spreading_probability}')
-                print(f'Prevalence: cut RMSE: {rmse_cut_prevalence}, padded RMSE: {rmse_padded_prevalence}, resampled RMSE: {rmse_resampled_prevalence}')
-                print(f'Effective conductance: cut RMSE: {rmse_cut_eff_conductance}, padded RMSE: {rmse_padded_eff_conductance}, resampled RMSE: {rmse_resampled_eff_conductance}')
-                print(f'LCC size: cut RMSE: {rmse_cut_lcc_size}, padded RMSE: {rmse_padded_lcc_size}, resampled RMSE: {rmse_resampled_lcc_size}')
-                print(f'Functional LCC size: cut RMSE: {rmse_cut_func_lcc_size}, padded RMSE: {rmse_padded_func_lcc_size}, resampled RMSE: {rmse_resampled_func_lcc_size}')
-                print(f'Nonfunctional component volume: cut RMSE: {rmse_cut_nonfunc_volume}, padded RMSE: {rmse_padded_nonfunc_volume}, resampled RMSE: {rmse_resampled_nonfunc_volume}')
-                print(f'N inlets: cut RMSE: {rmse_cut_ninlets}, padded RMSE: {rmse_padded_ninlets}, resampled RMSE: {rmse_resampled_ninlets}')
-                print(f'N outlets: cut RMSE: {rmse_cut_noutlets}, padded RMSE: {rmse_padded_noutlets}, resampled RMSE: {rmse_resampled_noutlets}')
+                print(f'Prevalence: cut RMSE: {rmse_cut_prevalence}, padded RMSE: {rmse_padded_prevalence}, resampled RMSE: {rmse_resampled_prevalence}, {rmse_resampled_norm_prevalence}')
+                print(f'Effective conductance: cut RMSE: {rmse_cut_eff_conductance}, padded RMSE: {rmse_padded_eff_conductance}, resampled RMSE: {rmse_resampled_eff_conductance}, {rmse_resampled_norm_eff_conductance}')
+                print(f'LCC size: cut RMSE: {rmse_cut_lcc_size}, padded RMSE: {rmse_padded_lcc_size}, resampled RMSE: {rmse_resampled_lcc_size}, {rmse_resampled_norm_lcc_size}')
+                print(f'Functional LCC size: cut RMSE: {rmse_cut_func_lcc_size}, padded RMSE: {rmse_padded_func_lcc_size}, resampled RMSE: {rmse_resampled_func_lcc_size}, {rmse_resampled_norm_func_lcc_size}')
+                print(f'Nonfunctional component volume: cut RMSE: {rmse_cut_nonfunc_volume}, padded RMSE: {rmse_padded_nonfunc_volume}, resampled RMSE: {rmse_resampled_nonfunc_volume}, {rmse_resampled_norm_nonfunc_volume}')
+                print(f'N inlets: cut RMSE: {rmse_cut_ninlets}, padded RMSE: {rmse_padded_ninlets}, resampled RMSE: {rmse_resampled_ninlets}, {rmse_resampled_norm_ninlets}')
+                print(f'N outlets: cut RMSE: {rmse_cut_noutlets}, padded RMSE: {rmse_padded_noutlets}, resampled RMSE: {rmse_resampled_noutlets}, {rmse_resampled_norm_noutlets}')
 
 
 
