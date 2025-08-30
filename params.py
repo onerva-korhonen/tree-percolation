@@ -59,7 +59,8 @@ Dc_cv = Dc_std / Dc
 Dc_alpha = 0.05 # alpha value of Dc_ci
 Dc_z = norm.ppf(1 - (1 - Dc_alpha) / 2)
 fc = 0.26 # average contact fraction between two conduits; data from Jansen
-Dp = 78.276807125728e-9 # m; average pit membrane pore diameter; from Jansen et al. 2009
+Dp = 10E-9 # m, average pit membrane pore diameter; from Kaack et al. 2021
+# used to be 78.276807125728e-9 # m; average pit membrane pore diameter; from Jansen et al. 2009
 tf = 20e-9 # m; microfibril strand thickness; from Kaack et al. 2021
 average_pit_membrane_area = 1.096*(1E-3)**2 # m^2; average pit membrane area; from Kaack et al. 2021
 fpf = 0.517910375603663 # average pit field fraction between two conduits; from Held et al. (in preparation)
