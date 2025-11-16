@@ -35,6 +35,7 @@ def sigmoid(r,A,r0,std):
     return surf
 
 def CNT_area(r,p,nlipids,APL,T):
+    assert T in [270, 290, 300, 3010], "no surface tension defined for the selected T; use T = {270, 290, 300, 310} instead"
     # Boltzmann constant
     kb = 1.38e-23  # J/K
     # Planck constant
@@ -50,15 +51,14 @@ def CNT_area(r,p,nlipids,APL,T):
     # calculate surface tension at current apl
     # note that this is a fit to MD data
 
-    # It should be made non-hard coded at some point
-    # 270 K
-    # gamma = sigmoid(r,63,cent,0.62e-8)+sigmoid(r,14,cent+16e-9,0.9e-8)
-    # 290 K
-    # gamma = sigmoid(r,59,cent,0.66e-8) + sigmoid(r,15,cent+16e-9,0.9e-8)
-    # 300 K
-    gamma = sigmoid(r, 57, cent, 0.68e-8) + sigmoid(r, 15.5, cent+16e-9, 0.9e-8)
-    # 310 K
-    # gamma = sigmoid(r,55,cent,0.7e-8) + sigmoid(r,16,cent+16e-9,0.9e-8)
+    if T == 270:
+        gamma = sigmoid(r,63,cent,0.62e-8)+sigmoid(r,14,cent+16e-9,0.9e-8)
+    elif T == 290:
+        gamma = sigmoid(r,59,cent,0.66e-8) + sigmoid(r,15,cent+16e-9,0.9e-8)
+    elif T == 300:
+        gamma = sigmoid(r, 57, cent, 0.68e-8) + sigmoid(r, 15.5, cent+16e-9, 0.9e-8)
+    else: # this corresponds to T == 310 as the assert above has excluded other values
+        gamma = sigmoid(r,55,cent,0.7e-8) + sigmoid(r,16,cent+16e-9,0.9e-8)
 
     # surface free energy per unit area
     surf = np.divide(gamma,denom)

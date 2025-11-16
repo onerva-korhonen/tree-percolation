@@ -3,7 +3,7 @@ A script for creating data for optimizing SI spreading probability in the presen
 embolism spreading for a set of pressure differences and spreading probabilities;
 the evolution of effective conductance and network properties are saved for each pressure difference / spreading probability).
 
-This script creates the data needed for Figs. 2-4 of the manuscripti.
+This script is meant for simulating embolism spreading with spontaneous embolism and included calculation of spontaneus embolism probabilities.
 
 After this, run optimize_spreading_probability.py to find optimal spreading probability for each pressure difference.
 
@@ -57,9 +57,9 @@ cfg['net_size'] = [100, 10, 100]
 cfg['bpp_type'] = 'young-laplace_with_constrictions'
 cfg['spontaneous_embolism'] = True
 
-vulnerability_pressure_range = np.arange(0, 8, step=0.25)*1E6
-small_spreading_probability_range = np.arange(0.0, 0.15, step=0.005)#np.logspace(np.log10(0.0001), np.log10(0.02), 15)
-large_spreading_probability_range = np.arange(0.01, 0.05, step=0.01)
+vulnerability_pressure_range = np.arange(1, 1.5, step=0.01)*1E6
+small_spreading_probability_range = []#[0.0, 0.005] + list(np.arange(0.01, 0.15, step=0.005))#np.logspace(np.log10(0.0001), np.log10(0.02), 15)
+large_spreading_probability_range = []#np.arange(0.15, 1.025, step = 0.025)
 # using two probability ranges is a hack for combining data calculated in different spaces
 
 include_orig_values = True
@@ -82,12 +82,15 @@ small_probabilities = [[] for i in range(len(vulnerability_pressure_range))] + [
 large_probabilities = [[probability] for probability in large_spreading_probability_range]
 n_small_pressures = len(small_pressures)
 n_large_pressures = len(large_pressures)
-small_large_limit = 10000 # for using only small_spreading_probability_range, this should be larger than the number of jobs
+small_large_limit = 5000 # for using only small_spreading_probability_range, this should be larger than the number of jobs
+zero_index = 11300 # index of the first array job
 
 # NOTE: do not modify any parameters below this point
 
 if __name__=='__main__':
     index = int(sys.argv[1])
+    if zero_index > 0:
+        index -= zero_index
     if index <= small_large_limit:
         pressures = small_pressures
         probabilities = small_probabilities
@@ -125,6 +128,7 @@ if __name__=='__main__':
         net = network_data['network']
         start_conduits = network_data['start_conduits_random_per_component']
         cfg['start_conduits'] = start_conduits
+        # TODO: add option for running without start conduits => all spreading originates from spontaneous embolism
 
     cfg['conduit_diameters'] = 'inherit_from_net'
 
