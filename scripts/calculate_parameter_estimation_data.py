@@ -12,22 +12,24 @@ import parameter_estimation
 
 n_iterations = 10
 
-n_slices = 20 # into how many slices the probability ranges will be divided
+n_slices = 10 
+# the start, end and Pe_rad ranges are sliced into n_slices slices, assuming that the length of all ranges is the same
+# to calculate each parameter combination independently, set n_slices to parameter range length - 1
 
-start_range = list(np.arange(0, 1, 0.01).reshape(n_slices, -1))
+start_range = list(np.arange(0, 1, 0.1).reshape(n_slices, -1))
 start_range[-1] = np.concatenate((start_range[-1], np.array([1.])))
 
-end_range = list(np.arange(0, 1, 0.01).reshape(n_slices, -1))
+end_range = list(np.arange(0, 1, 0.1).reshape(n_slices, -1))
 end_range[-1] = np.concatenate((end_range[-1], np.array([1.])))
 
-Pe_rad_range = list(np.arange(0, 1, 0.01).reshape(n_slices, -1))
+Pe_rad_range = list(np.arange(0, 1, 0.1).reshape(n_slices, -1))
 Pe_rad_range[-1] = np.concatenate((Pe_rad_range[-1], np.array([1.])))
 
-Pe_tan_range = np.arange(0, 1.01, 0.01)
+Pe_tan_range = np.arange(0, 1.1, 0.1)
 Pes_tan = [[Pe_tan, Pe_tan] for Pe_tan in Pe_tan_range]
 
-start_divider = n_slices * n_slices * n_iterations # len(end_range) * len(Pe_rad_range) * n_iterations
-end_divider = n_slices * n_iterations # len(Pe_rad_range) * n_iterations
+start_divider = 11 * 11 * n_iterations # len(end_range) * len(Pe_rad_range) * n_iterations
+end_divider = 11 * n_iterations # len(Pe_rad_range) * n_iterations
 rad_divider = n_iterations # n_iterations
 
 optimization_net_size = [100, 10, 100]
@@ -35,6 +37,7 @@ optimization_net_size = [100, 10, 100]
 if __name__=='__main__':
 
     index = int(sys.argv[1])
+    import pdb; pdb.set_trace()
 
     start_index = int(np.floor(index / start_divider))
     end_index = int(np.floor((index - start_index * start_divider) / end_divider))

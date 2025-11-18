@@ -109,8 +109,6 @@ def create_mrad_network(cfg):
         test_cond_end.append(conduit_map_column[1])
     cond_start = np.concatenate(test_cond_start, axis=1)
     cond_end = np.concatenate(test_cond_end, axis=1)
-   
-    #import pdb; pdb.set_trace()
 
     conduit_map = trim_conduit_map(cond_start + cond_end*-1)
     conduit_map = clean_conduit_map(conduit_map)
@@ -154,8 +152,8 @@ def create_mrad_network(cfg):
         conduit_elements = np.concatenate(conduit_elements)
         # conduit contain one row for each element belonging to a conduit and 5 columns:
         # 1) the row index of the element
-        # 2) the column index of the element
-        # 3) the radial (depth) index of the element
+        # 2) the radial (column) index of the element
+        # 3) the tangential (depth) index of the element
         # 4) the index of the conduit the element belongs to (from 0 to n_conduits)
         # 5) the index of the element (from 0 to n_conduit_elements)
         
