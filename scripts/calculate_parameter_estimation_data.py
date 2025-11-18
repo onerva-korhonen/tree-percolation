@@ -37,7 +37,6 @@ optimization_net_size = [100, 10, 100]
 if __name__=='__main__':
 
     index = int(sys.argv[1])
-    import pdb; pdb.set_trace()
 
     start_index = int(np.floor(index / start_divider))
     end_index = int(np.floor((index - start_index * start_divider) / end_divider))
