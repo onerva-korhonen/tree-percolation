@@ -52,6 +52,7 @@ Pe_tan = np.array([0.9, 0.9]) # probability of tangential connection
 # anatomical + physiological parameters
 Lce = 379E-6 # m; average conduit element length in Betula pendula branches; from Karimi 2014
 Dc = 23.5261E-6 # m; diameter of a conduit element in Betula pendula branches; from Held et al. (in preparation)
+Dc_f_sylvatica = 20.3E-6 # m; average vessel diameter in Fagus sylvatica stem; from Kreinert et al. (in preparation)
 Dc_std = 13.1038E-6 # m; standard deviation of conduit element diameter in Betula pendula branches; from Held et al. (in preparation)
 # Note: Linunen & Kalliokoski 2010 would have Dc = 18.18232653752158e-6, Dc_std = 10.76131985221804e-6 
 #Dc_ci = [13.3995938309482, 18.4374185582225] # confidence interval of Dc
@@ -84,11 +85,14 @@ gas_contact_angle = 0 # radians; the contact angle between gas and xylem sap; fr
 
 target_conduit_density = 630.817129361309/(1e-3)**2 # 1/m^2; conduit density in large branches of Betula pendula; from Lintunen & Kalliokoski 2010
 target_grouping_index = 2.47 # grouping index in branches of Betula pendula; from Alber et al., Trees 33, 2019
+target_conduit_density_f_sylvatica = 193.347/(1E-3)**2 # 1/m^2; conduit density for Fagus sylvatica stem (average across segments): calculated from data collected by Swetlana Kreinert
+target_grouping_index_f_sylvatica = 1.39 # grouping index for Fagus sylvatica stem (average across segments); calculated from data collected by Swetlana Kreinert
     
 
 # paths for saving
 triton = True
-identifier = 'spreading_probability_optimization_medium_net_no_spontaneous_embolism_long_si_updated_conduit_anatomy'
+identifier = 'parameter_estimation_f_sylvatica' 
+#'spreading_probability_optimization_medium_net_no_spontaneous_embolism_long_si_updated_conduit_anatomy'
 #'parameter_estimation_medium_net_large_space'
 #'spreading_probability_optimization_medium_net_no_spontaneous_embolism_long_si'
 pooled_optimized_spreading_probability_save_name = 'pooled_optimized_spreading_probability.pkl'

@@ -28,8 +28,8 @@ Pe_rad_range[-1] = np.concatenate((Pe_rad_range[-1], np.array([1.])))
 Pe_tan_range = np.arange(0, 1.1, 0.1)
 Pes_tan = [[Pe_tan, Pe_tan] for Pe_tan in Pe_tan_range]
 
-start_divider = 11 * 11 * n_iterations # len(end_range) * len(Pe_rad_range) * n_iterations
-end_divider = 11 * n_iterations # len(Pe_rad_range) * n_iterations
+start_divider = 10 * 10 * n_iterations # len(end_range) * len(Pe_rad_range) * n_iterations
+end_divider = 10 * n_iterations # len(Pe_rad_range) * n_iterations
 rad_divider = n_iterations # n_iterations
 
 optimization_net_size = [100, 10, 100]
