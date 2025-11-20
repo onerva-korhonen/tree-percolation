@@ -35,7 +35,8 @@ cfg['fixed_random'] = False
 if __name__=='__main__':
     
     index = int(sys.argv[1])
-    
+   
+    cfg['Dc'] = fsylvatica_params.Dc[index]
     cfg['Dc_cv'] = fsylvatica_params.Dc_cv[index]
     cfg['fc'] = fsylvatica_params.fc[index]
     cfg['fpf'] = fsylvatica_params.fpf[index]
