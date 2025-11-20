@@ -46,7 +46,7 @@ cfg['Pe_rad'] = fsylvatica_params.Pe_rad
 cfg['Pe_tan'] = fsylvatica_params.Pe_tan
 
 # parameters specific to this run
-cfg['net_size'] = [100, 10, 100]
+cfg['net_size'] = [10, 10, 10]
 cfg['bpp_type'] = 'young-laplace_with_constrictions'
 cfg['spontaneous_embolism'] = False
 
