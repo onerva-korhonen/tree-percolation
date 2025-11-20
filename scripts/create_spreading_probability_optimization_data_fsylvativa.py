@@ -100,26 +100,15 @@ if __name__=='__main__':
     cfg['segment_name'] = fsylvatica_params.segment_names[segment_index]
     
     pressure = vulnerability_pressure_range[pressure_index]
-    save_path = params.optimized_spreading_probability_save_path_base + '_' + index_str + '.pkl'
+    save_path = params.optimized_spreading_probability_save_path_base + '_' + fsylvatica_params.segment_names[segment_index] + '_' + index_str + '.pkl'
 
-    if create_networks:
-
-        cfg['conduit_diameters'] = 'lognormal'
-
-        # creating the xylem network following Mrad and preparing it for simulations with OpenPN
-        conduit_elements, conns = mrad_model.create_mrad_network(cfg)
-        net = mrad_model.mrad_to_openpnm(conduit_elements, conns)
-        net_cleaned, _ = mrad_model.clean_network(net, conduit_elements, cfg['net_size'][0] - 1)
-        mrad_model.prepare_simulation_network(net_cleaned, cfg, update_coords=True)
-
-    else:
-        network_save_path = params.spreading_probability_optimization_network_save_path_base + '_' + str(iteration_index) + '.pkl' 
-        with open(network_save_path, 'rb') as f:
-            network_data = pickle.load(f)
-            f.close()
-        net = network_data['network']
-        start_conduits = network_data['start_conduits_random_per_component']
-        cfg['start_conduits'] = start_conduits
+    network_save_path = params.spreading_probability_optimization_network_save_path_base + '_' + fsylvatica_params.segment_names[segment_index] + '_' + str(iteration_index) + '.pkl' 
+    with open(network_save_path, 'rb') as f:
+        network_data = pickle.load(f)
+        f.close()
+    net = network_data['network']
+    start_conduits = network_data['start_conduits_random_per_component']
+    cfg['start_conduits'] = start_conduits
 
     cfg['conduit_diameters'] = 'inherit_from_net'
 
