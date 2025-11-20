@@ -46,7 +46,7 @@ cfg['Pe_rad'] = fsylvatica_params.Pe_rad
 cfg['Pe_tan'] = fsylvatica_params.Pe_tan
 
 # parameters specific to this run
-cfg['net_size'] = [10, 10, 10]
+cfg['net_size'] = [100, 10, 100]
 cfg['bpp_type'] = 'young-laplace_with_constrictions'
 cfg['spontaneous_embolism'] = False
 
@@ -73,7 +73,8 @@ if __name__=='__main__':
     
     cfg['Dc'] = fsylvatica_params.Dc[segment_index]
     cfg['Dc_cv'] = fsylvatica_params.Dc_cv[segment_index]
-    cfg['fc'] = fsylvatica_params.fc[segment_index]
+    #cfg['fc'] = fsylvatica_params.fc[segment_index]
+    cfg['fc'] = fsylvatica_params.karimi_fc
     cfg['fpf'] = fsylvatica_params.fpf[segment_index]
     cfg['segment_name'] = fsylvatica_params.segment_names[segment_index]
 
