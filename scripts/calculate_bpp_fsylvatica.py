@@ -36,13 +36,12 @@ if __name__=='__main__':
     
     index = int(sys.argv[1])
     
-    cfg['Dc'] = fsylvatica_params.Dc[index]
     cfg['Dc_cv'] = fsylvatica_params.Dc_cv[index]
     cfg['fc'] = fsylvatica_params.fc[index]
     cfg['fpf'] = fsylvatica_params.fpf[index]
     cfg['segment_name'] = fsylvatica_params.segment_names[index]
     
-    cfg['bpp_data_path'] = params.bubble_propagation_pressure_data_path.split['.'][0] + '_' + fsylvatica_params.segment_names[index] + '.pkl'
+    cfg['bpp_data_path'] = params.bubble_propagation_pressure_data_path.split('.')[0] + '_' + fsylvatica_params.segment_names[index] + '.pkl'
     
     Am_space = np.logspace(np.log10(5E-10), np.log10(7E-8), num=1000)
     
