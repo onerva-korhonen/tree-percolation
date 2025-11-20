@@ -371,6 +371,7 @@ def run_spreading_iteration(net, cfg, pressure_differences, save_path, spreading
             if an array-like of ints is given, the ints are used as indices of the start conduits
         bpp_type: str, how the bubble propagation pressure is calculated; options: 'young-laplace' (i.e. as in Mrad et al. 2018) and 'young-laplace_with_constrictions' (i.e. as in Kaack et al. 2021)
         bpp_data_path : str, optional, path, to which the BPP data has been saved; only used if bpp_type == 'young-laplace_with_constrictions'
+        segment_name ; str, optional, name of the segment to be analyzed; if this is given, it's saved along the simulation outcomes
     pressure_differences : iterable of float
         pressure differences between water in conduits and air (bubble), with which the physiological SI is simulated
     save_path : str
@@ -500,6 +501,8 @@ def run_spreading_iteration(net, cfg, pressure_differences, save_path, spreading
             'physiological_n_outlets': physiological_n_outlets, 'stochastic_lcc_size': stochastic_lcc_size, 'stochastic_functional_lcc_size': stochastic_functional_lcc_size, 'stochastic_nonfunctional_component_size': stochastic_nonfunctional_component_size,
             'stochastic_nonfunctional_component_volume': stochastic_nonfunctional_component_volume, 'stochastic_susceptibility': stochastic_susceptibility, 'stochastic_functional_susceptibility': stochastic_functional_susceptibility,
             'stochastic_n_inlets': stochastic_n_inlets, 'stochastic_n_outlets': stochastic_n_outlets, 'physiological_full_effective_conductances': physiological_full_effective_conductances, 'stochastic_full_effective_conductances': stochastic_full_effective_conductances, 'cfg':cfg}
+    if 'segment_name' in cfg.keys():
+        data['segment_name'] = cfg['segment_name']
     save_folder = save_path.rsplit('/', 1)[0]
     if not os.path.exists(save_folder):
         os.mkdir(save_folder)
