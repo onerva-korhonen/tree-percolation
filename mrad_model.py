@@ -297,6 +297,8 @@ def prepare_simulation_network(net, cfg, update_coords=True):
     Dp = cfg.get('Dp', params.Dp)
     fc = cfg.get('fc', params.fc)
     fpf = cfg.get('fpf', params.fpf)
+    Dc = cfg.get('Dc', params.Dc)
+    Dc_cv = cfg.get('Dc_cv', params.Dc_cv)
     conduit_diameters = cfg.get('conduit_diameters', params.conduit_diameters)
     cec_indicator = cfg.get('cec_indicator', params.cec_indicator)
     tf = cfg.get('tf', params.tf)
@@ -332,7 +334,7 @@ def prepare_simulation_network(net, cfg, update_coords=True):
         mask = (iccs[:, :] >= conduit[0]) & (iccs[:, :] < conduit[1] + 1)
         conduit_icc_count[i] = np.sum(mask)
 
-    diameters_per_conduit, pore_diameters = get_conduit_diameters(net, conduit_diameters, conduits)     
+    diameters_per_conduit, pore_diameters = get_conduit_diameters(net, conduit_diameters, conduits, Dc_cv, Dc)     
     conduit_areas = (conduits[:, 2] - 1) * Lce * np.pi * diameters_per_conduit # total surface (side) areas of conduits; conduits[:, 2] is the number of elements in a conduit so the conduit length is conduits[:, 2] - 1
     
     #----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
