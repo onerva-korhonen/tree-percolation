@@ -38,8 +38,7 @@ if __name__=='__main__':
    
     cfg['Dc'] = fsylvatica_params.Dc[index]
     cfg['Dc_cv'] = fsylvatica_params.Dc_cv[index]
-    #cfg['fc'] = fsylvatica_params.fc[index]
-    cfg['fc'] = fsylvatica_params.karimi_fc
+    cfg['fc'] = fsylvatica_params.fc[index]
     cfg['fpf'] = fsylvatica_params.fpf[index]
     cfg['segment_name'] = fsylvatica_params.segment_names[index]
     
