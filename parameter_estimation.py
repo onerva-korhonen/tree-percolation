@@ -110,7 +110,7 @@ def run_parameter_optimization_iteration(save_path, conduit_element_length=mrad_
     f.close()
                     
 
-def optimize_parameters_from_data(target_density, target_length, target_grouping_index, optimization_data_save_folder, optimization_data_save_name_base, fig_save_path_base):
+def optimize_parameters_from_data(target_density, target_length, target_grouping_index, optimization_data_save_folder, optimization_data_save_name_base, fig_save_path_base, exclude_nonconsistents=False):
     """
     Starting from pre-calculated data,  finds the conduit start and end probabilities (NPc and Pc) of the Mrad xylem network model that produce
     conduit density, average conduit length, and grouping index as close as possible to given target values.
@@ -129,6 +129,9 @@ def optimize_parameters_from_data(target_density, target_length, target_grouping
         stem of the simulation data file names; the file names can contain other parts but files with names that don't contain this stem aren't read
     fig_save_path : str
         base path, to which save the optimization outcome visualizations
+    exclude_nonconsistents : bln
+        if True, sets conduit density, conduit length and grouping index to nan for parameter combinations that have produced
+        at least one completely empty network in the optimization runs (default: False)
         
     Returns
     -------
@@ -149,7 +152,7 @@ def optimize_parameters_from_data(target_density, target_length, target_grouping
     data_files = [os.path.join(optimization_data_save_folder, file) for file in os.listdir(optimization_data_save_folder) if os.path.isfile(os.path.join(optimization_data_save_folder, file))]
     data_files = [data_file for data_file in data_files if optimization_data_save_name_base in data_file]
 
-    start_range, end_range, Pes_rad, Pes_tan, conduit_densities, conduit_lengths, grouping_indices = read_and_combine_data(data_files)
+    start_range, end_range, Pes_rad, Pes_tan, conduit_densities, conduit_lengths, grouping_indices = read_and_combine_data(data_files, exclude_nonconsistents)
 
 
     density_landscape = np.argsort(np.abs(conduit_densities - target_density), axis=None).argsort() # rank of absolute difference
@@ -338,7 +341,7 @@ def get_grouping_index(net, net_size):
         grouping_index /= n_rows
         return grouping_index
     
-def read_and_combine_data(data_files):
+def read_and_combine_data(data_files, exclude_nonconsistents=False):
     """
     Reads parameter optimization data and combines areas of simulation space possibly distributed in different files into a single space and, when relevant,
     averaging values obtained with the same parameter combination.
@@ -347,6 +350,9 @@ def read_and_combine_data(data_files):
     ----------
     data_files : list of strs
         paths to files to be read
+    exclude_nonconsistents : bln
+        if True, sets conduit density, conduit length and grouping index to nan for parameter combinations that have produced
+        at least one completely empty network in the optimization runs (default: False)
 
     Returns
     -------
@@ -420,9 +426,14 @@ def read_and_combine_data(data_files):
     
     for param_combination, conduit_density, conduit_length, grouping_index in zip(param_combinations, conduit_densities, conduit_lengths, grouping_indices):
         index = np.where((output_param_combinations == param_combination).all(axis=1))
-        conduit_density_array[index] += conduit_density
-        conduit_length_array[index] += conduit_length
-        grouping_index_array[index] += grouping_index
+        if exclude_nonconsistents and conduit_density == 0:
+            conduit_density_array[index] = np.nan
+            conduit_length_array[index] = np.nan
+            grouping_index_array[index] = np.nan
+        else:
+            conduit_density_array[index] += conduit_density
+            conduit_length_array[index] += conduit_length
+            grouping_index_array[index] += grouping_index
         n_iterations[index] += 1
 
     conduit_density_array /= n_iterations
