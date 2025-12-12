@@ -32,6 +32,8 @@ cfg['bpp_data_path'] = params.bubble_propagation_pressure_data_path
 
 cfg['fixed_random'] = False
 
+n_slices = 5
+
 if __name__=='__main__':
     
     index = int(sys.argv[1])
@@ -46,5 +48,5 @@ if __name__=='__main__':
     
     Am_space = np.logspace(np.log10(5E-10), np.log10(7E-8), num=1000)
     
-    bpps = pit_membrane.calculate_bpp_for_constriction_pores(cfg, Am_space=Am_space, bpp_save_path=cfg['bpp_data_path'])
+    bpps = pit_membrane.calculate_bpp_for_constriction_pores(cfg, Am_space=Am_space, bpp_save_path=cfg['bpp_data_path'], n_slices=n_slices)
 

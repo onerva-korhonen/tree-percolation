@@ -48,7 +48,8 @@ def calculate_min_constriction_radius(n_constrictions, truncnorm_center, truncno
     return min_constriction_radius
 
 def calculate_pit_bpp(target_total_area, tf, n_constrictions, truncnorm_center, truncnorm_std, truncnorm_a, truncnorm_b=np.inf, 
-                      surface_tension=params.surface_tension, pore_shape_correction=0.5, gas_contact_angle=0, min_radius_type='max'):
+                      surface_tension=params.surface_tension, pore_shape_correction=0.5, gas_contact_angle=0, min_radius_type='max',
+                      n_slices=1):
     """
     Calculates the bubble propagation pressure of a single pit based on the largest pore radius (defined
     as the smallest constriction radius for each pore, drawn from a truncated normal distribution) in the ICC, 
@@ -79,6 +80,9 @@ def calculate_pit_bpp(target_total_area, tf, n_constrictions, truncnorm_center, 
     min_radius_type : str, optional
         either 'max' (bpp is calculated using the largest pore radius, R_min_max in Kaack et al. 2021) or 'mean' (bpp is calculated using
         the mean pore radius, R_min_mean in Kaack et al. 2021), default 'max'
+    n_slices : int, optional
+        to avoid memory issues, pores can be divided into n_slices groups before drawing the constriction radii from the distribution;
+        note that the function loops over the pore groups, so a too high n_slices slows down the function, default: 1 (no slicing)
         
     Returns:
     --------
@@ -92,9 +96,19 @@ def calculate_pit_bpp(target_total_area, tf, n_constrictions, truncnorm_center, 
     truncnorm_a = (truncnorm_a - truncnorm_center) / truncnorm_std
     truncnorm_b = (truncnorm_b - truncnorm_center) / truncnorm_std
     rv = truncnorm(truncnorm_a, truncnorm_b, loc=truncnorm_center, scale=truncnorm_std)
-    radii = rv.rvs(size=n_pores*n_constrictions)
-    radii = np.reshape(radii, (n_constrictions, n_pores))
-    radii = np.amin(radii, axis=0) # picking the smallest radii for each pore
+    if n_slices > 1:
+        n_pores_per_slice = int(np.ceil(n_pores / n_slices))
+        radii = np.zeros(n_pores_per_slice * n_slices)
+
+        for i in range(n_slices):
+            radii_per_slice = rv.rvs(size=n_constrictions * n_pores_per_slice)
+            radii_per_slice = np.reshape(radii_per_slice, (n_constrictions, n_pores_per_slice))
+            radii_per_slice = np.amin(radii_per_slice, axis=0)
+            radii[i*n_pores_per_slice:(i+1)*n_pores_per_slice] = radii_per_slice
+    else:
+        radii = rv.rvs(size=n_pores*n_constrictions)
+        radii = np.reshape(radii, (n_constrictions, n_pores))
+        radii = np.amin(radii, axis=0) # picking the smallest radii for each pore
     pore_areas = np.pi * (radii + tf/2)**2
     cum_pore_area = np.cumsum(pore_areas)
     cut_index = np.where(cum_pore_area > target_total_area)[0][0]
@@ -108,7 +122,7 @@ def calculate_pit_bpp(target_total_area, tf, n_constrictions, truncnorm_center, 
 
     return bpp
     
-def calculate_bpp_for_constriction_pores(cfg, Am_space=[], net=None, conduits=[], icc_mask=[], bpp_save_path=''):
+def calculate_bpp_for_constriction_pores(cfg, Am_space=[], net=None, conduits=[], icc_mask=[], bpp_save_path='', n_slices=1):
     """
     Calculates bubble propagation pressure based on the pit membrane model of Kaack et al. 2021:
     each pore is a 3D structure with several constrictions, the pore diameter is defined by its smallest
@@ -146,6 +160,9 @@ def calculate_bpp_for_constriction_pores(cfg, Am_space=[], net=None, conduits=[]
         for each throat of the network, contains 1 if the throat is an ICC and 0 otherwise, default: []
     bpp_save_path : str, optional
         path, to which save the BPPs, default: '' (no saving)
+    n_slices : int, optional
+        to avoid memory issues, pores can be divided into n_slices groups before drawing the constriction radii from the distribution;
+        note that the function loops over the pore groups, so a too high n_slices slows down the function, default: 1 (no slicing)
 
     Returns
     -------
@@ -186,14 +203,14 @@ def calculate_bpp_for_constriction_pores(cfg, Am_space=[], net=None, conduits=[]
             end_conduit = np.where((conduits[:, 0] <= icc[1]) & (icc[1] <= conduits[:, 1]))[0][0] 
             Am = 0.5 * (conduit_areas[start_conduit] / icc_count[start_conduit] + conduit_areas[end_conduit] / icc_count[end_conduit]) * fc * fpf # Mrad et al. 2018, Eq. 2; surface area of the ICC
             bpp[i] = calculate_pit_bpp(Am, tf, n_constrictions, truncnorm_center, truncnorm_std, truncnorm_a, truncnorm_b=truncnorm_b, surface_tension=surface_tension, 
-                                       pore_shape_correction=pore_shape_correction, gas_contact_angle=gas_contact_angle, min_radius_type=min_radius_type)
+                                       pore_shape_correction=pore_shape_correction, gas_contact_angle=gas_contact_angle, min_radius_type=min_radius_type, n_slices=n_slices)
             bpp_dic[Am] = bpp
             
     else:
         bpp = np.zeros(Am_space.shape)
         for Am in Am_space:
             bpp_dic[Am] = calculate_pit_bpp(Am, tf, n_constrictions, truncnorm_center, truncnorm_std, truncnorm_a, truncnorm_b=truncnorm_b, surface_tension=surface_tension, 
-                                            pore_shape_correction=pore_shape_correction, gas_contact_angle=gas_contact_angle, min_radius_type=min_radius_type)
+                                            pore_shape_correction=pore_shape_correction, gas_contact_angle=gas_contact_angle, min_radius_type=min_radius_type, n_sclices=n_slices)
             
     if bpp_save_path != '':
         with open(bpp_save_path, 'wb') as f:
