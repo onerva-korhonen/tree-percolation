@@ -210,7 +210,7 @@ def calculate_bpp_for_constriction_pores(cfg, Am_space=[], net=None, conduits=[]
         bpp = np.zeros(Am_space.shape)
         for Am in Am_space:
             bpp_dic[Am] = calculate_pit_bpp(Am, tf, n_constrictions, truncnorm_center, truncnorm_std, truncnorm_a, truncnorm_b=truncnorm_b, surface_tension=surface_tension, 
-                                            pore_shape_correction=pore_shape_correction, gas_contact_angle=gas_contact_angle, min_radius_type=min_radius_type, n_sclices=n_slices)
+                                            pore_shape_correction=pore_shape_correction, gas_contact_angle=gas_contact_angle, min_radius_type=min_radius_type, n_slices=n_slices)
             
     if bpp_save_path != '':
         with open(bpp_save_path, 'wb') as f:

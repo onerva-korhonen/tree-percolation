@@ -10,8 +10,8 @@ Vessel anatomy and pit membrane parameters for Fagus sylvatica
 import numpy as np
 
 # probabilities for network construction
-NPc = np.array([0.5, 0.5]) # probability to start a new conduit
-Pc = np.array([0.8, 0.8]) # probability to end an existing conduit
+NPc = np.array([0.7, 0.7]) # probability to start a new conduit
+Pc = np.array([0.9, 0.9]) # probability to end an existing conduit
 Pe_rad = np.array([0.2, 0.2]) # probability of radial connection
 Pe_tan = np.array([0.8, 0.8]) # probability of tangential connection
 

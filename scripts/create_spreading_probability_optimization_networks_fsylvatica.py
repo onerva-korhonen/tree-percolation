@@ -1,7 +1,7 @@
 """
-A script for creating a set of networks for studying embolism spreading at different pressure differences / SI spreading probabilities.
+A script for creating a set of networks for studying embolism spreading at different pressure differences in F. sylvatica.
 
-After this, run create_spreading_probability_optimization_data.py for creating the data needed for figs. 3-5 of the manuscript.
+After this, run create_spreading_probability_optimization_data.py for creating the data needed for figures corresponding to those of 3-5 of the SI spreading manuscript.
 
 Written by Onerva Korhonen
 """
