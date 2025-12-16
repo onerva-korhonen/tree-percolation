@@ -45,7 +45,6 @@ cfg['si_tolerance_length'] = params.si_tolerance_length
 cfg['start_conduits'] = params.start_conduits
 cfg['surface_tension'] = params.surface_tension
 cfg['nCPUs'] = params.nCPUs
-cfg['bpp_data_path'] = params.bubble_propagation_pressure_data_path
 
 cfg['NPc'] = fsylvatica_params.NPc
 cfg['Pc'] = fsylvatica_params.Pc
@@ -97,6 +96,7 @@ if __name__=='__main__':
     cfg['fc'] = fsylvatica_params.fc[segment_index]
     cfg['fpf'] = fsylvatica_params.fpf[segment_index]
     cfg['segment_name'] = fsylvatica_params.segment_names[segment_index]
+    cfg['bpp_data_path'] = params.bubble_propagation_pressure_data_path.split('.')[0] + '_' + fsylvatica_params.segment_names[segment_index] + '.pkl'
     
     pressure = vulnerability_pressure_range[pressure_index]
     save_path = params.optimized_spreading_probability_save_path_base + '_' + fsylvatica_params.segment_names[segment_index] + '_' + index_str + '.pkl'
