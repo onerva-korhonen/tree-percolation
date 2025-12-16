@@ -45,7 +45,6 @@ cfg['si_tolerance_length'] = params.si_tolerance_length
 cfg['start_conduits'] = params.start_conduits
 cfg['surface_tension'] = params.surface_tension
 cfg['nCPUs'] = params.nCPUs
-cfg['spontaneous_embolism'] = params.spontaneous_embolism
 cfg['bpp_data_path'] = params.bubble_propagation_pressure_data_path
 
 cfg['NPc'] = fsylvatica_params.NPc
