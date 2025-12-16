@@ -3,7 +3,9 @@ A script for creating data for optimizing SI spreading probability (this means s
 the evolution of effective conductance and network properties are saved for each pressure difference / spreading probability.
 
 This script is tailored for repeating the calculations for several stem segments of F. sylvatica. It should be easily modifiable also for segment analysis in other
-species. The basic idea is to run each segment, each pressure / probability, and each iteration as a job of its own; the total number of jobs is 
+species. There are two options: if loop_over_segments == True, each pressure/probability and iteration are run as jobs of their own but
+all segments are handled in the same job; the total number of jobs is n_pressures x n_iterations. Otherwise, each segment, each 
+pressure / probability, and each iteration are jobs of their own; the total number of jobs is 
 n_pressures x n_segments x n_iterations.
 
 Note that number of iterations per sap pressure / spreading probability is defined by the number of simulation networks (spreading will be run on all available networks).
@@ -75,6 +77,8 @@ create_networks = False
 
 zero_index = 0 # index of the first array job
 
+loop_over_segments = True
+
 # NOTE: do not modify any parameters below this point
 # Note on the indexing order: calculations are performed in the iteration -> pressure/probability order (i.e. first all iterations for the first pressure etc.)
 
@@ -87,31 +91,62 @@ if __name__=='__main__':
         
     n_segments = len(fsylvatica_params.Dc)
     n_pressures = len(vulnerability_pressure_range)
-    iteration_index = int(np.floor(index / (n_segments * n_pressures))) # for each iteration, there are n_segments x n_pressures jobs
-    segment_index = int(np.floor((index - iteration_index * n_segments * n_pressures) / n_pressures)) # for each segment, there are n_pressures jobs 
-    pressure_index = int(np.floor(index - iteration_index * n_segments * n_pressures - segment_index * n_pressures))
-
-    cfg['Dc'] = fsylvatica_params.Dc[segment_index]
-    cfg['Dc_cv'] = fsylvatica_params.Dc_cv[segment_index]
-    cfg['fc'] = fsylvatica_params.fc[segment_index]
-    cfg['fpf'] = fsylvatica_params.fpf[segment_index]
-    cfg['segment_name'] = fsylvatica_params.segment_names[segment_index]
-    cfg['bpp_data_path'] = params.bubble_propagation_pressure_data_path.split('.')[0] + '_' + fsylvatica_params.segment_names[segment_index] + '.pkl'
     
-    pressure = vulnerability_pressure_range[pressure_index]
-    save_path = params.optimized_spreading_probability_save_path_base + '_' + fsylvatica_params.segment_names[segment_index] + '_' + index_str + '.pkl'
-
-    network_save_path = params.spreading_probability_optimization_network_save_path_base + '_' + fsylvatica_params.segment_names[segment_index] + '_' + str(iteration_index) + '.pkl' 
-    with open(network_save_path, 'rb') as f:
-        network_data = pickle.load(f)
-        f.close()
-    net = network_data['network']
-    start_conduits = network_data['start_conduits_random_per_component']
-    cfg['start_conduits'] = start_conduits
-
-    cfg['conduit_diameters'] = 'inherit_from_net'
-
-    percolation.run_spreading_iteration(net, cfg, pressure, save_path, 
-                                        spreading_probability_range=probability, 
-                                        si_length=cfg['si_length'], include_orig_values=True)
+    if loop_over_segments:
+        iteration_index = int(np.floor(index / n_pressures)) # for each iteration, there are n_pressures jobs
+        pressure_index = int(np.floor(index - iteration_index * n_pressures))
+        
+        for segment_index in range(n_segments):
+            cfg['Dc'] = fsylvatica_params.Dc[segment_index]
+            cfg['Dc_cv'] = fsylvatica_params.Dc_cv[segment_index]
+            cfg['fc'] = fsylvatica_params.fc[segment_index]
+            cfg['fpf'] = fsylvatica_params.fpf[segment_index]
+            cfg['segment_name'] = fsylvatica_params.segment_names[segment_index]
+            cfg['bpp_data_path'] = params.bubble_propagation_pressure_data_path.split('.')[0] + '_' + fsylvatica_params.segment_names[segment_index] + '.pkl'
+            
+            pressure = vulnerability_pressure_range[pressure_index]
+            save_path = params.optimized_spreading_probability_save_path_base + '_' + fsylvatica_params.segment_names[segment_index] + '_' + index_str + '.pkl'
+        
+            network_save_path = params.spreading_probability_optimization_network_save_path_base + '_' + fsylvatica_params.segment_names[segment_index] + '_' + str(iteration_index) + '.pkl' 
+            with open(network_save_path, 'rb') as f:
+                network_data = pickle.load(f)
+                f.close()
+            net = network_data['network']
+            start_conduits = network_data['start_conduits_random_per_component']
+            cfg['start_conduits'] = start_conduits
+        
+            cfg['conduit_diameters'] = 'inherit_from_net'
+        
+            percolation.run_spreading_iteration(net, cfg, pressure, save_path, 
+                                                spreading_probability_range=probability, 
+                                                si_length=cfg['si_length'], include_orig_values=True)
+        
+    else:
+        iteration_index = int(np.floor(index / (n_segments * n_pressures))) # for each iteration, there are n_segments x n_pressures jobs
+        segment_index = int(np.floor((index - iteration_index * n_segments * n_pressures) / n_pressures)) # for each segment, there are n_pressures jobs 
+        pressure_index = int(np.floor(index - iteration_index * n_segments * n_pressures - segment_index * n_pressures))
+    
+        cfg['Dc'] = fsylvatica_params.Dc[segment_index]
+        cfg['Dc_cv'] = fsylvatica_params.Dc_cv[segment_index]
+        cfg['fc'] = fsylvatica_params.fc[segment_index]
+        cfg['fpf'] = fsylvatica_params.fpf[segment_index]
+        cfg['segment_name'] = fsylvatica_params.segment_names[segment_index]
+        cfg['bpp_data_path'] = params.bubble_propagation_pressure_data_path.split('.')[0] + '_' + fsylvatica_params.segment_names[segment_index] + '.pkl'
+        
+        pressure = vulnerability_pressure_range[pressure_index]
+        save_path = params.optimized_spreading_probability_save_path_base + '_' + fsylvatica_params.segment_names[segment_index] + '_' + index_str + '.pkl'
+    
+        network_save_path = params.spreading_probability_optimization_network_save_path_base + '_' + fsylvatica_params.segment_names[segment_index] + '_' + str(iteration_index) + '.pkl' 
+        with open(network_save_path, 'rb') as f:
+            network_data = pickle.load(f)
+            f.close()
+        net = network_data['network']
+        start_conduits = network_data['start_conduits_random_per_component']
+        cfg['start_conduits'] = start_conduits
+    
+        cfg['conduit_diameters'] = 'inherit_from_net'
+    
+        percolation.run_spreading_iteration(net, cfg, pressure, save_path, 
+                                            spreading_probability_range=probability, 
+                                            si_length=cfg['si_length'], include_orig_values=True)
 
