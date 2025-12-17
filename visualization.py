@@ -255,8 +255,9 @@ def plot_optimized_vulnerability_curve(data_save_folders, physiological_color, s
         path to which to save the plot
     pooled_data : bln, optional
         has the data already been pooled, i.e., can all data be read from a single file per data_save_folder? (default: False)
-    pooled_data_save_name : str, optional
-        the name (NOTE: not path) of the pooled data file (default: '')
+    pooled_data_save_name : str or list of strs, optional
+        the name (NOTE: not path) of the pooled data file. If a list of names is given, it need to have the same length as
+        data_save_folders. (default: '')
     std_alpha : float, optional
         alpha used to color the mean +/- std in the prevalence plots (default: 0.5)
     prevalence_linestyels : list of strs, optional
@@ -283,9 +284,12 @@ def plot_optimized_vulnerability_curve(data_save_folders, physiological_color, s
         spontaneous_prevalence_ls = prevalence_linestyles[1]
         spreading_prevalence_ls = prevalence_linestyles[2]
     
-    for data_save_folder, line_style, label in zip(data_save_folders, line_styles, labels): 
+    for i, (data_save_folder, line_style, label) in enumerate(zip(data_save_folders, line_styles, labels)): 
         if pooled_data:
-            file = data_save_folder + '/' + pooled_data_save_name
+            if isinstance(pooled_data_save_name, list):
+                file = data_save_folder + '/' + pooled_data_save_name[i]
+            else:
+                file = data_save_folder + '/' + pooled_data_save_name
             with open(file, 'rb') as f:
                 data = pickle.load(f)
                 f.close()
