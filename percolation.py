@@ -696,6 +696,7 @@ def optimize_spreading_probability_from_data(simulation_data_save_folder, simula
             optimized_n_probability_iterations = realized_n_probability_iterations[optimized_spreading_probability_index]
         else:
             optimized_n_probability_iterations = 0
+            optimized_spreading_probability_index = 0
         
         pressure_difference_phys_prevalences = [prevalences[i] for prevalences in physiological_prevalences]
         pressure_difference_phys_prevalences_due_to_spontaneous_embolism = [prevalences[i] for prevalences in physiological_prevalences_due_to_spontaneous_embolism]
