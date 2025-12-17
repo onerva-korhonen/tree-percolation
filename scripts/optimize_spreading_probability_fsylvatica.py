@@ -15,7 +15,8 @@ import percolation
 
 import sys
 
-max_n_iterations = 1
+max_n_iterations = 100
+pool_physiological_only = True
 
 segment_names = fsylvatica_params.segment_names
 
@@ -29,7 +30,8 @@ if __name__=='__main__':
     simulation_data_save_name_base = params.optimized_spreading_probability_save_path_base.rsplit('/', 1)[1] + '_' + segment_name
     pooled_data_save_path = simulation_data_save_folder + '/' + params.pooled_optimized_spreading_probability_save_name.split('.')[0] + '_' + segment_name + 'pkl'
     
-    percolation.optimize_spreading_probability_from_data(simulation_data_save_folder, simulation_data_save_name_base, pooled_data_save_path, max_n_iterations=max_n_iterations)
+    percolation.optimize_spreading_probability_from_data(simulation_data_save_folder, simulation_data_save_name_base, pooled_data_save_path, max_n_iterations=max_n_iterations,
+                                                         pool_physiological_only=pool_physiological_only)
     
 
 
