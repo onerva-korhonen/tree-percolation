@@ -26,7 +26,7 @@ if __name__=='__main__':
     
     segment_name = segment_names[index]
     
-    simulation_data_save_folder = params.optimized_spreading_probability_save_path_base.rsplit('/', 1)[0]
+    simulation_data_save_folder = params.optimized_spreading_probability_save_path_base.rsplit('/', 1)[0] + '/' + segment_name
     simulation_data_save_name_base = params.optimized_spreading_probability_save_path_base.rsplit('/', 1)[1] + '_' + segment_name
     pooled_data_save_path = simulation_data_save_folder + '/' + params.pooled_optimized_spreading_probability_save_name.split('.')[0] + '_' + segment_name + '.pkl'
     
