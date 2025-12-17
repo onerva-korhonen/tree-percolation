@@ -7,6 +7,8 @@ Created on Thu Nov 20 10:21:16 2025
 
 Vessel anatomy and pit membrane parameters for Fagus sylvatica
 """
+import params
+
 import numpy as np
 
 # probabilities for network construction
@@ -42,3 +44,31 @@ fpf = [0.5354785240000001, 0.5415683649999999, 0.629453652, 0.42283072,
        0.439700342, 0.6480547249999999, 0.60086713, 0.647937014,
        0.508086274, 0.5789179089999998]
 karimi_fc = 0.12 # from Karimi 2014
+
+# visualization parameters
+spreading_simulation_data_stem = params.optimized_spreading_probability_save_path_base.rsplit('/', 1)[0]
+spreading_simulation_data_folders = [spreading_simulation_data_stem + '/' + segment_name for segment_name in segment_names]
+    # the following line style lists are from matplotlib documentation
+linestyle_str = [
+     'solid',      # Same as (0, ()) or '-'
+     'dotted',    # Same as ':'
+     'dashed',    # Same as '--'
+     'dashdot']  # Same as '-.'
+
+linestyle_tuple = [
+     (0, (1, 10)),
+     (0, (1, 5)),
+     (0, (1, 1)),
+     (5, (10, 3)),
+     (0, (5, 10)),
+     (0, (5, 5)),
+     (0, (5, 1)),
+     (0, (3, 10, 1, 10)),
+     (0, (3, 5, 1, 5)),
+     (0, (3, 1, 1, 1)),
+     (0, (3, 5, 1, 5, 1, 5)),
+     (0, (3, 10, 1, 10, 1, 10)),
+     (0, (3, 1, 1, 1, 1, 1))]
+
+linestyles = linestyle_str[::-1] + linestyle_tuple[::-1]
+vc_linestyles = linestyles[:len(segment_names)]
