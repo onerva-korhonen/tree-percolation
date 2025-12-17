@@ -58,7 +58,7 @@ cfg['net_size'] = [100, 10, 100]
 cfg['bpp_type'] = 'young-laplace_with_constrictions'
 cfg['spontaneous_embolism'] = False
 
-vulnerability_pressure_range = np.arange(0.5, 3.0, step=0.05)*1E6
+vulnerability_pressure_range = np.zeros(1)*1E6#np.arange(0.5, 3.0, step=0.05)*1E6
 vulnerability_pressure_range = [[pressure] for pressure in vulnerability_pressure_range]
 probability = [] # no SI spreading calculations at the moment
 
@@ -75,7 +75,7 @@ break_nonfunctional_components = False
 
 create_networks = False
 
-zero_index = 0 # index of the first array job
+zero_index = 5000 # index of the first array job
 
 loop_over_segments = True
 
