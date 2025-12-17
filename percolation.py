@@ -510,7 +510,7 @@ def run_spreading_iteration(net, cfg, pressure_differences, save_path, spreading
         pickle.dump(data, f)
     f.close()
     
-def optimize_spreading_probability_from_data(simulation_data_save_folder, simulation_data_save_name_base, pooled_data_save_path, equal_spreading_params=False, max_n_iterations=None):
+def optimize_spreading_probability_from_data(simulation_data_save_folder, simulation_data_save_name_base, pooled_data_save_path, equal_spreading_params=False, max_n_iterations=None, pool_physiological_only=False):
     """
     Starting from previously calculated simulation data, finds the SI spreading probability that yields final effective conductance as close as possible to that of 
     physiological embolism spreading with given parameters. Note that only the similarity of final effective conductances is minimized, while the shape of the prevalence curves may be different.
@@ -527,6 +527,9 @@ def optimize_spreading_probability_from_data(simulation_data_save_folder, simula
         do all data files contain exactly the same pressure difference range and spreading probability range (this affects how the data is read) (default: False)
     max_n_iterations : int, optional
         the maximum number of iterations read per pressure difference or spreading probability (default None, in which case all iterations available are read)
+    pool_physiological_only : bln, optional
+        if True, physiological data is pooled and saved ina format that allows constructing a vulnerability curve but spreading probability is not optimized
+        (this option can be used e.g. if there is no stochastic data) (default: False)
 
     Returns
     -------
@@ -686,10 +689,13 @@ def optimize_spreading_probability_from_data(simulation_data_save_folder, simula
                     averaged_stochastic_effective_conductances[j] = np.mean(stochastic_effective_conductance[i, :n_probability_iterations])
                 else:
                     averaged_stochastic_effective_conductances[j] = np.mean(stochastic_effective_conductance[:n_probability_iterations])
-        optimized_spreading_probability_index = np.argmin(np.abs(averaged_stochastic_effective_conductances - physiological_effective_conductance)) 
-        optimized_spreading_probabilities[i] = spreading_probability_range[optimized_spreading_probability_index]
-        optimized_stochastic_effective_conductances[i] = averaged_stochastic_effective_conductances[optimized_spreading_probability_index]
-        optimized_n_probability_iterations = realized_n_probability_iterations[optimized_spreading_probability_index]
+        if not pool_physiological_only:
+            optimized_spreading_probability_index = np.argmin(np.abs(averaged_stochastic_effective_conductances - physiological_effective_conductance)) 
+            optimized_spreading_probabilities[i] = spreading_probability_range[optimized_spreading_probability_index]
+            optimized_stochastic_effective_conductances[i] = averaged_stochastic_effective_conductances[optimized_spreading_probability_index]
+            optimized_n_probability_iterations = realized_n_probability_iterations[optimized_spreading_probability_index]
+        else:
+            optimized_n_probability_iterations = 0
         
         pressure_difference_phys_prevalences = [prevalences[i] for prevalences in physiological_prevalences]
         pressure_difference_phys_prevalences_due_to_spontaneous_embolism = [prevalences[i] for prevalences in physiological_prevalences_due_to_spontaneous_embolism]
