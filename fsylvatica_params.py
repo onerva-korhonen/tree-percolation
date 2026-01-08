@@ -72,3 +72,5 @@ linestyle_tuple = [
 
 linestyles = linestyle_str[::-1] + linestyle_tuple[::-1]
 vc_linestyles = linestyles[:len(segment_names)]
+pressures_to_be_visualized = np.concatenate((np.zeros(1), np.arange(0.5, 3.0, step=0.05)))*1E6
+

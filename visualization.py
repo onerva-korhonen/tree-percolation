@@ -220,7 +220,7 @@ def plot_vulnerability_curve(vc, color, alpha, vc_type='physiological', save_pat
     if len(save_path) > 0:
         plt.savefig(save_path, format='pdf', bbox_inches='tight')
         
-def plot_optimized_vulnerability_curve(data_save_folders, physiological_color, stochastic_color, physiological_alpha, stochastic_alpha, line_styles, labels, p_50_color, p_50_alpha, p_50_line_style, save_path, pooled_data=False, pooled_data_save_name='', std_alpha=0.5, prevalence_plot_save_path_base='', prevalence_linestyles=[], plc_in_file=False, upper_pressure_limit=np.inf, pressures_to_be_visualized=[]):
+def plot_optimized_vulnerability_curve(data_save_folders, physiological_color, stochastic_color, physiological_alpha, stochastic_alpha, line_styles, labels, p_50_color, p_50_alpha, p_50_line_style, save_path, pooled_data=False, pooled_data_save_name='', std_alpha=0.5, prevalence_plot_save_path_base='', prevalence_linestyles=[], plc_in_file=False, upper_pressure_limit=np.inf, pressures_to_be_visualized=[], physiological_only=False):
     """
     Reads from files the optimized SI spreading probabilities and related effective conductance values for a set of pressure difference values, calculates the percentage of
     conductance lost (PLC) values (out of effective conductance at pressure difference 0) and plots the vulnerability curves and prevalence plots for all pressure differences.
@@ -271,6 +271,9 @@ def plot_optimized_vulnerability_curve(data_save_folders, physiological_color, s
         upper limit for the pressure range to be visualized (default: np.inf)
     pressures_to_be_visualized : iterable of floats, optional
         set of pressure values to be included in the visualization (if there are more values in data, they are excluded) (default: [] to include all values)
+    physiological_only : bln, optional
+        if True, only physiological PLC is visualized (default: False)
+
     Returns
     -------
     None
@@ -392,21 +395,24 @@ def plot_optimized_vulnerability_curve(data_save_folders, physiological_color, s
         print(f'P_12: {p_12}')
         print(f'P_88: {p_88}')
 
-        beta_12 = optimized_spreading_probabilities[np.argmin(np.abs(physiological_plc - 12))]
-        beta_50 = optimized_spreading_probabilities[np.argmin(np.abs(physiological_plc - 50))]
-        beta_88 = optimized_spreading_probabilities[np.argmin(np.abs(physiological_plc - 88))]
-
         ax.plot(pressure_diffs, physiological_plc, color=physiological_color, alpha=physiological_alpha, ls=line_style, label='physiological ' + label)
-        ax.plot(pressure_diffs, stochastic_plc, color=stochastic_color, alpha=stochastic_alpha, ls=line_style, label='stochastic ' + label)
-        ax2.plot(pressure_diffs, optimized_spreading_probabilities, label='optimized spreading probability ' + label)
-        
-        ax.plot([p_12, p_12], [0, 100], color=p_50_color, alpha=p_50_alpha, ls=p_50_line_style)
-        ax.plot([p_50, p_50], [0, 100], color=p_50_color, alpha=p_50_alpha, ls=p_50_line_style)
-        ax.plot([p_88, p_88], [0, 100], color=p_50_color, alpha=p_50_alpha, ls=p_50_line_style)
 
-        print(f'beta_12: {beta_12}')
-        print(f'beta_50: {beta_50}')
-        print(f'beta_88: {beta_88}')
+        #ax.plot([p_12, p_12], [0, 100], color=p_50_color, alpha=p_50_alpha, ls=p_50_line_style)
+        #ax.plot([p_50, p_50], [0, 100], color=p_50_color, alpha=p_50_alpha, ls=p_50_line_style)
+        #ax.plot([p_88, p_88], [0, 100], color=p_50_color, alpha=p_50_alpha, ls=p_50_line_style)
+
+        if not physiological_only:
+
+            beta_12 = optimized_spreading_probabilities[np.argmin(np.abs(physiological_plc - 12))]
+            beta_50 = optimized_spreading_probabilities[np.argmin(np.abs(physiological_plc - 50))]
+            beta_88 = optimized_spreading_probabilities[np.argmin(np.abs(physiological_plc - 88))]
+
+            ax.plot(pressure_diffs, stochastic_plc, color=stochastic_color, alpha=stochastic_alpha, ls=line_style, label='stochastic ' + label)
+            ax2.plot(pressure_diffs, optimized_spreading_probabilities, label='optimized spreading probability ' + label)
+
+            print(f'beta_12: {beta_12}')
+            print(f'beta_50: {beta_50}')
+            print(f'beta_88: {beta_88}')
         
         if pooled_data and not plc_in_file: # prevalence information is included only in the pooled data
             for i, (av_phys_prevalence, std_phys_prevalence, av_phys_prevalence_spontaneous, std_phys_prevalence_spontaneous, av_phys_prevalence_spreading, std_phys_prevalence_spreading, av_stoch_prevalence, std_stoch_prevalence, av_stoch_prevalence_spontaneous, std_stoch_prevalence_spontaneous, av_stoch_prevalence_spreading, std_stoch_prevalence_spreading) in enumerate(zip(average_phys_prevalences, std_phys_prevalences, average_phys_prevalences_spontaneous, std_phys_prevalences_spontaneous, average_phys_prevalences_spreading, std_phys_prevalences_spreading, average_stoch_prevalences, std_stoch_prevalences, average_stoch_prevalences_spontaneous, std_stoch_prevalences_spontaneous, average_stoch_prevalences_spreading, std_stoch_prevalences_spreading)):
@@ -418,13 +424,14 @@ def plot_optimized_vulnerability_curve(data_save_folders, physiological_color, s
                 prevalence_ax.fill_between(np.arange(len(av_phys_prevalence_spontaneous)), av_phys_prevalence_spontaneous - std_phys_prevalence_spontaneous, av_phys_prevalence_spontaneous + std_phys_prevalence_spontaneous, color=physiological_color, alpha=std_alpha)
                 prevalence_ax.plot(av_phys_prevalence_spreading, color=physiological_color, alpha=physiological_alpha, ls=spreading_prevalence_ls, label='phys spreading ' + label)
                 prevalence_ax.fill_between(np.arange(len(av_phys_prevalence_spreading)), av_phys_prevalence_spreading - std_phys_prevalence_spreading, av_phys_prevalence_spreading + std_phys_prevalence_spreading, color=physiological_color, alpha=std_alpha)
-                
-                prevalence_ax.plot(av_stoch_prevalence, color=stochastic_color, alpha=stochastic_alpha, ls=tot_prevalence_ls, label='stoch tot ' + label)
-                prevalence_ax.fill_between(np.arange(len(av_stoch_prevalence)), av_stoch_prevalence - std_stoch_prevalence, av_stoch_prevalence + std_stoch_prevalence, color=stochastic_color, alpha=std_alpha)
-                prevalence_ax.plot(av_stoch_prevalence_spontaneous, color=stochastic_color, alpha=stochastic_alpha, ls=spontaneous_prevalence_ls, label='stoch spontaneous ' + label)
-                prevalence_ax.fill_between(np.arange(len(av_stoch_prevalence_spontaneous)), av_stoch_prevalence_spontaneous - std_stoch_prevalence_spontaneous, av_stoch_prevalence_spontaneous + std_stoch_prevalence_spontaneous, color=stochastic_color, alpha=std_alpha)
-                prevalence_ax.plot(av_stoch_prevalence_spreading, color=stochastic_color, alpha=stochastic_alpha, ls=spreading_prevalence_ls, label='stoch spreading ' + label)
-                prevalence_ax.fill_between(np.arange(len(av_stoch_prevalence_spreading)), av_stoch_prevalence_spreading - std_stoch_prevalence_spreading, av_stoch_prevalence_spreading + std_stoch_prevalence_spreading, color=stochastic_color, alpha=std_alpha)
+            
+                if not physiological_only:
+                    prevalence_ax.plot(av_stoch_prevalence, color=stochastic_color, alpha=stochastic_alpha, ls=tot_prevalence_ls, label='stoch tot ' + label)
+                    prevalence_ax.fill_between(np.arange(len(av_stoch_prevalence)), av_stoch_prevalence - std_stoch_prevalence, av_stoch_prevalence + std_stoch_prevalence, color=stochastic_color, alpha=std_alpha)
+                    prevalence_ax.plot(av_stoch_prevalence_spontaneous, color=stochastic_color, alpha=stochastic_alpha, ls=spontaneous_prevalence_ls, label='stoch spontaneous ' + label)
+                    prevalence_ax.fill_between(np.arange(len(av_stoch_prevalence_spontaneous)), av_stoch_prevalence_spontaneous - std_stoch_prevalence_spontaneous, av_stoch_prevalence_spontaneous + std_stoch_prevalence_spontaneous, color=stochastic_color, alpha=std_alpha)
+                    prevalence_ax.plot(av_stoch_prevalence_spreading, color=stochastic_color, alpha=stochastic_alpha, ls=spreading_prevalence_ls, label='stoch spreading ' + label)
+                    prevalence_ax.fill_between(np.arange(len(av_stoch_prevalence_spreading)), av_stoch_prevalence_spreading - std_stoch_prevalence_spreading, av_stoch_prevalence_spreading + std_stoch_prevalence_spreading, color=stochastic_color, alpha=std_alpha)
                 
                 prevalence_ax.set_xlabel('Time')
                 prevalence_ax.set_ylabel('Prevalence (fraction of embolized conduits)')
