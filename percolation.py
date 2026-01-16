@@ -1746,9 +1746,11 @@ def run_physiological_conduit_percolation(net, cfg, removal_order='random'):
 
 def run_conduit_si(net, cfg, spreading_param=0, include_orig_values=False):
     """
-    Starting from a given conduit, simulates an SI (embolism) spreading process on the conduit network. The spreading can be stochastic (at each step, each conduit is
-    embolized at a certain probability that depends on if their neighbours have been removed) or physiological (at each step, each conduit is
-    embolized if it has embolized neighbours and the pressure difference with the neighbours is large enough) 
+    Starting from a given conduit, simulates an SI or SEI (embolism) spreading process on the conduit network. The spreading can be stochastic (at each step, each conduit is
+    embolized at a certain probability that depends on if their neighbours have been embolized) or physiological (at each step, each conduit is
+    embolized if it has embolized neighbours and the pressure difference with the neighbours is large enough). If the SI process is simulated,
+    conduits become directly embolized with the given probability / at the given pressure difference. On the other hand, if the SEI process is simulated,
+    conduits become first exposed and get embolized later with a probability given as a parameter.
 
     Parameters
     ----------
@@ -1777,7 +1779,11 @@ def run_conduit_si(net, cfg, spreading_param=0, include_orig_values=False):
         conduit_element_length : float, length of a single conduit element (m), used only if use_cylindrical_coords == True (default from the Mrad et al. article)
         heartwood_d : float, diameter of the heartwood (= part of the tree not included in the xylem network) (in conduit elements) used only if use_cylindrical_coords == True (default value from the Mrad et al. article)
         si_tolerance_length : int, tolerance parameter for defining the end of the simulation: when the prevalence hasn't changed for si_tolerance_length steps, the simulation stops (default 20)
-        si_type : str, 'stochastic' for probability-based spreading, 'physiological' for spreading based on pressure differences (default stochastic)
+        si_type : str 
+            'stochastic' for probability-based spreading (default option)
+            'physiological' for spreading based on pressure differences
+            'stochastic_sei' for probability-based S-E transtion + E-I transition
+            'physiological_sei' for pressure-based S-E transition + E-I transition
         weibull_a : float, Weibull distribution scale parameter (used for simulating pressure-difference-based embolism spreading) (default 20.28E6); only used if bpp_type == 'young-laplace'
         weibull_b : float, Weibull distribution shape parameter (used for simulating pressure-difference-based embolism spreading) (default 3.2); only used if bpp_type ==  'young-laplace'
         average_pit_area : float, the average area of a pit
@@ -1789,6 +1795,7 @@ def run_conduit_si(net, cfg, spreading_param=0, include_orig_values=False):
         si_length : int, maximum number of time steps used for the simulation (default: 1000)
         spontaneous_embolism : bln, is spontaneous embolism through bubble expansion allowed (default: False)
         spontaneous_embolism_probability : float, probability of spontaneous embolism
+        bubble_expansion_probability: float, probability of the E-I transition
         bpp_type: str, how the bubble propagation pressure is calculated; options: 'young-laplace' (i.e. as in Mrad et al. 2018) and 'young-laplace_with_constrictions' (i.e. as in Kaack et al. 2021)
         bpp_data_path : str, optional, path, to which the BPP data has been saved; only used if bpp_type == 'young-laplace_with_constrictions'
     spreading_param : float
@@ -1824,8 +1831,12 @@ def run_conduit_si(net, cfg, spreading_param=0, include_orig_values=False):
         fraction of spontaneously embolized conduits at each infection step
     prevalence_due_to_spreading : np.array
         fraction of conduits embolized through spreading at each infection step (the start conduit contribute to this)
+    fraction_of_exposed : np.array
+        fraction of exposed conduits at each infection step (only returned if si_type is stochastic_sei or physiological_sei)
 
     """
+    si_type = cfg.get('si_type', 'stochastic')
+    assert si_type in ['stochastic', 'physiological', 'stochastic_sei', 'physiological_sei'], 'unknown si type, select stochastic, stochastic_sei, physiological or physiological_sei'
     assert len(net['pore.diameter']) > 0, 'pore diameters not defined; please define pore diameters before running percolation'
     bpp_type = cfg['bpp_type']
     assert bpp_type in ['young-laplace', 'young-laplace_with_constrictions'], 'unknown BPP type; please select young-laplace or young-laplace_with_constrictions'
@@ -1836,12 +1847,17 @@ def run_conduit_si(net, cfg, spreading_param=0, include_orig_values=False):
     cec_indicator = cfg.get('cec_indicator', params.cec_indicator)
     use_cylindrical_coords = cfg.get('use_cylindrical_coords', False)
     si_tolerance_length = cfg.get('si_tolerance_length', 20)
-    si_type = cfg.get('si_type', 'stochastic')
     si_length = cfg.get('si_length', 1000)
     spontaneous_embolism = cfg.get('spontaneous_embolism', False)
     if spontaneous_embolism:
         spontaneous_embolism_probability = cfg['spontaneous_embolism_probability']
         assert 0 <= spontaneous_embolism_probability <= 1, 'spontaneous embolism probability must be between 0 and 1'
+    if si_type in ['stochastic_sei', 'physiological_sei']:
+        bubble_expansion_probability = cfg['bubble_expansion_probability']
+        assert 0 <= bubble_expansion_probability <= 1, 'bubble expansion probability must be between 0 and 1'
+        if bubble_expansion_probability == 0:
+            import warnings
+            warnings.warn('Bubble expansion probability is set to 0 in an SEI spreading process. The simulation will run but no conduits will become embolized.')
     conns = net['throat.conns']
     assert len(conns) > 0, 'Network has no throats; cannot run percolation analysis'
     conn_types = net['throat.type']
@@ -1850,13 +1866,12 @@ def run_conduit_si(net, cfg, spreading_param=0, include_orig_values=False):
     conduits = mrad_model.get_conduits(cec)
     orig_conduits = conduits.copy()
     
-    assert si_type in ['stochastic', 'physiological'], 'unknown si type, select stochastic or physiological'
-    if si_type == 'stochastic':
+    if si_type in ['stochastic', 'stochastic_sei']:
         if spreading_param >= 0:
             spreading_probability = spreading_param
         else:
             spreading_probability = 0.1
-    elif si_type == 'physiological':
+    elif si_type in ['physiological', 'physiological_sei']:
         pressure_diff = spreading_param
         
     effective_conductances = np.zeros(si_length)
@@ -1871,6 +1886,7 @@ def run_conduit_si(net, cfg, spreading_param=0, include_orig_values=False):
     prevalence = np.zeros(si_length)
     prevalence_due_to_spreading = np.zeros(si_length)
     prevalence_due_to_spontaneous_embolism = np.zeros(si_length)
+    fraction_of_exposed = np.zeros(si_length)
     
     np.random.seed() # this is to ensure that different parallel calls produce different start conduits
 
@@ -1889,9 +1905,11 @@ def run_conduit_si(net, cfg, spreading_param=0, include_orig_values=False):
             assert spontaneous_embolism, 'no start conduits given and spontaneous embolism not allowed so simulating embolism spreading is not possible'
             start_conduits = []
     
-    embolization_times = np.zeros((conduits.shape[0], 2))
+    embolization_times = np.zeros((conduits.shape[0], 3))
     embolization_times[:, 0] = np.inf
-    embolization_times[:, 1] = 1 # the second column indicates if the conduit is functional
+    embolization_times[:, 1] = 1 # the second column indicates if the conduit is functional 
+    embolization_times[:, 2] = 1 # the third colum indicates the compartment of the conduit (1: susceptible, 0: exposed, -1: emoblized)
+
     for start_conduit in start_conduits:
         embolization_times[start_conduit, 0] = 0
         embolization_times[start_conduit, 1] = 0
@@ -1944,6 +1962,9 @@ def run_conduit_si(net, cfg, spreading_param=0, include_orig_values=False):
         orig_prevalence = 0
         orig_prevalence_due_to_spontaneous_embolism = 0
         orig_prevalence_due_to_spreading = 0
+        
+        if si_type in ['stochastic_sei', 'physiological_sei']:
+            orig_fraction_of_exposed = 0
          
     while (prevalence_diff > 0) & (time_step < si_length):
 
@@ -1956,7 +1977,7 @@ def run_conduit_si(net, cfg, spreading_param=0, include_orig_values=False):
                 conduits[start_conduit +1::, 0:2] = conduits[start_conduit +1::, 0:2] - conduits[start_conduit, 2]
             conduits[start_conduits, :] = -1
         else: 
-            # spontaneous embolism due to bubble expansion
+            # spontaneous embolism
             if spontaneous_embolism:
                 test = np.random.rand(conduits.shape[0])
                 embolization = test < spontaneous_embolism_probability
@@ -1975,7 +1996,7 @@ def run_conduit_si(net, cfg, spreading_param=0, include_orig_values=False):
             
             # embolism spreading
             embolized_conduits = np.where(embolization_times[:, 0] < time_step)[0]
-            if not spontaneous_embolism: # this stops the simulation if further embolisations are not possible: there are no unembolised conduits with embolised neighbours and spontaneous embolism is not allowed
+            if not spontaneous_embolism and (np.sum(embolization_times[:, 1] == 0) == 0): # this stops the simulation if further embolisations are not possible: there are no unembolised conduits with embolised neighbours or exposed conduits and spontaneous embolism is not allowed
                 possible_embolizations = False
                 for embolized_conduit in embolized_conduits:
                     try: 
@@ -1995,30 +2016,53 @@ def run_conduit_si(net, cfg, spreading_param=0, include_orig_values=False):
                 if embolization_times[conduit, 0] <= time_step:
                     continue # conduit is already embolized
                 else:
-                    if len(conduit_neighbours[conduit]) > 0:
-                        neighbour_embolization_times = embolization_times[np.array(conduit_neighbours[conduit]), 0]
-                    else:
-                        neighbour_embolization_times = np.array([])
-                    if np.any(neighbour_embolization_times < time_step): # there are embolized neighbours
-                        neighbours = conduit_neighbours[conduit]
-                        embolized_neighbours = np.intersect1d(embolized_conduits, neighbours)
-                        embolize = False
-                        if si_type == 'stochastic':
-                            embolize =  (np.random.rand() > (1 - spreading_probability)**(len(embolized_neighbours)))
-                        elif si_type == 'physiological':
-                            neighbour_bpp = np.array([conduit_neighbour_bpp[conduit][neighbour] for neighbour in embolized_neighbours])
-                            embolize =  np.any(neighbour_bpp <= pressure_diff)
-                        if embolize:
-                            n_embolized_through_spreading += 1
-                            embolization_times[conduit, 0] = time_step
-                            if embolization_times[conduit, 1] > 0: # if conduit is functional, it will be removed from the simulation network
-                                embolization_times[conduit, 1] = 0
-                                conduit_pores = np.arange(conduits[conduit, 0], conduits[conduit, 1] + 1)
-                                removed_conduit_indices.append(conduit)
-                                pores_to_remove.extend(list(conduit_pores))
-                            else: # if a nonfunctional conduit is embolized, nonfunctional component size and volume decrease
-                                nonfunctional_component_size[time_step] -= 1
-                                nonfunctional_component_volume[time_step] -= np.sum(np.pi * 0.5 * orig_pore_diameter[np.arange(orig_conduits[conduit, 0], orig_conduits[conduit, 1] + 1)]**2 * conduit_element_length)
+                    embolize = False
+                    if si_type in ['stochastic_sei', 'physiological_sei']: # SEI spreading process
+                        if embolization_times[conduit, 2] == 0: # conduit is exposed
+                            embolize = (np.random.rand() < bubble_expansion_probability)
+                        else: # conduit is susceptible
+                            if len(conduit_neighbours[conduit]) > 0:
+                                neighbour_embolization_times = embolization_times[np.array(conduit_neighbours[conduit]), 0]
+                            else:
+                                neighbour_embolization_times = np.array([])
+                            if np.any(neighbour_embolization_times < time_step): # there are embolized neighbours
+                                neighbours = conduit_neighbours[conduit]
+                                embolized_neighbours = np.intersect1d(embolized_conduits, neighbours)
+                                expose = False
+                                if si_type == 'stochastic_sei':
+                                    expose =  (np.random.rand() > (1 - spreading_probability)**(len(embolized_neighbours)))
+                                elif si_type == 'physiological_sei':
+                                    neighbour_bpp = np.array([conduit_neighbour_bpp[conduit][neighbour] for neighbour in embolized_neighbours])
+                                    expose =  np.any(neighbour_bpp <= pressure_diff)
+                                if expose:
+                                    embolization_times[conduit, 2] = 0
+                                    
+                    if si_type in ['stochastic', 'physiological']: # SI spreading process
+                        if len(conduit_neighbours[conduit]) > 0:
+                            neighbour_embolization_times = embolization_times[np.array(conduit_neighbours[conduit]), 0]
+                        else:
+                            neighbour_embolization_times = np.array([])
+                        if np.any(neighbour_embolization_times < time_step): # there are embolized neighbours
+                            neighbours = conduit_neighbours[conduit]
+                            embolized_neighbours = np.intersect1d(embolized_conduits, neighbours)
+                            #embolize = False
+                            if si_type == 'stochastic':
+                                embolize =  (np.random.rand() > (1 - spreading_probability)**(len(embolized_neighbours)))
+                            elif si_type == 'physiological':
+                                neighbour_bpp = np.array([conduit_neighbour_bpp[conduit][neighbour] for neighbour in embolized_neighbours])
+                                embolize =  np.any(neighbour_bpp <= pressure_diff)
+                    if embolize:
+                        n_embolized_through_spreading += 1
+                        embolization_times[conduit, 0] = time_step
+                        embolization_times[conduit, 2] = -1
+                        if embolization_times[conduit, 1] > 0: # if conduit is functional, it will be removed from the simulation network
+                            embolization_times[conduit, 1] = 0
+                            conduit_pores = np.arange(conduits[conduit, 0], conduits[conduit, 1] + 1)
+                            removed_conduit_indices.append(conduit)
+                            pores_to_remove.extend(list(conduit_pores))
+                        else: # if a nonfunctional conduit is embolized, nonfunctional component size and volume decrease
+                            nonfunctional_component_size[time_step] -= 1
+                            nonfunctional_component_volume[time_step] -= np.sum(np.pi * 0.5 * orig_pore_diameter[np.arange(orig_conduits[conduit, 0], orig_conduits[conduit, 1] + 1)]**2 * conduit_element_length)
             for removed_conduit_index in np.sort(np.unique(removed_conduit_indices))[::-1]:
                 conduits[removed_conduit_index + 1::, 0:2] = conduits[removed_conduit_index + 1::, 0:2] - conduits[removed_conduit_index, 2]
             conduits[removed_conduit_indices, :] = -1
@@ -2029,6 +2073,8 @@ def run_conduit_si(net, cfg, spreading_param=0, include_orig_values=False):
             prevalence[time_step] = np.sum(embolization_times[:, 0] <= time_step) / conduits.shape[0]
             prevalence_due_to_spontaneous_embolism[time_step] = n_spontaneously_embolized / conduits.shape[0]
             prevalence_due_to_spreading[time_step] = n_embolized_through_spreading / conduits.shape[0]
+            if si_type in ['stochastic_sei', 'physiological_sei']:
+                fraction_of_exposed[time_step] = np.sum(embolization_times[:, 2] == 0) / conduits.shape[0]
 
             lcc_size[time_step], susceptibility[time_step], _ = get_conduit_lcc_size(net=perc_net, use_cylindrical_coords=use_cylindrical_coords, 
                                                                   conduit_element_length=conduit_element_length, 
@@ -2037,7 +2083,7 @@ def run_conduit_si(net, cfg, spreading_param=0, include_orig_values=False):
                                                                conduit_element_length=conduit_element_length, heartwood_d=heartwood_d, use_cylindrical_coords=use_cylindrical_coords)
 
             removed_components = mrad_model.get_removed_components(perc_net, np.concatenate((conduit_elements[:,0:3]/conduit_element_length, conduit_elements[:,3::]),axis=1), cfg['net_size'][0] - 1)
-            removed_elements = list(itertools.chain.from_iterable(removed_components)) # calculating the size of the largest removed component in conduits
+            removed_elements = list(itertools.chain.from_iterable(removed_components)) # finding conduit elements in the non-functional (removed) components
             nonfunctional_component_volume[time_step] += nonfunctional_component_volume[time_step - 1] + np.sum(np.pi * 0.5 * perc_net['pore.diameter'][removed_elements]**2 * conduit_element_length)
             if len(removed_elements) > 0:
                 subcoords, subconns, subtypes = get_induced_subnet(perc_net, removed_elements, return_network=False)
@@ -2079,6 +2125,8 @@ def run_conduit_si(net, cfg, spreading_param=0, include_orig_values=False):
                 prevalence[time_step::] = np.sum(embolization_times[:, 0] <= time_step) / conduits.shape[0]
                 prevalence_due_to_spontaneous_embolism[time_step::] = n_spontaneously_embolized / conduits.shape[0]
                 prevalence_due_to_spreading[time_step::] = n_embolized_through_spreading / conduits.shape[0]
+                if si_type in ['stochastic_sei', 'physiological_sei']:
+                    fraction_of_exposed[time_step::] = np.sum(embolization_times[:, 2] == 0) / conduits.shape[0]
                 time_step += 1
                 break
             elif (str(e) == "'throat.conns'") and (len(perc_net['throat.all']) == 0): # this is because all links have been removed from the network by op.topotools.trim
@@ -2091,6 +2139,8 @@ def run_conduit_si(net, cfg, spreading_param=0, include_orig_values=False):
                 prevalence[time_step::] = np.sum(embolization_times[:, 0] <= time_step) / conduits.shape[0]
                 prevalence_due_to_spontaneous_embolism[time_step::] = n_spontaneously_embolized / conduits.shape[0]
                 prevalence_due_to_spreading[time_step::] = n_embolized_through_spreading / conduits.shape[0]
+                if si_type in ['stochastic_sei', 'physiological_sei']:
+                    fraction_of_exposed[time_step::] = np.sum(embolization_times[:, 2] == 0) / conduits.shape[0]
                 time_step += 1
                 break
             else:
@@ -2114,7 +2164,13 @@ def run_conduit_si(net, cfg, spreading_param=0, include_orig_values=False):
         prevalence_due_to_spontaneous_embolism = np.append(np.array([orig_prevalence_due_to_spontaneous_embolism]), prevalence_due_to_spontaneous_embolism[0:time_step])
         prevalence_due_to_spreading = np.append(np.array([orig_prevalence_due_to_spreading]), prevalence_due_to_spreading[0:time_step])
        
-        return effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence, prevalence_due_to_spontaneous_embolism, prevalence_due_to_spreading
+        if si_type in ['stochastic_sei', 'physiological_sei']:
+            fraction_of_exposed = np.append(np.array([orig_fraction_of_exposed]), fraction_of_exposed[0:time_step])
+            return effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence, prevalence_due_to_spontaneous_embolism, prevalence_due_to_spreading, fraction_of_exposed
+        else:
+            return effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence, prevalence_due_to_spontaneous_embolism, prevalence_due_to_spreading
+    elif si_type in ['stochastic_sei', 'physiological_sei']:
+        return effective_conductances[0:time_step], lcc_size[0:time_step], functional_lcc_size[0:time_step], nonfunctional_component_size[0:time_step], susceptibility[0:time_step], functional_susceptibility[0:time_step], n_inlets[0:time_step], n_outlets[0:time_step], nonfunctional_component_volume[0:time_step], prevalence[0:time_step], prevalence_due_to_spontaneous_embolism[0:time_step], prevalence_due_to_spreading[0:time_step], fraction_of_exposed[0:time_step]
     else:
         return effective_conductances[0:time_step], lcc_size[0:time_step], functional_lcc_size[0:time_step], nonfunctional_component_size[0:time_step], susceptibility[0:time_step], functional_susceptibility[0:time_step], n_inlets[0:time_step], n_outlets[0:time_step], nonfunctional_component_volume[0:time_step], prevalence[0:time_step], prevalence_due_to_spontaneous_embolism[0:time_step], prevalence_due_to_spreading[0:time_step]
 
