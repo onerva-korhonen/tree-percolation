@@ -13,6 +13,8 @@ import numpy as np
 import matplotlib.pylab as plt
 
 fixed_variable = 'pressure' # TODO: select either 'pressure' or 'probability'; use 'probability' to visualize the spreading fitted to empirical data
+spontaneous_embolism = False
+bubble_expansion = False
 assert fixed_variable in ['pressure', 'probability'], 'unknown fixed variable, select pressure or probability'
 if fixed_variable == 'pressure':
     pooled_data_save_name = params.pooled_optimized_spreading_probability_save_name
@@ -77,9 +79,6 @@ if __name__=='__main__':
         saved_pressure_differences = data['pressure_differences']
         saved_spreading_probabilities = data['optimized_spreading_probabilities']
 
-        mins = [] # TODO: remove
-        maxs = []
-
         if fixed_variable == 'pressure':
             x_values = pressure_differences
             search_data = saved_pressure_differences
@@ -103,8 +102,14 @@ if __name__=='__main__':
                 std_phys_prevalence_spontaneous = data['std_physiological_prevalences_due_to_spontaneous_embolism'][index]
                 av_phys_prevalence_spreading = data['average_physiological_prevalences_due_to_spreading'][index]
                 std_phys_prevalence_spreading = data['std_physiological_prevalences_due_to_spreading'][index]
-                av_prevalences = [av_phys_prevalence, av_phys_prevalence_spontaneous, av_phys_prevalence_spreading]
-                std_prevalences = [std_phys_prevalence, std_phys_prevalence_spontaneous, std_phys_prevalence_spreading]
+                if bubble_expansion:
+                    av_phys_frac_exposed = data['average_physiological_frac_exposed'][index]
+                    std_phys_frac_exposed = data['std_physiological_frac_exposed'][index]
+                    av_prevalences = [av_phys_prevalence, av_phys_prevalence_spontaneous, av_phys_prevalence_spreading, av_phys_frac_exposed]
+                    std_prevalences = [std_phys_prevalence, std_phys_prevalence_spontaneous, std_phys_prevalence_spreading, std_phys_frac_exposed]
+                else:
+                    av_prevalences = [av_phys_prevalence, av_phys_prevalence_spontaneous, av_phys_prevalence_spreading]
+                    std_prevalences = [std_phys_prevalence, std_phys_prevalence_spontaneous, std_phys_prevalence_spreading]
 
                 prevalence_fig = plt.figure()
                 prevalence_ax = prevalence_fig.add_subplot(111)
@@ -143,8 +148,6 @@ if __name__=='__main__':
                 for av_percolation_outcome, std_percolation_outcome, color, percolation_label, percolation_alpha, axindex in zip(av_percolation_outcomes, std_percolation_outcomes, percolation_outcome_colors, percolation_outcome_labels, percolation_outcome_alphas, percolation_outcome_axindex):
                     axes[axindex].plot(av_percolation_outcome, ls=ls, color=color, label=label + ', ' + percolation_label, alpha=percolation_alpha)
                     axes[axindex].fill_between(np.arange(len(av_percolation_outcome)), av_percolation_outcome - std_percolation_outcome, av_percolation_outcome + std_percolation_outcome, color=color, alpha=std_alpha * percolation_alpha)
-                    mins.append(np.amin(av_percolation_outcome - std_percolation_outcome)) # TODO: remove
-                    maxs.append(np.amax(av_percolation_outcome + std_percolation_outcome))
             
                 eff_conductance_ax.set_ylim((params.keff_ylims[0], params.keff_ylims[1]))
                 eff_conductance_ax.set_xlabel('Time')
@@ -206,8 +209,14 @@ if __name__=='__main__':
             std_stoch_prevalence_spontaneous = data['std_stochastic_prevalences_due_to_spontaneous_embolism'][index]
             av_stoch_prevalence_spreading = data['average_stochastic_prevalences_due_to_spreading'][index]
             std_stoch_prevalence_spreading = data['std_stochastic_prevalences_due_to_spreading'][index]
-            av_prevalences = [av_stoch_prevalence, av_stoch_prevalence_spontaneous, av_stoch_prevalence_spreading]
-            std_prevalences = [std_stoch_prevalence, std_stoch_prevalence_spontaneous, std_stoch_prevalence_spreading]
+            if bubble_expansion:
+                av_stoch_frac_exposed = data['average_stochastic_frac_exposed'][index]
+                std_stoch_frac_exposed = data['average_stochastic_frac_exposed'][index]
+                av_prevalences = [av_stoch_prevalence, av_stoch_prevalence_spontaneous, av_stoch_prevalence_spreading, av_stoch_frac_exposed]
+                std_prevalences = [std_stoch_prevalence, std_stoch_prevalence_spontaneous, std_stoch_prevalence_spreading, std_stoch_frac_exposed]
+            else:
+                av_prevalences = [av_stoch_prevalence, av_stoch_prevalence_spontaneous, av_stoch_prevalence_spreading]
+                std_prevalences = [std_stoch_prevalence, std_stoch_prevalence_spontaneous, std_stoch_prevalence_spreading]
  
             prevalence_fig = plt.figure()
             prevalence_ax = prevalence_fig.add_subplot(111)
@@ -249,8 +258,6 @@ if __name__=='__main__':
             for av_percolation_outcome, std_percolation_outcome, color, percolation_label, percolation_alpha, axindex in zip(av_percolation_outcomes, std_percolation_outcomes, percolation_outcome_colors, percolation_outcome_labels, percolation_outcome_alphas, percolation_outcome_axindex):
                 axes[axindex].plot(av_percolation_outcome, ls=ls, color=color, label=label + ', ' + percolation_label, alpha=percolation_alpha)
                 axes[axindex].fill_between(np.arange(len(av_percolation_outcome)), av_percolation_outcome - std_percolation_outcome, av_percolation_outcome + std_percolation_outcome, color=color, alpha=std_alpha * percolation_alpha)
-                mins.append(np.amin(av_percolation_outcome - std_percolation_outcome)) # TODO: remove
-                maxs.append(np.amax(av_percolation_outcome + std_percolation_outcome))
 
             eff_conductance_ax.set_ylim((params.keff_ylims[0], params.keff_ylims[1]))
             eff_conductance_ax.set_xlabel('Time')
