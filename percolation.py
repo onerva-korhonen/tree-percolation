@@ -1996,7 +1996,7 @@ def run_conduit_si(net, cfg, spreading_param=0, include_orig_values=False):
             
             # embolism spreading
             embolized_conduits = np.where(embolization_times[:, 0] < time_step)[0]
-            if not spontaneous_embolism and (np.sum(embolization_times[:, 1] == 0) == 0): # this stops the simulation if further embolisations are not possible: there are no unembolised conduits with embolised neighbours or exposed conduits and spontaneous embolism is not allowed
+            if not spontaneous_embolism and (np.sum(embolization_times[:, 2] == 0) == 0): # this stops the simulation if further embolisations are not possible: there are no unembolised conduits with embolised neighbours or exposed conduits and spontaneous embolism is not allowed
                 possible_embolizations = False
                 for embolized_conduit in embolized_conduits:
                     try: 
