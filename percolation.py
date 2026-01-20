@@ -1114,16 +1114,16 @@ def read_and_combine_spreading_probability_optimization_data(simulation_data_sav
     data_probability_key_pressure_differences = []
     
     phys_properties = [raw_phys_eff_conductances, raw_phys_full_eff_conductances, raw_phys_func_lcc_size, raw_phys_func_susceptibility, raw_phys_lcc_size, raw_phys_n_inlets, raw_phys_n_outlets, raw_phys_nonfunc_component_size, raw_phys_nonfunc_component_volume,
-                  raw_phys_prevalence, raw_phys_prevalence_due_to_spontaneous_embolism, raw_phys_prevalence_due_to_spreading, raw_phys_susceptibility, raw_phys_frac_exposed]
+                  raw_phys_prevalence, raw_phys_prevalence_due_to_spontaneous_embolism, raw_phys_prevalence_due_to_spreading, raw_phys_susceptibility]
     stoch_properties = [raw_stoch_eff_conductances, raw_stoch_full_eff_conductances, raw_stoch_func_lcc_size,
                   raw_stoch_func_susceptibility, raw_stoch_lcc_size, raw_stoch_n_inlets, raw_stoch_n_outlets, raw_stoch_nonfunc_component_size, raw_stoch_nonfunc_component_volume, raw_stoch_prevalence, raw_stoch_prevalence_due_to_spontaneous_embolism,
-                  raw_stoch_prevalence_due_to_spreading, raw_stoch_susceptibility, raw_stoch_frac_exposed]
+                  raw_stoch_prevalence_due_to_spreading, raw_stoch_susceptibility]
     phys_keys = ['physiological_effective_conductances', 'physiological_full_effective_conductances', 'physiological_functional_lcc_size', 'physiological_functional_susceptibility', 'physiological_lcc_size', 'physiological_n_inlets',
             'physiological_n_outlets', 'physiological_nonfunctional_component_size', 'physiological_nonfunctional_component_volume', 'physiological_prevalences', 'physiological_prevalences_due_to_spontaneous_embolism',
-            'physiological_prevalences_due_to_spreading', 'physiological_susceptibility', 'physiological_frac_exposed']
+            'physiological_prevalences_due_to_spreading', 'physiological_susceptibility']
     stoch_keys = ['stochastic_effective_conductances', 'stochastic_full_effective_conductances', 'stochastic_functional_lcc_size', 'stochastic_functional_susceptibility',
             'stochastic_lcc_size', 'stochastic_n_inlets', 'stochastic_n_outlets', 'stochastic_nonfunctional_component_size', 'stochastic_nonfunctional_component_volume', 'stochastic_prevalences', 'stochastic_prevalences_due_to_spontaneous_embolism',
-            'stochastic_prevalences_due_to_spreading', 'stochastic_susceptibility', 'physiological_frax_exposed']
+            'stochastic_prevalences_due_to_spreading', 'stochastic_susceptibility']
     
     if empirical_physiological_data:
         with open(empirical_physiological_data_path, 'rb') as f:
@@ -1144,8 +1144,14 @@ def read_and_combine_spreading_probability_optimization_data(simulation_data_sav
         if i == 0:
             spontaneous_embolism = data['spontaneous_embolism']
             bubble_expansion = data['bubble_expansion']
+            if bubble_expansion:
+                phys_properties.append(raw_phys_frac_exposed)
+                stoch_proeprties.append(raw_stoch_frac_exposed)
+                phys_keys.append['physiological_frac_exposed']
+                stoch_keys.append['stochastic_frac_exposed']
         else:
             assert data['spontaneous_embolism'] == spontaneous_embolism, 'Please do not mix spreading probability optimization data with and without spontaneous embolism'
+            assert data['bubble_expansion'] == bubble_expansion, 'Please do not mix spreading probability optimization data with and without bubble expansion'
         if not empirical_physiological_data:
             if len(data['pressure_differences']) > 0:
                 for phys_prop, phys_key in zip(phys_properties, phys_keys):
@@ -1206,7 +1212,7 @@ def read_and_combine_spreading_probability_optimization_data(simulation_data_sav
         stochastic_functional_susceptibility = [[[[] for pressure_difference in pressure_differences] for probability in spreading_probability_range] for i in range(n_iterations)]
         stochastic_n_inlets = [[[[] for pressure_difference in pressure_differences] for probability in spreading_probability_range] for i in range(n_iterations)]
         stochastic_n_outlets = [[[[] for pressure_difference in pressure_differences] for probability in spreading_probability_range] for i in range(n_iterations)]
-        sotchastic_frac_exposed = [[[[] for pressure_difference in pressure_differences] for probability in spreading_probability_range] for i in range(n_iterations)]
+        stochastic_frac_exposed = [[[[] for pressure_difference in pressure_differences] for probability in spreading_probability_range] for i in range(n_iterations)]
     else:
         stochastic_effective_conductances = np.zeros((len(spreading_probability_range), n_iterations))
         stochastic_full_effective_conductances = [[[] for probability in spreading_probability_range] for i in range(n_iterations)]
@@ -1225,12 +1231,15 @@ def read_and_combine_spreading_probability_optimization_data(simulation_data_sav
     
     out_phys_properties = [physiological_full_effective_conductances, physiological_functional_lcc_size, physiological_functional_susceptibility, physiological_lcc_size, physiological_n_inlets, physiological_n_outlets, 
                            physiological_nonfunctional_component_size, physiological_nonfunctional_component_volume, physiological_prevalences, physiological_prevalences_due_to_spontaneous_embolism, physiological_prevalences_due_to_spreading, 
-                           physiological_susceptibility, physiological_frac_exposed]
+                           physiological_susceptibility]
     out_stoch_properties = [stochastic_full_effective_conductances, stochastic_functional_lcc_size, stochastic_functional_susceptibility, stochastic_lcc_size, stochastic_n_inlets, stochastic_n_outlets, 
                             stochastic_nonfunctional_component_size, stochastic_nonfunctional_component_volume, stochastic_prevalences, stochastic_prevalences_due_to_spontaneous_embolism, stochastic_prevalences_due_to_spreading, 
-                            stochastic_susceptibility, stochastic_frac_exposed]
+                            stochastic_susceptibility]
     phys_properties.remove(raw_phys_eff_conductances)
     stoch_properties.remove(raw_stoch_eff_conductances)
+    if bubble_expansion:
+        out_phys_properties.append(physiological_frac_exposed)
+        out_stoch_properties.append(stochastic_frac_exposed)
     
     if not empirical_physiological_data:
         phys_iteration = np.zeros(len(pressure_differences), dtype=int)
