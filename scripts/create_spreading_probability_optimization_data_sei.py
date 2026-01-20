@@ -57,9 +57,10 @@ cfg['Pe_tan'] = params.Pe_tan
 # parameters specific to this run
 cfg['net_size'] = [100, 10, 100]
 cfg['bpp_type'] = 'young-laplace_with_constrictions'
-cfg['spontaneous_embolism'] = True
+cfg['spontaneous_embolism'] = False
+cfg['bubble_expansion'] = True
 
-vulnerability_pressure_range = np.arange(0.5, 3.0, step=0.05)*1E6
+vulnerability_pressure_range = np.arange(0, 3.0, step=0.05)*1E6
 spreading_probability_range = []#[0.0, 0.005] + list(np.arange(0.01, 0.15, step=0.005))#np.logspace(np.log10(0.0001), np.log10(0.02), 15)
 # TODO: set spreading probability range
 
@@ -75,6 +76,11 @@ removal_order = 'random'
 break_nonfunctional_components = False
 
 create_networks = False
+project_specific_networks = False # set to True for using networks created for the current project, False to re-used networks created for an earlier project
+
+project_specific_bpp = False
+if not project_specific_bpp:
+    cfg['bpp_data_path'] = params.alternative_bubble_propagation_pressure_data_path # set to True for using BPP data created for the current project, False to re-used BPP data created for an earlier project
 
 #n_iterations = 100
 pressures = [[pressure] for pressure in vulnerability_pressure_range] + [[] for i in range(len(spreading_probability_range))]
@@ -86,6 +92,7 @@ zero_index = 0 # index of the first array job
 # Note on the indexing order: calculations are performed in the iteration -> pressure/probability order (i.e. first all iterations for the first pressure etc.)
 
 if __name__=='__main__':
+
     index = int(sys.argv[1])
     if zero_index > 0:
         index -= zero_index
@@ -108,7 +115,11 @@ if __name__=='__main__':
         mrad_model.prepare_simulation_network(net_cleaned, cfg, update_coords=True)
 
     else:
-        network_save_path = params.spreading_probability_optimization_network_save_path_base + '_' + str(iteration_index) + '.pkl' 
+        if project_specific_networks:
+            network_save_path = params.spreading_probability_optimization_network_save_path_base + '_' + str(iteration_index) + '.pkl' 
+        else:
+            network_save_path = params.alternative_network_save_path_base + '_' + str(iteration_index) + '.pkl'
+
         with open(network_save_path, 'rb') as f:
             network_data = pickle.load(f)
             f.close()

@@ -91,7 +91,8 @@ target_grouping_index_f_sylvatica = 1.39 # grouping index for Fagus sylvatica st
 
 # paths for saving
 triton = True
-identifier = 'physiological_spreading_f_sylvatica'
+identifier = 'physiological_sei_test'
+#'physiological_spreading_f_sylvatica'
 #'param_estimation_f_sylvatica'
 #'physiological_spreading_f_sylvatica' 
 #'spreading_probability_optimization_medium_net_no_spontaneous_embolism_long_si_updated_conduit_anatomy'
@@ -125,6 +126,9 @@ if triton:
     optimized_vc_plot_data_save_path_bases = ['/m/cs/scratch/networks/aokorhon/tree-percolation/output/optimized_spreading_probability/' + identifier + '/optimized_spreading_probability_' + identifier]
     empirical_vulnerability_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/optimized_spreading_probability/empirical_vc/empirical_vc_b_pendula_gonzales-munoz_2018'
     degree_distribution_fig_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/degree_distributions_' + identifier + '.pdf'
+
+    alternative_network_save_path_base = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/optimized_spreading_probability/spreading_probability_optimization_medium_net_no_spontaneous_embolism_long_si_updated_conduit_anatomy_networks/spreading_probability_optimization_network_spreading_probability_optimization_medium_net_no_spontaneous_embolism_long_si_updated_conduit_anatomy' # for re-using networks from an earlier run with a different identifier
+    alternative_bubble_propagation_pressure_data_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/bubble_propagation_pressure_data_spreading_probability_optimization_medium_net_no_spontaneous_embolism_long_si_updated_conduit_anatomy.pkl' # for re-using BPP data from an earlier run with a different identifier
 else:
     parameter_optimization_save_path_base = '/home/onervak/projects/hidrogat/output/param_optimization/' + identifier + '/param_optimization_' + identifier
     spreading_probability_optimization_network_save_path_base = '/home/onervak/projects/hidrogat/output/optimized_spreading_probability/' + identifier + '_networks/spreading_probability_optimization_network_' + identifier

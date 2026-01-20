@@ -464,9 +464,9 @@ def run_spreading_iteration(net, cfg, pressure_differences, save_path, spreading
         cfg['si_type'] = 'physiological'
     for i, pressure_difference in enumerate(pressure_differences):
         if spontaneous_embolism:
-            cfg['spontaneous_embolism_probability'] = spontaneous_embolism_probabilities[np.argmin(np.abs(probability_key_pressure_differences - pressure_difference))]
+            cfg['spontaneous_embolism_probability'] = spontaneous_embolism_probabilities[probability_key_pressure_differences[np.argmin(np.abs(probability_key_pressure_differences - pressure_difference))]]
         if bubble_expansion:
-            cfg['bubble_expansion_probability'] = bubble_expansion_probabilities[np.argmin(np.abs(bubble_expansion_probabilities - pressure_difference))]
+            cfg['bubble_expansion_probability'] = bubble_expansion_probabilities[probability_key_pressure_differences[np.argmin(np.abs(probability_key_pressure_differences - pressure_difference))]]
             effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence, prevalence_due_to_spontaneous_embolism, prevalence_due_to_spreading, fraction_of_exposed = run_conduit_si(net, cfg, pressure_difference, include_orig_values)
             physiological_frac_exposed.append(fraction_of_exposed)
         else:
@@ -1974,7 +1974,7 @@ def run_conduit_si(net, cfg, spreading_param=0, include_orig_values=False):
     embolization_times = np.zeros((conduits.shape[0], 3))
     embolization_times[:, 0] = np.inf
     embolization_times[:, 1] = 1 # the second column indicates if the conduit is functional 
-    embolization_times[:, 2] = 1 # the third colum indicates the compartment of the conduit (1: susceptible, 0: exposed, -1: emoblized)
+    embolization_times[:, 2] = 1 # the third colum indicates the compartment of the conduit (1: susceptible, 0: exposed, -1: embolized)
 
     for start_conduit in start_conduits:
         embolization_times[start_conduit, 0] = 0
@@ -1987,7 +1987,7 @@ def run_conduit_si(net, cfg, spreading_param=0, include_orig_values=False):
         perc_net['pore.diameter'] = net['pore.diameter']
 
     orig_pore_diameter = np.copy(net['pore.diameter'])
-    if si_type == 'physiological':
+    if si_type in ['physiological', 'physiological_sei']:
         if bpp_type == 'young-laplace':
             bpp = calculate_bpp(net, conduits, 1 - cec_mask, cfg)
         elif bpp_type == 'young-laplace_with_constrictions':
