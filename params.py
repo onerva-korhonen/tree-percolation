@@ -91,7 +91,7 @@ target_grouping_index_f_sylvatica = 1.39 # grouping index for Fagus sylvatica st
 
 # paths for saving
 triton = True
-identifier = 'physiological_sei_test'
+identifier = 'sei_spreading_b_pendula'
 #'physiological_spreading_f_sylvatica'
 #'param_estimation_f_sylvatica'
 #'physiological_spreading_f_sylvatica' 
