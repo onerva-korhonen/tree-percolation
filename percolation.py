@@ -494,14 +494,13 @@ def run_spreading_iteration(net, cfg, pressure_differences, save_path, spreading
         for i, spreading_probability in enumerate(spreading_probability_range):
             for j, pressure_difference in enumerate(probability_key_pressure_differences):
                 if spontaneous_embolism:
-                    cfg['spontaneous_embolism_probability'] = spontaneous_embolism_probabilities[np.argmin(np.abs(probability_key_pressure_differences - pressure_difference))]
+                    cfg['spontaneous_embolism_probability'] = spontaneous_embolism_probabilities[probability_key_pressure_differences[np.argmin(np.abs(probability_key_pressure_differences - pressure_difference))]] 
                 if bubble_expansion:
-                    cfg['bubble_expansion_probability'] = bubble_expansion_probabilities[np.argmin(np.abs(bubble_expansion_probabilities - pressure_difference))]
-                    effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence, prevalence_due_to_spontaneous_embolism, prevalence_due_to_spreading, fraction_of_exposed = run_conduit_si(net, cfg, pressure_difference, include_orig_values)
+                    cfg['bubble_expansion_probability'] = bubble_expansion_probabilities[probability_key_pressure_differences[np.argmin(np.abs(probability_key_pressure_differences - pressure_difference))]] 
+                    effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence, prevalence_due_to_spontaneous_embolism, prevalence_due_to_spreading, fraction_of_exposed = run_conduit_si(net, cfg, spreading_probability, include_orig_values)
                     stochastic_frac_exposed.append(fraction_of_exposed)
                 else:
-                    effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence, prevalence_due_to_spontaneous_embolism, prevalence_due_to_spreading = run_conduit_si(net, cfg, pressure_difference, include_orig_values)
-                effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence, prevalence_due_to_spontaneous_embolism, prevalence_due_to_spreading = run_conduit_si(net, cfg, spreading_probability, include_orig_values)
+                    effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence, prevalence_due_to_spontaneous_embolism, prevalence_due_to_spreading = run_conduit_si(net, cfg, spreading_probability, include_orig_values)
                 stochastic_effective_conductances[i, j] = effective_conductances[-1]
                 stochastic_full_effective_conductances[i].append(effective_conductances)
                 stochastic_prevalences[i].append(prevalence)

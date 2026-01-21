@@ -61,8 +61,7 @@ cfg['spontaneous_embolism'] = False
 cfg['bubble_expansion'] = True
 
 vulnerability_pressure_range = np.arange(0, 3.0, step=0.05)*1E6
-spreading_probability_range = []#[0.0, 0.005] + list(np.arange(0.01, 0.15, step=0.005))#np.logspace(np.log10(0.0001), np.log10(0.02), 15)
-# TODO: set spreading probability range
+spreading_probability_range = np.arange(0, 0.2, step=0.005)
 
 include_orig_values = True
 
