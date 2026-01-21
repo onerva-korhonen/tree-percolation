@@ -121,6 +121,7 @@ if triton:
     param_optimization_fig_save_path_base = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/parameter_optimization_' + identifier 
     bubble_propagation_pressure_data_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/bubble_propagation_pressure_data_' + identifier + '.pkl'
     conduit_length_distribution_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/conduit_length_distribution_' + identifier + '.pdf'
+    bubble_expansion_probability_data_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/bubble_expansion_probability_data_' + identifier + '.pkl'
     
     single_param_visualization_data_paths = ['/m/cs/scratch/networks/aokorhon/tree-percolation/output/percolation_3D_' + identifier + '_data.pkl']
     optimized_vc_plot_data_save_path_bases = ['/m/cs/scratch/networks/aokorhon/tree-percolation/output/optimized_spreading_probability/' + identifier + '/optimized_spreading_probability_' + identifier]
@@ -149,11 +150,15 @@ else:
     param_optimization_fig_save_path_base = '/home/onervak/projects/hidrogat/output/parameter_optimization_' + identifier
     bubble_propagation_pressure_data_path = '/home/onervak/projects/hidrogat/output/bubble_propagation_pressure_data_' + identifier + '.pkl'
     conduit_length_distribution_save_path ='/home/onervak/projects/hidrogat/output/conduit_length_distribution_' + identifier + '.pdf'
+    bubble_expansion_probability_data_path = '/home/onervak/projects/hidrogat/output/bubble_expansion_probability_data_' + identifier + '.pkl'
     
     single_param_visualization_data_paths = ['/home/onervak/projects/hidrogat/output/percolation_3D_' + identifier + '_data.pkl']
     optimized_vc_plot_data_save_path_bases = ['/home/onervak/projects/hidrogat/output/optimized_spreading_probability/' + identifier + '/optimized_spreading_probability_' + identifier]
     empirical_vulnerability_save_path = '/home/onervak/projects/hidrogat/tree-percolation/output/optimized_spreading_probability/empirical_vc/empirical_vc_b_pendula_gonzales-munoz_2018'
     degree_distribution_fig_save_path = '/home/onervak/projects/hidrogat/tree-percolation/output/degree_distribtions_' + identifier + '.pdf'
+    
+    alternative_network_save_path_base = '/home/onervak/projects/hidrogat/output//optimized_spreading_probability/spreading_probability_optimization_medium_net_no_spontaneous_embolism_long_si_updated_conduit_anatomy_networks/spreading_probability_optimization_network_spreading_probability_optimization_medium_net_no_spontaneous_embolism_long_si_updated_conduit_anatomy' # for re-using networks from an earlier run with a different identifier
+    alternative_bubble_propagation_pressure_data_path = '/home/onervak/projects/hidrogat/output/bubble_propagation_pressure_data_spreading_probability_optimization_medium_net_no_spontaneous_embolism_long_si_updated_conduit_anatomy.pkl' # for re-using BPP data from an earlier run with a different identifier
 
 # percolation parameters
 percolation_type = 'si'

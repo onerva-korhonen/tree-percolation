@@ -76,6 +76,7 @@ break_nonfunctional_components = False
 
 create_networks = False
 project_specific_networks = False # set to True for using networks created for the current project, False to re-used networks created for an earlier project
+create_expansion_probability_data = False
 
 project_specific_bpp = False
 if not project_specific_bpp:
@@ -128,7 +129,14 @@ if __name__=='__main__':
 
     cfg['conduit_diameters'] = 'inherit_from_net'
 
-    bubble_expansion_probabilities = percolation.get_spontaneous_embolism_probability(vulnerability_pressure_range)
+    if create_expansion_probability_data:
+        bubble_expansion_probabilities = percolation.get_spontaneous_embolism_probability(vulnerability_pressure_range)
+    else:
+        bubble_expansion_probability_path = params.bubble_expansion_probability_data_path
+        with open(bubble_expansion_probability_path, 'rb') as f:
+            bubble_expansion_probabilities = pickle.load(f)
+            f.close()
+            
     cfg['bubble_expansion_probabilities'] = bubble_expansion_probabilities
 
 
