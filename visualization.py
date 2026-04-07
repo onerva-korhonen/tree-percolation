@@ -12,6 +12,7 @@ import numpy as np
 import openpnm as op
 import pickle
 import os
+import csv
 
 import mrad_params as params
 
@@ -220,7 +221,7 @@ def plot_vulnerability_curve(vc, color, alpha, vc_type='physiological', save_pat
     if len(save_path) > 0:
         plt.savefig(save_path, format='pdf', bbox_inches='tight')
         
-def plot_optimized_vulnerability_curve(data_save_folders, physiological_color, stochastic_color, physiological_alpha, stochastic_alpha, line_styles, labels, p_50_color, p_50_alpha, p_50_line_style, save_path, pooled_data=False, pooled_data_save_name='', std_alpha=0.5, prevalence_plot_save_path_base='', prevalence_linestyles=[], plc_in_file=False, upper_pressure_limit=np.inf, pressures_to_be_visualized=[], physiological_only=False):
+def plot_optimized_vulnerability_curve(data_save_folders, physiological_color, stochastic_color, physiological_alpha, stochastic_alpha, line_styles, labels, p_50_color, p_50_alpha, p_50_line_style, save_path, pooled_data=False, pooled_data_save_name='', std_alpha=0.5, prevalence_plot_save_path_base='', prevalence_linestyles=[], plc_in_file=False, upper_pressure_limit=np.inf, pressures_to_be_visualized=[], physiological_only=False, csv_save_path=''):
     """
     Reads from files the optimized SI spreading probabilities and related effective conductance values for a set of pressure difference values, calculates the percentage of
     conductance lost (PLC) values (out of effective conductance at pressure difference 0) and plots the vulnerability curves and prevalence plots for all pressure differences.
@@ -229,8 +230,8 @@ def plot_optimized_vulnerability_curve(data_save_folders, physiological_color, s
     ----------
     data_save_folders : list of str
         folders in which the data is saved; the folders MUST NOT contain other files
-    physiological_color : str
-        color of the vc curve corresponding to physiological spreading
+    physiological_color : str or iterable
+        color(s) of the vc curve(s) corresponding to physiological spreading
     stochastic_color : str
         color of the vc curve corresponding to stochastic spreading
     physiological_ls : str
@@ -273,6 +274,8 @@ def plot_optimized_vulnerability_curve(data_save_folders, physiological_color, s
         set of pressure values to be included in the visualization (if there are more values in data, they are excluded) (default: [] to include all values)
     physiological_only : bln, optional
         if True, only physiological PLC is visualized (default: False)
+    csv_save_path : str, optional
+        if a path is given, the P_12, P_25, P_50, P_75 and P_88 values are saved to this path as a csv file (default: '', no saving)
 
     Returns
     -------
@@ -287,7 +290,15 @@ def plot_optimized_vulnerability_curve(data_save_folders, physiological_color, s
         spontaneous_prevalence_ls = prevalence_linestyles[1]
         spreading_prevalence_ls = prevalence_linestyles[2]
     
-    for i, (data_save_folder, line_style, label) in enumerate(zip(data_save_folders, line_styles, labels)): 
+    if isinstance(physiological_color, str):
+        physiological_colors = [physiological_color for i in range(line_styles)]
+    else:
+        physiological_colors = physiological_color
+
+    if len(csv_save_path) > 0:
+        rows = []
+
+    for i, (data_save_folder, line_style, label, physiological_color) in enumerate(zip(data_save_folders, line_styles, labels, physiological_colors)): 
         if pooled_data:
             if isinstance(pooled_data_save_name, list):
                 file = data_save_folder + '/' + pooled_data_save_name[i]
@@ -389,11 +400,14 @@ def plot_optimized_vulnerability_curve(data_save_folders, physiological_color, s
         p_12 = pressure_diffs[np.argmin(np.abs(physiological_plc - 12))]
         p_88 = pressure_diffs[np.argmin(np.abs(physiological_plc - 88))]
         
-        print(f'P_25: {p_25}')
-        print(f'P_50: {p_50}')
-        print(f'P_75: {p_75}')
-        print(f'P_12: {p_12}')
-        print(f'P_88: {p_88}')
+        if len(csv_save_path) > 0:
+            rows.append([label, p_12, p_25, p_50, p_75, p_88])
+
+        print(f'P_25, {label}: {p_25}')
+        print(f'P_50 {label}: {p_50}')
+        print(f'P_75, {label}: {p_75}')
+        print(f'P_12, {label}: {p_12}')
+        print(f'P_88, {label}: {p_88}')
 
         ax.plot(pressure_diffs, physiological_plc, color=physiological_color, alpha=physiological_alpha, ls=line_style, label='physiological ' + label)
 
@@ -445,4 +459,10 @@ def plot_optimized_vulnerability_curve(data_save_folders, physiological_color, s
     ax.legend()
     ax2.set_ylabel('Optimized spreading probability')
     plt.savefig(save_path, format='pdf', bbox_inches='tight')
-
+    
+    if len(csv_save_path) > 0:
+        with open(csv_save_path, 'w') as f:
+            csvwriter = csv.writer(f)
+            csvwriter.writerow(['sample', 'P_12', 'P_25', 'P_50', 'P_75', 'P_88'])
+            csvwriter.writerows(rows)
+            f.close()
