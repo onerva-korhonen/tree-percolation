@@ -589,6 +589,7 @@ def optimize_spreading_probability_from_data(simulation_data_save_folder, simula
                 data = pickle.load(f)
                 f.close()
             spontaneous_embolism = data['spontaneous_embolism']
+            bubble_expansion = data['bubble_expansion']
             if i == 0:
                 pressure_differences = data['pressure_differences']
                 spreading_probability_range = data['spreading_probability_range']
@@ -731,7 +732,7 @@ def optimize_spreading_probability_from_data(simulation_data_save_folder, simula
         if i == 0:
             averaged_stochastic_effective_conductances = np.zeros(stochastic_effective_conductances.shape[0])
             for j, (stochastic_effective_conductance, n_probability_iterations) in enumerate(zip(stochastic_effective_conductances, realized_n_probability_iterations)):
-                if spontaneous_embolism:
+                if spontaneous_embolism or bubble_expansion:
                     averaged_stochastic_effective_conductances[j] = np.mean(stochastic_effective_conductance[i, :n_probability_iterations])
                 else:
                     averaged_stochastic_effective_conductances[j] = np.mean(stochastic_effective_conductance[:n_probability_iterations])
