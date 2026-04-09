@@ -146,7 +146,6 @@ if __name__=='__main__':
             
         cfg['bubble_expansion_probabilities'] = filtered_bubble_expansion_probabilities
 
-
     percolation.run_spreading_iteration(net, cfg, pressure, save_path, 
                                         spreading_probability_range=probability, 
                                         si_length=cfg['si_length'], include_orig_values=True)
