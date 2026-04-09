@@ -131,13 +131,20 @@ if __name__=='__main__':
 
     if create_expansion_probability_data:
         bubble_expansion_probabilities = percolation.get_spontaneous_embolism_probability(vulnerability_pressure_range)
+
+        cfg['bubble_expansion_probabilities'] = bubble_expansion_probabilities
     else:
         bubble_expansion_probability_path = params.bubble_expansion_probability_data_path
         with open(bubble_expansion_probability_path, 'rb') as f:
             bubble_expansion_probabilities = pickle.load(f)
             f.close()
+
+        # filtering the existing data so that only probabilities for the current pressure range are included
+        bubble_expansion_pressures = bubble_expansion_probabilities.keys()
+        filtered_bubble_expansion_pressures = [np.argmin(np.abs(bubble_expansion_pressures - pressure)) for pressure in vulnerability_pressure_range]
+        filtered_bubble_expansion_probabilities = {pressure: bubble_expansion_probabilities[pressure] for pressure in filtered_bubble_expansion_pressures}
             
-    cfg['bubble_expansion_probabilities'] = bubble_expansion_probabilities
+        cfg['bubble_expansion_probabilities'] = filtered_bubble_expansion_probabilities
 
 
     percolation.run_spreading_iteration(net, cfg, pressure, save_path, 
