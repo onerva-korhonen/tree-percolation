@@ -140,8 +140,8 @@ if __name__=='__main__':
             f.close()
 
         # filtering the existing data so that only probabilities for the current pressure range are included
-        bubble_expansion_pressures = bubble_expansion_probabilities.keys()
-        filtered_bubble_expansion_pressures = [np.argmin(np.abs(bubble_expansion_pressures - pressure)) for pressure in vulnerability_pressure_range]
+        bubble_expansion_pressures = np.array(list(bubble_expansion_probabilities.keys()))
+        filtered_bubble_expansion_pressures = [bubble_expansion_pressures[np.argmin(np.abs(bubble_expansion_pressures - pressure))] for pressure in vulnerability_pressure_range]
         filtered_bubble_expansion_probabilities = {pressure: bubble_expansion_probabilities[pressure] for pressure in filtered_bubble_expansion_pressures}
             
         cfg['bubble_expansion_probabilities'] = filtered_bubble_expansion_probabilities
