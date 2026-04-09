@@ -86,7 +86,7 @@ small_large_limit = 5000 # for using only small_spreading_probability_range, thi
 zero_index = 0 # index of the first array job
 
 # NOTE: do not modify any parameters below this point
-# Note on the indexing order: calculations are performed in the iteration -> pressure/probability order (i.e. first all iterations for the first pressure etc.)
+# Note on the indexing order: calculations are performed in the iteration -> pressure/probability order (i.e. first the first iteration for all pressures etc.)
 
 if __name__=='__main__':
 

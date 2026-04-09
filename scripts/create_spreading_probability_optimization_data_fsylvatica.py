@@ -80,7 +80,7 @@ zero_index = 5000 # index of the first array job
 loop_over_segments = True
 
 # NOTE: do not modify any parameters below this point
-# Note on the indexing order: calculations are performed in the iteration -> pressure/probability order (i.e. first all iterations for the first pressure etc.)
+# Note on the indexing order: calculations are performed in the iteration -> pressure/probability order (i.e. first the first iteration for all pressure etc.)
 
 if __name__=='__main__':
 

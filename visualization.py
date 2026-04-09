@@ -291,7 +291,7 @@ def plot_optimized_vulnerability_curve(data_save_folders, physiological_color, s
         spreading_prevalence_ls = prevalence_linestyles[2]
     
     if isinstance(physiological_color, str):
-        physiological_colors = [physiological_color for i in range(line_styles)]
+        physiological_colors = [physiological_color for i in range(len(line_styles))]
     else:
         physiological_colors = physiological_color
 

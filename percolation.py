@@ -532,7 +532,7 @@ def run_spreading_iteration(net, cfg, pressure_differences, save_path, spreading
             stochastic_n_outlets.append(n_outlets)
      
     # saving simulation outputs
-    data = {'pressure_differences': pressure_differences, 'spreading_probability_range': spreading_probability_range, 'spontaneous_embolism_pressure_differences': probability_key_pressure_differences, 'physiological_effective_conductances': physiological_effective_conductances,
+    data = {'pressure_differences': pressure_differences, 'spreading_probability_range': spreading_probability_range, 'probability_key_pressure_differences': probability_key_pressure_differences, 'physiological_effective_conductances': physiological_effective_conductances,
             'physiological_prevalences': physiological_prevalences, 'stochastic_effective_conductances': stochastic_effective_conductances, 'stochastic_prevalences': stochastic_prevalences,
             'spontaneous_embolism': spontaneous_embolism, 'physiological_prevalences_due_to_spontaneous_embolism': physiological_prevalences_due_to_spontaneous_embolism,
             'physiological_prevalences_due_to_spreading': physiological_prevalences_due_to_spreading, 'stochastic_prevalences_due_to_spontaneous_embolism': stochastic_prevalences_due_to_spontaneous_embolism,
@@ -542,7 +542,7 @@ def run_spreading_iteration(net, cfg, pressure_differences, save_path, spreading
             'physiological_n_outlets': physiological_n_outlets, 'stochastic_lcc_size': stochastic_lcc_size, 'stochastic_functional_lcc_size': stochastic_functional_lcc_size, 'stochastic_nonfunctional_component_size': stochastic_nonfunctional_component_size,
             'stochastic_nonfunctional_component_volume': stochastic_nonfunctional_component_volume, 'stochastic_susceptibility': stochastic_susceptibility, 'stochastic_functional_susceptibility': stochastic_functional_susceptibility,
             'stochastic_n_inlets': stochastic_n_inlets, 'stochastic_n_outlets': stochastic_n_outlets, 'physiological_full_effective_conductances': physiological_full_effective_conductances, 'stochastic_full_effective_conductances': stochastic_full_effective_conductances, 
-            'physiological_frac_exponsed': physiological_frac_exposed, 'stochastic_frac_exposed': stochastic_frac_exposed, 'bubble_expansion': bubble_expansion, 'cfg':cfg}
+            'physiological_frac_exposed': physiological_frac_exposed, 'stochastic_frac_exposed': stochastic_frac_exposed, 'bubble_expansion': bubble_expansion, 'cfg':cfg}
     if 'segment_name' in cfg.keys():
         data['segment_name'] = cfg['segment_name']
     save_folder = save_path.rsplit('/', 1)[0]
@@ -1145,33 +1145,41 @@ def read_and_combine_spreading_probability_optimization_data(simulation_data_sav
             bubble_expansion = data['bubble_expansion']
             if bubble_expansion:
                 phys_properties.append(raw_phys_frac_exposed)
-                stoch_proeprties.append(raw_stoch_frac_exposed)
-                phys_keys.append['physiological_frac_exposed']
-                stoch_keys.append['stochastic_frac_exposed']
+                stoch_properties.append(raw_stoch_frac_exposed)
+                phys_keys.append('physiological_frac_exposed')
+                stoch_keys.append('stochastic_frac_exposed')
         else:
             assert data['spontaneous_embolism'] == spontaneous_embolism, 'Please do not mix spreading probability optimization data with and without spontaneous embolism'
             assert data['bubble_expansion'] == bubble_expansion, 'Please do not mix spreading probability optimization data with and without bubble expansion'
+      
+        #TODO: remove the following lines
+        # this is a temporary hack to handle a typo in the keys
+        if 'physiological_frac_exponsed' in data.keys():
+            data['physiological_frac_exposed'] = data['physiological_frac_exponsed']
+
+
         if not empirical_physiological_data:
             if len(data['pressure_differences']) > 0:
                 for phys_prop, phys_key in zip(phys_properties, phys_keys):
                     phys_prop.extend(data[phys_key])
                 data_pressure_differences.extend(data['pressure_differences'])
+                if spontaneous_embolism or bubble_expansion:
+                    if 'probability_key_pressure_differences' in data.keys():
+                        data_probability_key_pressure_differences.extend(data['probability_key_pressure_differences'])
+                    else: # backward compatibility case
+                        data_probability_key_pressure_differences.extend(data['spontaneous_embolism_pressure_differences'])
+
             
         if len(data['spreading_probability_range']) > 0:
             for stoch_prop, stoch_key in zip(stoch_properties, stoch_keys):
                 stoch_prop.extend(data[stoch_key])
             data_spreading_probabilities.extend(data['spreading_probability_range'])
-            if spontaneous_embolism or bubble_expansion:
-                if 'probability_key_pressure_differences' in data.keys():
-                    data_probability_key_pressure_differences.extend(data['probability_key_pressure_differences'])
-                else: # backward compatibility case
-                    data_probability_key_pressure_differences.extend(data['spontaneous_embolism_pressure_differences'])
     
     pressure_differences, realized_n_pressure_iterations = np.unique(np.round(data_pressure_differences, decimals=10), return_counts=True) # rounding to avoid float accuracy issues
     spreading_probability_range, realized_n_probability_iterations = np.unique(np.round(data_spreading_probabilities, decimals=10), return_counts=True)
     if spontaneous_embolism or bubble_expansion:
         probability_key_pressure_differences = np.unique(np.round(data_probability_key_pressure_differences, decimals=10))
-        assert np.all(probability_key_pressure_differences == pressure_differences), 'pressure differences used for calculating spontaneous embolism and bubble expansion probabilities do not match the pressure differences used to simulate spreading, please check the data'
+        assert np.amin(probability_key_pressure_differences) <= np.amin(pressure_differences) and np.amax(probability_key_pressure_differences) >= np.amax(pressure_differences), 'pressure differences used for calculating spontaneous embolism and bubble expansion probabilities do not match the pressure differences used to simulate spreading, please check the data'
     
     if max_n_iterations == None:
         n_iterations = max(np.amax(realized_n_pressure_iterations), np.amax(realized_n_probability_iterations))
