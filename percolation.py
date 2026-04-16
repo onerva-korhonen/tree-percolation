@@ -508,7 +508,7 @@ def run_spreading_iteration(net, cfg, pressure_differences, save_path, spreading
                     if bubble_expansion:
                         cfg['bubble_expansion_probability'] = bubble_expansion_probability 
                         effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence, prevalence_due_to_spontaneous_embolism, prevalence_due_to_spreading, fraction_of_exposed = run_conduit_si(net, cfg, spreading_probability, include_orig_values)
-                        stochastic_frac_exposed[i].append(fraction_of_exposed)
+                        #stochastic_frac_exposed[i].append(fraction_of_exposed)
                     else: # only spontaneous embolism, no bubble expansion
                         effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence, prevalence_due_to_spontaneous_embolism, prevalence_due_to_spreading = run_conduit_si(net, cfg, spreading_probability, include_orig_values)
                 else:
@@ -526,7 +526,7 @@ def run_spreading_iteration(net, cfg, pressure_differences, save_path, spreading
                     n_inlets = stochastic_n_inlets[i][cpi]
                     n_outlets = stochastic_n_outlets[i][cpi]
                     if bubble_expansion:
-                        stochastic_frac_exposed.append(stochastic_frac_exposed[i][cpi])
+                        franction_of_exposed = stochastic_frac_exposed[i][cpi]
 
                 stochastic_effective_conductances[i, j] = effective_conductances[-1]
                 stochastic_full_effective_conductances[i].append(effective_conductances)
@@ -541,6 +541,8 @@ def run_spreading_iteration(net, cfg, pressure_differences, save_path, spreading
                 stochastic_functional_susceptibility[i].append(functional_susceptibility)
                 stochastic_n_inlets[i].append(n_inlets)
                 stochastic_n_outlets[i].append(n_outlets)
+                if bubble_expansion:
+                    stochastic_frac_exposed[i].append(fraction_of_exposed)
     else:
         for i, spreading_probability in enumerate(spreading_probability_range):
             effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence, prevalence_due_to_spontaneous_embolism, prevalence_due_to_spreading = run_conduit_si(net, cfg, spreading_probability, include_orig_values)
@@ -1164,6 +1166,7 @@ def read_and_combine_spreading_probability_optimization_data(simulation_data_sav
     data_files = [data_file for data_file in data_files if simulation_data_save_name_base in data_file]
     if pooled_data_save_path in data_files:
         data_files.remove(pooled_data_save_path)
+    first_stoch_file = True
     for i, data_file in enumerate(data_files):
         with open(data_file, 'rb') as f:
             data = pickle.load(f)
@@ -1191,17 +1194,23 @@ def read_and_combine_spreading_probability_optimization_data(simulation_data_sav
                 for phys_prop, phys_key in zip(phys_properties, phys_keys):
                     phys_prop.extend(data[phys_key])
                 data_pressure_differences.extend(data['pressure_differences'])
-                if spontaneous_embolism or bubble_expansion:
-                    if 'probability_key_pressure_differences' in data.keys():
-                        data_probability_key_pressure_differences.extend(data['probability_key_pressure_differences'])
-                    else: # backward compatibility case
-                        data_probability_key_pressure_differences.extend(data['spontaneous_embolism_pressure_differences'])
-
             
         if len(data['spreading_probability_range']) > 0:
             for stoch_prop, stoch_key in zip(stoch_properties, stoch_keys):
                 stoch_prop.extend(data[stoch_key])
             data_spreading_probabilities.extend(data['spreading_probability_range'])
+            if spontaneous_embolism or bubble_expansion:
+                if first_stoch_file:
+                    first_stoch_file = False
+                    if 'probability_key_pressure_differences' in data.keys():
+                        data_probability_key_pressure_differences = data['probability_key_pressure_differences']
+                    else: # backward compatibility case
+                        data_probability_key_pressure_differences = data['spontaneous_embolism_pressure_differences']
+                else:
+                    if 'probability_key_pressure_differences' in data.keys():
+                        assert np.all(data['probability_key_pressure_differences'] == data_probability_key_pressure_differences), 'different pressure difference for calculating spontaneous embolism and bubble expansion probabilities in different files, please check the data'
+                    else: # backward compatibility case
+                        assert np.all(data['spontaneous_embolsim_pressure_differences'] == data_probability_key_pressure_differences), 'different pressure difference for calculating spontaneous embolism and bubble expansion probabilities in different files, please check the data'
     
     pressure_differences, realized_n_pressure_iterations = np.unique(np.round(data_pressure_differences, decimals=10), return_counts=True) # rounding to avoid float accuracy issues
     spreading_probability_range, realized_n_probability_iterations = np.unique(np.round(data_spreading_probabilities, decimals=10), return_counts=True)
@@ -1297,10 +1306,14 @@ def read_and_combine_spreading_probability_optimization_data(simulation_data_sav
         if (not max_n_iterations == None) and (stoch_iteration[index] >= max_n_iterations):
             continue
         if spontaneous_embolism or bubble_expansion:
-            for j, data_pressure_diff in enumerate(data_pressure_differences): 
-                pressure_index = np.where(pressure_differences == data_pressure_diff)[0][0]
-                stochastic_effective_conductances[index, pressure_index, stoch_iteration[index]] = raw_stoch_eff_conductances[i][j]
-                for stoch_prop, out_stoch_prop in zip(stoch_properties, out_stoch_properties):
+            for j, pressure_diff in enumerate(pressure_differences):
+                pressure_index = np.argmin(np.abs(probability_key_pressure_differences - pressure_diff))
+                #pressure_index = np.where(probability_key_pressure_differences == pressure_diff)[0][0]
+
+                #data_pressure_diff = np.round(data_pressure_diff, decimals=10) # rounding because of float accuracy issues
+                #pressure_index = np.where(pressure_differences == data_pressure_diff)[0][0]
+                stochastic_effective_conductances[index, j, stoch_iteration[index]] = raw_stoch_eff_conductances[i][pressure_index]
+                for z, (stoch_prop, out_stoch_prop) in enumerate(zip(stoch_properties, out_stoch_properties)):
                     out_stoch_prop[stoch_iteration[index]][index][pressure_index] = stoch_prop[i][j]
         else:
             stochastic_effective_conductances[index, stoch_iteration[index]] = raw_stoch_eff_conductances[i]
