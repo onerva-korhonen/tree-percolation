@@ -107,6 +107,7 @@ if triton:
     percolation_plot_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/percolation_3D_' + identifier + '.pdf'
     nonfunctional_component_size_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/percolation_3D_' + identifier + '_nonfunc_volume.pdf'
     ninlet_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/percolation_3D_' + identifier + '_ninlet.pdf'
+    eff_resistance_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/percolation_3D_' + identifier + '_effective_resistance.pdf'
     prevalence_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/percolation_' + identifier + '_prevalence.pdf'
     lcc_in_time_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/percolation_3D_' + identifier + '_lcc_in_time.pdf'
     percolation_data_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/percolation_3D_' + identifier + '_data.pkl'
@@ -136,6 +137,7 @@ else:
     percolation_plot_save_path = '/home/onervak/projects/hidrogat/output/percolation_3D_' + identifier + '.pdf'
     nonfunctional_component_size_save_path = '/home/onervak/projects/hidrogat/output/percolation_3D_' + identifier + '_nonfunc_volume.pdf'
     ninlet_save_path = '/home/onervak/projects/hidrogat/output/percolation_3D_' + identifier + '_ninlet.pdf'
+    eff_resistance_save_path = '/home/onervak/projects/hidrogat/output/percolation_3D_' + identifier + '_effective_resistance.pdf'
     prevalence_save_path = '/home/onervak/projects/hidrogat/output/percolation_' + identifier + '_prevalence.pdf'
     lcc_in_time_save_path = '/home/onervak/projects/hidrogat/output/percolation_3D_' + identifier + '_lcc_in_time.pdf'
     percolation_data_save_path = '/home/onervak/projects/hidrogat/output/percolation_3D_' + identifier + '_data.pkl'
@@ -195,6 +197,9 @@ percolation_ninlet_label = 'Average n inlets'
 percolation_noutlet_label = 'Average n outlets'
 percolation_ninlet_alpha = 1
 percolation_noutlet_alpha = 1
+percolation_effective_resistance_color = 'k'
+percolation_effective_resistance_label = 'Effective resistance'
+percolation_effective_resistance_alpha = 1
 percolation_linestyles = ['-', '--']
 percolation_labels = ['without spontaneous embolism']
 physiological_vc_color = 'r'

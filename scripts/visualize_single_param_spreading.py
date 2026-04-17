@@ -24,6 +24,7 @@ prevalence_save_path_base = params.prevalence_save_path.split('.')[0]
 percolation_plot_save_path_base = params.percolation_plot_save_path.split('.')[0]
 nonfunc_volume_save_path_base = params.nonfunctional_component_size_save_path.split('.')[0]
 ninlet_save_path_base = params.ninlet_save_path.split('.')[0]
+eff_resistance_save_path_base = params.eff_resistance_save_path.split('.')[0]
 
 prevalence_colors = params.prevalence_colors
 prevalence_labels = params.prevalence_labels
@@ -41,6 +42,9 @@ nonfunc_volume_label = params.percolation_nonfunctional_component_size_label
 ninlet_colors = [params.percolation_ninlet_color, params.percolation_noutlet_color]
 ninlet_labels = [params.percolation_ninlet_label, params.percolation_noutlet_label]
 ninlet_alphas = [params.percolation_ninlet_alpha, params.percolation_noutlet_alpha]
+eff_resistance_color = params.percolation_effective_resistance_color
+eff_resistance_label = params.percolation_effective_resistance_label
+eff_resistance_alpha = params.percolation_effective_resistance_alpha
 
 pressure_differences = [1.26E6, 1.28E6, 1.29E6] # TODO: add the desired pressure differences
 spreading_probabilities = [0.015, 0.02, 0.05] # TODO: alternatively, add the desired spreading probabiltiies
@@ -199,6 +203,24 @@ if __name__=='__main__':
 
                 ninlet_save_path = ninlet_save_path_base + '_phys_' + str(pressure_difference).replace('.','_') + '.pdf'
                 plt.savefig(ninlet_save_path, format='pdf', bbox_inches='tight')
+                
+                # v) effective resistance
+                if 'average_physiological_effective_resistance' in data.keys():
+                    av_phys_eff_resistance = data['average_physiological_effective_resistance'][index]
+                    std_phys_eff_resistance = data['std_physiological_effective_resistance'][index]
+                    
+                    eff_resistance_fig = plt.figure()
+                    eff_resistance_ax = eff_resistance_fig.add_subplot(111)
+                    
+                    eff_resistance_ax.plot(av_phys_eff_resistance, ls=ls, color=eff_resistance_color, label=label + ', ' + eff_resistance_label, alpha=eff_resistance_alpha)
+                    eff_resistance_ax.fill_between(np.arange(len(av_phys_eff_resistance)), av_phys_eff_resistance - std_phys_eff_resistance, av_phys_eff_resistance + std_phys_eff_resistance, color=eff_resistance_color, alpha=std_alpha * eff_resistance_alpha)
+                    
+                    #TODO: add here the ylims after the first visualization test
+                    eff_resistance_ax.set_xlabel('Time')
+                    eff_resistance_ax.legend()
+                    
+                    eff_resistance_save_path = eff_resistance_save_path_base + '_phys_' + str(pressure_difference).replace('.','_') + '.pdf'
+                    plt.savefig(eff_resistance_save_path, format='pdf', bbox_inches='tight')
 
             # 2) SI spreading
 
@@ -318,6 +340,27 @@ if __name__=='__main__':
             elif fixed_variable == 'probability':
                 ninlet_save_path = ninlet_save_path_base + '_vs_empirical_' + str(x_value).replace('.','_') + '.pdf'
             plt.savefig(ninlet_save_path, format='pdf', bbox_inches='tight')
+            
+            # v) effective resistance
+            if 'average_stochastic_effective_resistance' in data.keys():
+                av_stoch_eff_resistance = data['average_stochastic_effective_resistance'][index]
+                std_stoch_eff_resistance = data['std_stochastic_effective_resistance'][index]
+                
+                eff_resistance_fig = plt.figure()
+                eff_resistance_ax = eff_resistance_fig.add_subplot(111)
+                
+                eff_resistance_ax.plot(av_stoch_eff_resistance, ls=ls, color=eff_resistance_color, label=label + ', ' + eff_resistance_label, alpha=eff_resistance_alpha)
+                eff_resistance_ax.fill_between(np.arange(len(av_stoch_eff_resistance)), av_stoch_eff_resistance - std_stoch_eff_resistance, av_stoch_eff_resistance + std_stoch_eff_resistance, color=eff_resistance_color, alpha=std_alpha * eff_resistance_alpha)
+                
+                #TODO: add here the ylims after the first visualization test
+                eff_resistance_ax.set_xlabel('Time')
+                eff_resistance_ax.legend()
+                
+                if fixed_variable == 'pressure':
+                    eff_resistance_save_path = eff_resistance_save_path_base + '_stoch_' + str(pressure_difference).replace('.','_') + '.pdf'
+                elif fixed_variable == 'probability':
+                    eff_resistance_save_path = eff_resistance_save_path_base + '_vs_empirical_' + str(pressure_difference).replace('.','_') + '.pdf'
+                plt.savefig(eff_resistance_save_path, format='pdf', bbox_inches='tight')
  
             # 3) Calculating RMSE
             if fixed_variable == 'pressure':
@@ -328,6 +371,7 @@ if __name__=='__main__':
                 rmse_cut_nonfunc_volume, rmse_padded_nonfunc_volume, rmse_resampled_nonfunc_volume, rmse_resampled_norm_nonfunc_volume  = rmse(av_phys_nonfunc_volume, av_stoch_nonfunc_volume)
                 rmse_cut_ninlets, rmse_padded_ninlets, rmse_resampled_ninlets, rmse_resampled_norm_ninlets = rmse(av_phys_ninlets, av_stoch_ninlets)
                 rmse_cut_noutlets, rmse_padded_noutlets, rmse_resampled_noutlets, rmse_resampled_norm_noutlets = rmse(av_phys_noutlets, av_stoch_noutlets)
+                rmse_cut_eff_resistance, rmse_padded_eff_resistance, rmse_resampled_eff_resistance, rmse_resampled_norm_eff_resistance = rmse(av_phys_eff_resistance, av_stoch_eff_resistance)
  
                 print(f'At pressure difference {pressure_difference}, optimal SI spreading probability is {spreading_probability}')
                 print(f'Prevalence: cut RMSE: {rmse_cut_prevalence}, padded RMSE: {rmse_padded_prevalence}, resampled RMSE: {rmse_resampled_prevalence}, {rmse_resampled_norm_prevalence}')
@@ -337,6 +381,7 @@ if __name__=='__main__':
                 print(f'Nonfunctional component volume: cut RMSE: {rmse_cut_nonfunc_volume}, padded RMSE: {rmse_padded_nonfunc_volume}, resampled RMSE: {rmse_resampled_nonfunc_volume}, {rmse_resampled_norm_nonfunc_volume}')
                 print(f'N inlets: cut RMSE: {rmse_cut_ninlets}, padded RMSE: {rmse_padded_ninlets}, resampled RMSE: {rmse_resampled_ninlets}, {rmse_resampled_norm_ninlets}')
                 print(f'N outlets: cut RMSE: {rmse_cut_noutlets}, padded RMSE: {rmse_padded_noutlets}, resampled RMSE: {rmse_resampled_noutlets}, {rmse_resampled_norm_noutlets}')
+                print(f'Effective resistance: cut RMSE: {rmse_cut_eff_resistance}, padded RMSE: {rmse_padded_eff_resistance}, resampled RMSE: {rmse_resampled_eff_resistance}, {rmse_resampled_norm_eff_resistance}')
 
 
 

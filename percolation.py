@@ -114,7 +114,7 @@ def run_percolation(net, cfg, percolation_type='bond', removal_order='random', b
             spreading_param = cfg.get('spreading_probability', 0.1)
         elif cfg['si_type'] == 'physiological':
             spreading_param = cfg.get('pressure_diff', 0)
-        effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence, prevalence_due_to_spontaneous_embolism, prevalence_due_to_spreading = run_conduit_si(net, cfg, spreading_param, include_orig_values)
+        effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence, prevalence_due_to_spontaneous_embolism, prevalence_due_to_spreading, effective_resistance = run_conduit_si(net, cfg, spreading_param, include_orig_values)
     elif percolation_type == 'drainage':
         effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence = run_physiological_conduit_drainage(net, cfg, start_conduits=cfg['start_conduits'])
     elif break_nonfunctional_components:
@@ -406,6 +406,7 @@ def run_spreading_iteration(net, cfg, pressure_differences, save_path, spreading
     physiological_functional_susceptibility = []
     physiological_n_inlets = []
     physiological_n_outlets = []
+    physiological_effective_resistance = []
     if spontaneous_embolism or bubble_expansion:
         if spontaneous_embolism:
             spontaneous_embolism_probabilities = cfg['spontaneous_embolism_probabilities']
@@ -439,6 +440,7 @@ def run_spreading_iteration(net, cfg, pressure_differences, save_path, spreading
         stochastic_functional_susceptibility = [[] for spreading_probability in spreading_probability_range]
         stochastic_n_inlets = [[] for spreading_probability in spreading_probability_range]
         stochastic_n_outlets = [[] for spreading_probability in spreading_probability_range]
+        stochastic_effective_resistance = [[] for spreading_probability in spreading_probability_range]
     else:
         probability_key_pressure_differences = []
         physiological_frac_exposed = []
@@ -456,6 +458,7 @@ def run_spreading_iteration(net, cfg, pressure_differences, save_path, spreading
         stochastic_functional_susceptibility = []
         stochastic_n_inlets = []
         stochastic_n_outlets = []
+        stochastic_effective_resistance = []
     
     # running physiological SI
     if bubble_expansion:
@@ -467,10 +470,10 @@ def run_spreading_iteration(net, cfg, pressure_differences, save_path, spreading
             cfg['spontaneous_embolism_probability'] = spontaneous_embolism_probabilities[probability_key_pressure_differences[np.argmin(np.abs(probability_key_pressure_differences - pressure_difference))]]
         if bubble_expansion:
             cfg['bubble_expansion_probability'] = bubble_expansion_probabilities[probability_key_pressure_differences[np.argmin(np.abs(probability_key_pressure_differences - pressure_difference))]]
-            effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence, prevalence_due_to_spontaneous_embolism, prevalence_due_to_spreading, fraction_of_exposed = run_conduit_si(net, cfg, pressure_difference, include_orig_values)
+            effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence, prevalence_due_to_spontaneous_embolism, prevalence_due_to_spreading, fraction_of_exposed, effective_resistance = run_conduit_si(net, cfg, pressure_difference, include_orig_values)
             physiological_frac_exposed[i].append(fraction_of_exposed)
         else:
-            effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence, prevalence_due_to_spontaneous_embolism, prevalence_due_to_spreading = run_conduit_si(net, cfg, pressure_difference, include_orig_values)
+            effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence, prevalence_due_to_spontaneous_embolism, prevalence_due_to_spreading, effective_resistance = run_conduit_si(net, cfg, pressure_difference, include_orig_values)
         physiological_effective_conductances[i] = effective_conductances[-1]
         physiological_full_effective_conductances.append(effective_conductances)
         physiological_prevalences.append(prevalence)
@@ -484,6 +487,7 @@ def run_spreading_iteration(net, cfg, pressure_differences, save_path, spreading
         physiological_functional_susceptibility.append(functional_susceptibility)
         physiological_n_inlets.append(n_inlets)
         physiological_n_outlets.append(n_outlets)
+        physiological_effective_resistance.append(effective_resistance)
         
     # running stochastic SI
     if bubble_expansion:
@@ -507,10 +511,10 @@ def run_spreading_iteration(net, cfg, pressure_differences, save_path, spreading
                         cfg['spontaneous_embolism_probability'] = spontaneous_embolism_probability 
                     if bubble_expansion:
                         cfg['bubble_expansion_probability'] = bubble_expansion_probability 
-                        effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence, prevalence_due_to_spontaneous_embolism, prevalence_due_to_spreading, fraction_of_exposed = run_conduit_si(net, cfg, spreading_probability, include_orig_values)
+                        effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence, prevalence_due_to_spontaneous_embolism, prevalence_due_to_spreading, fraction_of_exposed, effective_resistance = run_conduit_si(net, cfg, spreading_probability, include_orig_values)
                         #stochastic_frac_exposed[i].append(fraction_of_exposed)
                     else: # only spontaneous embolism, no bubble expansion
-                        effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence, prevalence_due_to_spontaneous_embolism, prevalence_due_to_spreading = run_conduit_si(net, cfg, spreading_probability, include_orig_values)
+                        effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence, prevalence_due_to_spontaneous_embolism, prevalence_due_to_spreading, effective_resistance = run_conduit_si(net, cfg, spreading_probability, include_orig_values)
                 else:
                     cpi = covered_probability_values[tuple(temp_probabilities)] # cpi stands for covered probability index
                     effective_conductances = stochastic_full_effective_conductances[i][cpi]
@@ -527,6 +531,7 @@ def run_spreading_iteration(net, cfg, pressure_differences, save_path, spreading
                     n_outlets = stochastic_n_outlets[i][cpi]
                     if bubble_expansion:
                         franction_of_exposed = stochastic_frac_exposed[i][cpi]
+                    effective_resistance = stochastic_effective_resistance[i][cpi]
 
                 stochastic_effective_conductances[i, j] = effective_conductances[-1]
                 stochastic_full_effective_conductances[i].append(effective_conductances)
@@ -543,9 +548,10 @@ def run_spreading_iteration(net, cfg, pressure_differences, save_path, spreading
                 stochastic_n_outlets[i].append(n_outlets)
                 if bubble_expansion:
                     stochastic_frac_exposed[i].append(fraction_of_exposed)
+                stochastic_effective_resistance.append(effective_resistance)
     else:
         for i, spreading_probability in enumerate(spreading_probability_range):
-            effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence, prevalence_due_to_spontaneous_embolism, prevalence_due_to_spreading = run_conduit_si(net, cfg, spreading_probability, include_orig_values)
+            effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence, prevalence_due_to_spontaneous_embolism, prevalence_due_to_spreading, effective_resistance = run_conduit_si(net, cfg, spreading_probability, include_orig_values)
             stochastic_effective_conductances[i] = effective_conductances[-1]
             stochastic_full_effective_conductances.append(effective_conductances)
             stochastic_prevalences.append(prevalence)
@@ -559,6 +565,7 @@ def run_spreading_iteration(net, cfg, pressure_differences, save_path, spreading
             stochastic_functional_susceptibility.append(functional_susceptibility)
             stochastic_n_inlets.append(n_inlets)
             stochastic_n_outlets.append(n_outlets)
+            stochastic_effective_resistance.append(effective_resistance)
      
     # saving simulation outputs
     data = {'pressure_differences': pressure_differences, 'spreading_probability_range': spreading_probability_range, 'probability_key_pressure_differences': probability_key_pressure_differences, 'physiological_effective_conductances': physiological_effective_conductances,
@@ -571,7 +578,8 @@ def run_spreading_iteration(net, cfg, pressure_differences, save_path, spreading
             'physiological_n_outlets': physiological_n_outlets, 'stochastic_lcc_size': stochastic_lcc_size, 'stochastic_functional_lcc_size': stochastic_functional_lcc_size, 'stochastic_nonfunctional_component_size': stochastic_nonfunctional_component_size,
             'stochastic_nonfunctional_component_volume': stochastic_nonfunctional_component_volume, 'stochastic_susceptibility': stochastic_susceptibility, 'stochastic_functional_susceptibility': stochastic_functional_susceptibility,
             'stochastic_n_inlets': stochastic_n_inlets, 'stochastic_n_outlets': stochastic_n_outlets, 'physiological_full_effective_conductances': physiological_full_effective_conductances, 'stochastic_full_effective_conductances': stochastic_full_effective_conductances, 
-            'physiological_frac_exposed': physiological_frac_exposed, 'stochastic_frac_exposed': stochastic_frac_exposed, 'bubble_expansion': bubble_expansion, 'cfg':cfg}
+            'physiological_frac_exposed': physiological_frac_exposed, 'stochastic_frac_exposed': stochastic_frac_exposed, 'physiological_effective_resistance': physiological_effective_resistance,
+            'stochastic_effective_resistance': stochastic_effective_resistance, 'bubble_expansion': bubble_expansion, 'cfg':cfg}
     if 'segment_name' in cfg.keys():
         data['segment_name'] = cfg['segment_name']
     save_folder = save_path.rsplit('/', 1)[0]
@@ -635,6 +643,7 @@ def optimize_spreading_probability_from_data(simulation_data_save_folder, simula
                 physiological_functional_susceptibility = []
                 physiological_n_inlets = []
                 physiological_n_outlets = []
+                physiological_effective_resistance = []
                 if spontaneous_embolism:
                     stochastic_effective_conductances = np.zeros((len(spreading_probability_range), len(pressure_differences), len(data_files))) # spreading probabilities x pressures x iterations
                 else:
@@ -651,6 +660,7 @@ def optimize_spreading_probability_from_data(simulation_data_save_folder, simula
                 stochastic_functional_susceptibility = []
                 stochastic_n_inlets = []
                 stochastic_n_outlets = []
+                stochastic_effective_resistance = []
             else:
                 assert np.all(data['pressure_differences'] == pressure_differences), data_file + ' has different list of pressure_differences than other files'
                 assert np.all(data['spreading_probability_range'] == spreading_probability_range), data_file + ' has different spreading probability range than other files'
@@ -667,6 +677,8 @@ def optimize_spreading_probability_from_data(simulation_data_save_folder, simula
             physiological_functional_susceptibility.append(data['physiological_functional_susceptibility'])
             physiological_n_inlets.append(data['physiological_n_inlets'])
             physiological_n_outlets.append(data['physiological_n_outlets'])
+            if 'physiological_effective_resistance' in data.keys():
+                physiological_effective_resistance.append(data['physiological_effective_resistance'])
             if spontaneous_embolism:
                 stochastic_effective_conductances[:, :, i] = data['stochastic_effective_conductances']
             else:
@@ -683,13 +695,15 @@ def optimize_spreading_probability_from_data(simulation_data_save_folder, simula
             stochastic_functional_susceptibility.append(data['stochastic_functional_susceptibility'])
             stochastic_n_inlets.append(data['stochastic_n_inlets'])
             stochastic_n_outlets.append(data['stochastic_n_outlets'])   
+            if 'stochastic_effective_resistance' in data.keys():
+                stochastic_effective_resistance.append(data['stochastic_effective_resistance'])
     else:
         pressure_differences, spreading_probability_range, physiological_effective_conductances, physiological_full_effective_conductances, physiological_prevalences, physiological_prevalences_due_to_spontaneous_embolism, \
         physiological_prevalences_due_to_spreading, physiological_lcc_size, physiological_functional_lcc_size, physiological_nonfunctional_component_size, physiological_nonfunctional_component_volume, physiological_susceptibility, \
         physiological_functional_susceptibility, physiological_n_inlets, physiological_n_outlets, stochastic_effective_conductances, stochastic_full_effective_conductances, stochastic_prevalences, \
         stochastic_prevalences_due_to_spontaneous_embolism, stochastic_prevalences_due_to_spreading, stochastic_lcc_size, stochastic_functional_lcc_size, stochastic_nonfunctional_component_size, stochastic_nonfunctional_component_volume, \
         stochastic_susceptibility, stochastic_functional_susceptibility, stochastic_n_inlets, stochastic_n_outlets, spontaneous_embolism, realized_n_pressure_iterations, \
-        realized_n_probability_iterations,_, physiological_frac_exposed, stochastic_frac_exposed = read_and_combine_spreading_probability_optimization_data(simulation_data_save_folder, simulation_data_save_name_base, pooled_data_save_path, max_n_iterations=max_n_iterations)
+        realized_n_probability_iterations,_, physiological_frac_exposed, stochastic_frac_exposed, physiological_effective_resistance, stochastic_effective_resistance = read_and_combine_spreading_probability_optimization_data(simulation_data_save_folder, simulation_data_save_name_base, pooled_data_save_path, max_n_iterations=max_n_iterations)
     
     averaged_physiological_effective_conductances = np.zeros(len(pressure_differences))
     optimized_spreading_probabilities = np.zeros(len(pressure_differences))
@@ -746,13 +760,17 @@ def optimize_spreading_probability_from_data(simulation_data_save_folder, simula
     std_phys_frac_exposed = []
     av_stoch_frac_exposed = []
     std_stoch_frac_exposed = []
+    av_phys_eff_resistance = []
+    std_phys_eff_resistance = []
+    av_stoch_eff_resistance = []
+    std_stoch_eff_resistance = []
     
-    phys_props = [physiological_full_effective_conductances, physiological_lcc_size, physiological_functional_lcc_size, physiological_nonfunctional_component_size, physiological_nonfunctional_component_volume, physiological_susceptibility, physiological_functional_susceptibility, physiological_n_inlets, physiological_n_outlets, physiological_frac_exposed]
-    phys_avs = [average_phys_full_effective_conductances, av_phys_lcc_size, av_phys_functional_lcc_size, av_phys_nonfunctional_component_size, av_phys_nonfunctional_component_volume, av_phys_susceptibility, av_phys_functional_susceptibility, av_phys_n_inlets, av_phys_n_outlets, av_phys_frac_exposed]
-    phys_stds = [std_phys_full_effective_conductances, std_phys_lcc_size, std_phys_functional_lcc_size, std_phys_nonfunctional_component_size, std_phys_nonfunctional_component_volume, std_phys_susceptibility, std_phys_functional_susceptibility, std_phys_n_inlets, std_phys_n_outlets, std_phys_frac_exposed]
-    stoch_props = [stochastic_full_effective_conductances, stochastic_lcc_size, stochastic_functional_lcc_size, stochastic_nonfunctional_component_size, stochastic_nonfunctional_component_volume, stochastic_susceptibility, stochastic_functional_susceptibility, stochastic_n_inlets, stochastic_n_outlets, stochastic_frac_exposed]
-    stoch_avs = [average_stoch_full_effective_conductances, av_stoch_lcc_size, av_stoch_functional_lcc_size, av_stoch_nonfunctional_component_size, av_stoch_nonfunctional_component_volume, av_stoch_susceptibility, av_stoch_functional_susceptibility, av_stoch_n_inlets, av_stoch_n_outlets, av_stoch_frac_exposed]
-    stoch_stds = [std_stoch_full_effective_conductances, std_stoch_lcc_size, std_stoch_functional_lcc_size, std_stoch_nonfunctional_component_size, std_stoch_nonfunctional_component_volume, std_stoch_susceptibility, std_stoch_functional_susceptibility, std_stoch_n_inlets, std_stoch_n_outlets, std_stoch_frac_exposed]
+    phys_props = [physiological_full_effective_conductances, physiological_lcc_size, physiological_functional_lcc_size, physiological_nonfunctional_component_size, physiological_nonfunctional_component_volume, physiological_susceptibility, physiological_functional_susceptibility, physiological_n_inlets, physiological_n_outlets, physiological_frac_exposed, physiological_effective_resistance]
+    phys_avs = [average_phys_full_effective_conductances, av_phys_lcc_size, av_phys_functional_lcc_size, av_phys_nonfunctional_component_size, av_phys_nonfunctional_component_volume, av_phys_susceptibility, av_phys_functional_susceptibility, av_phys_n_inlets, av_phys_n_outlets, av_phys_frac_exposed, av_phys_eff_resistance]
+    phys_stds = [std_phys_full_effective_conductances, std_phys_lcc_size, std_phys_functional_lcc_size, std_phys_nonfunctional_component_size, std_phys_nonfunctional_component_volume, std_phys_susceptibility, std_phys_functional_susceptibility, std_phys_n_inlets, std_phys_n_outlets, std_phys_frac_exposed, std_phys_eff_resistance]
+    stoch_props = [stochastic_full_effective_conductances, stochastic_lcc_size, stochastic_functional_lcc_size, stochastic_nonfunctional_component_size, stochastic_nonfunctional_component_volume, stochastic_susceptibility, stochastic_functional_susceptibility, stochastic_n_inlets, stochastic_n_outlets, stochastic_frac_exposed, stochastic_effective_resistance]
+    stoch_avs = [average_stoch_full_effective_conductances, av_stoch_lcc_size, av_stoch_functional_lcc_size, av_stoch_nonfunctional_component_size, av_stoch_nonfunctional_component_volume, av_stoch_susceptibility, av_stoch_functional_susceptibility, av_stoch_n_inlets, av_stoch_n_outlets, av_stoch_frac_exposed, av_stoch_eff_resistance]
+    stoch_stds = [std_stoch_full_effective_conductances, std_stoch_lcc_size, std_stoch_functional_lcc_size, std_stoch_nonfunctional_component_size, std_stoch_nonfunctional_component_volume, std_stoch_susceptibility, std_stoch_functional_susceptibility, std_stoch_n_inlets, std_stoch_n_outlets, std_stoch_frac_exposed, std_stoch_eff_resistance]
     
     for i, pressure_difference in enumerate(pressure_differences):
         n_pressure_iterations = realized_n_pressure_iterations[i]
@@ -875,7 +893,9 @@ def optimize_spreading_probability_from_data(simulation_data_save_folder, simula
             'average_stochastic_n_inlets': av_stoch_n_inlets, 'std_stochastic_n_inlets': std_stoch_n_inlets, 'average_stochastic_n_outlets': av_stoch_n_outlets, 'std_stochastic_n_outlets': std_stoch_n_outlets,
             'average_physiological_full_effective_conductances': average_phys_full_effective_conductances, 'std_physiological_full_effective_conductances': std_phys_full_effective_conductances,
             'average_stochastic_full_effective_conductances': average_stoch_full_effective_conductances, 'std_stochastic_full_effective_conductances': std_stoch_full_effective_conductances,
-            'average_physiological_frac_exposed': av_phys_frac_exposed, 'std_physiological_frac_exposed': std_phys_frac_exposed, 'average_stochastic_frac_exposed': av_stoch_frac_exposed, 'std_stochastic_frac_exposed': std_stoch_frac_exposed}
+            'average_physiological_frac_exposed': av_phys_frac_exposed, 'std_physiological_frac_exposed': std_phys_frac_exposed, 'average_stochastic_frac_exposed': av_stoch_frac_exposed, 'std_stochastic_frac_exposed': std_stoch_frac_exposed,
+            'average_physiological_effective_resistance': av_phys_eff_resistance, 'std_physiological_effective_resistance': std_phys_eff_resistance, 'average_stochastic_effective_resistance': av_stoch_eff_resistance,
+            'std_stochastic_effective_resistance': std_stoch_eff_resistance}
     
     with open(pooled_data_save_path, 'wb') as f:
         pickle.dump(data, f)
@@ -1102,10 +1122,18 @@ def read_and_combine_spreading_probability_optimization_data(simulation_data_sav
     realized_n_pressure_iterations : np.array of ints
         for each pressure difference, the number of iterations read
     realized_n_probability_iterations : np.array of ints
-        for each spreading probability, the numver of iterations read
+        for each spreading probability, the number of iterations read
     physiological_PLC : np.array  of floats
         for each pressure differences, the empirical percentage of lost conductance. Note that PLC values are returned only if empirical_physiological_data == True, otherwise
         [] is returned instead
+    physiological_frac_exposed : np.array of floats
+        evolution of fraction of exposed conduits for each pressure difference, n_iterations x n_pressures x time
+    stochastic_frac_exposed : np.array of floats
+        evolution of fraction of exposed conduits for each spreading_probability, n_iterations x n_probabilities x time or n_itertions x n_iterations x n_pressures x n_probabilities x time
+    physiological_effective_resistance : np.array of floats
+        evolution of effective resistance for each pressure difference, n_iterations x n_pressures x time
+    stochastic_effective_resistance : np.array of floats
+        evolution of effectice resistance for each spreading_probability, n_iterations x n_probabilities x time or n_itertions x n_iterations x n_pressures x n_probabilities x time
     """
     raw_phys_eff_conductances = []
     raw_phys_full_eff_conductances = []
@@ -1121,6 +1149,7 @@ def read_and_combine_spreading_probability_optimization_data(simulation_data_sav
     raw_phys_n_inlets = []
     raw_phys_n_outlets = []
     raw_phys_frac_exposed = []
+    raw_phys_eff_resistance = []
     raw_stoch_eff_conductances = []
     raw_stoch_full_eff_conductances = []
     raw_stoch_prevalence = []
@@ -1135,12 +1164,15 @@ def read_and_combine_spreading_probability_optimization_data(simulation_data_sav
     raw_stoch_n_inlets = []
     raw_stoch_n_outlets = []
     raw_stoch_frac_exposed = []
+    raw_stoch_eff_resistance = []
 
     physiological_PLC = []
     
     data_pressure_differences = []
     data_spreading_probabilities = []
     data_probability_key_pressure_differences = []
+    
+    read_effective_resistance = False
     
     phys_properties = [raw_phys_eff_conductances, raw_phys_full_eff_conductances, raw_phys_func_lcc_size, raw_phys_func_susceptibility, raw_phys_lcc_size, raw_phys_n_inlets, raw_phys_n_outlets, raw_phys_nonfunc_component_size, raw_phys_nonfunc_component_volume,
                   raw_phys_prevalence, raw_phys_prevalence_due_to_spontaneous_embolism, raw_phys_prevalence_due_to_spreading, raw_phys_susceptibility]
@@ -1172,6 +1204,12 @@ def read_and_combine_spreading_probability_optimization_data(simulation_data_sav
             data = pickle.load(f)
             f.close()
         if i == 0:
+            if 'physiological_effective_resistance' in data.keys(): # these are backward compatibility cases: effective resistance isn't read from files where it hasn't been calculated
+                phys_properties.append(raw_phys_eff_resistance)
+                phys_keys.append('physiological_effective_resistance')
+                stoch_properties.append(raw_stoch_eff_resistance)
+                stoch_keys.append('stochastic_effective_resistance')
+                read_effective_resistance = True
             spontaneous_embolism = data['spontaneous_embolism']
             bubble_expansion = data['bubble_expansion']
             if bubble_expansion:
@@ -1187,8 +1225,7 @@ def read_and_combine_spreading_probability_optimization_data(simulation_data_sav
         # this is a temporary hack to handle a typo in the keys
         if 'physiological_frac_exponsed' in data.keys():
             data['physiological_frac_exposed'] = data['physiological_frac_exponsed']
-
-
+            
         if not empirical_physiological_data:
             if len(data['pressure_differences']) > 0:
                 for phys_prop, phys_key in zip(phys_properties, phys_keys):
@@ -1242,6 +1279,7 @@ def read_and_combine_spreading_probability_optimization_data(simulation_data_sav
     physiological_n_inlets = [[[] for pressure_diff in pressure_differences] for i in range(n_iterations)]
     physiological_n_outlets = [[[] for pressure_diff in pressure_differences] for i in range(n_iterations)]
     physiological_frac_exposed = [[[] for pressure_diff in pressure_differences] for i in range(n_iterations)]
+    physiological_effective_resistance = [[[] for pressure_diff in pressure_differences] for i in range(n_iterations)]
     if spontaneous_embolism or bubble_expansion:
         stochastic_effective_conductances = np.zeros((len(spreading_probability_range), len(pressure_differences), n_iterations)) 
         stochastic_full_effective_conductances = [[[[] for pressure_difference in pressure_differences] for probability in spreading_probability_range] for i in range(n_iterations)]
@@ -1257,6 +1295,7 @@ def read_and_combine_spreading_probability_optimization_data(simulation_data_sav
         stochastic_n_inlets = [[[[] for pressure_difference in pressure_differences] for probability in spreading_probability_range] for i in range(n_iterations)]
         stochastic_n_outlets = [[[[] for pressure_difference in pressure_differences] for probability in spreading_probability_range] for i in range(n_iterations)]
         stochastic_frac_exposed = [[[[] for pressure_difference in pressure_differences] for probability in spreading_probability_range] for i in range(n_iterations)]
+        stochastic_effective_resistance = [[[[] for pressure_difference in pressure_differences] for probability in spreading_probability_range] for i in range(n_iterations)]
     else:
         stochastic_effective_conductances = np.zeros((len(spreading_probability_range), n_iterations))
         stochastic_full_effective_conductances = [[[] for probability in spreading_probability_range] for i in range(n_iterations)]
@@ -1272,6 +1311,7 @@ def read_and_combine_spreading_probability_optimization_data(simulation_data_sav
         stochastic_n_inlets = [[[] for probability in spreading_probability_range] for i in range(n_iterations)]
         stochastic_n_outlets = [[[] for probability in spreading_probability_range] for i in range(n_iterations)]
         stochastic_frac_exposed = [[[] for probability in spreading_probability_range] for i in range(n_iterations)]
+        stochastic_effective_resistance = [[[] for probability in spreading_probability_range] for i in range(n_iterations)]
     
     out_phys_properties = [physiological_full_effective_conductances, physiological_functional_lcc_size, physiological_functional_susceptibility, physiological_lcc_size, physiological_n_inlets, physiological_n_outlets, 
                            physiological_nonfunctional_component_size, physiological_nonfunctional_component_volume, physiological_prevalences, physiological_prevalences_due_to_spontaneous_embolism, physiological_prevalences_due_to_spreading, 
@@ -1279,6 +1319,9 @@ def read_and_combine_spreading_probability_optimization_data(simulation_data_sav
     out_stoch_properties = [stochastic_full_effective_conductances, stochastic_functional_lcc_size, stochastic_functional_susceptibility, stochastic_lcc_size, stochastic_n_inlets, stochastic_n_outlets, 
                             stochastic_nonfunctional_component_size, stochastic_nonfunctional_component_volume, stochastic_prevalences, stochastic_prevalences_due_to_spontaneous_embolism, stochastic_prevalences_due_to_spreading, 
                             stochastic_susceptibility]
+    if read_effective_resistance:
+        out_phys_properties.append(physiological_effective_resistance)
+        out_stoch_properties.append(stochastic_effective_resistance)
     phys_properties.remove(raw_phys_eff_conductances)
     stoch_properties.remove(raw_stoch_eff_conductances)
     if bubble_expansion:
@@ -1326,7 +1369,7 @@ def read_and_combine_spreading_probability_optimization_data(simulation_data_sav
            physiological_functional_susceptibility, physiological_n_inlets, physiological_n_outlets, stochastic_effective_conductances, stochastic_full_effective_conductances, stochastic_prevalences, \
            stochastic_prevalences_due_to_spontaneous_embolism, stochastic_prevalences_due_to_spreading, stochastic_lcc_size, stochastic_functional_lcc_size, stochastic_nonfunctional_component_size, stochastic_nonfunctional_component_volume, \
            stochastic_susceptibility, stochastic_functional_susceptibility, stochastic_n_inlets, stochastic_n_outlets, spontaneous_embolism, realized_n_pressure_iterations, \
-           realized_n_probability_iterations, physiological_PLC, physiological_frac_exposed, stochastic_frac_exposed
+           realized_n_probability_iterations, physiological_PLC, physiological_frac_exposed, stochastic_frac_exposed, physiological_effective_resistance, stochastic_effective_resistance
     
 def run_conduit_si_repeatedly(net, net_proj, cfg, spreading_param=0, include_orig_values=False):
     """
@@ -1406,7 +1449,7 @@ def run_conduit_si_repeatedly(net, net_proj, cfg, spreading_param=0, include_ori
         for prop in member_properties.keys():
             net.project[proj_member][prop] = member_properties[prop]
 
-    effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_volume, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence, prevalence_due_to_spontaneous_embolism, prevalence_due_to_spreading = run_conduit_si(net, cfg, spreading_param, include_orig_values)
+    effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_volume, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence, prevalence_due_to_spontaneous_embolism, prevalence_due_to_spreading, effective_resistance = run_conduit_si(net, cfg, spreading_param, include_orig_values)
     return effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_volume, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence
         
 def run_graph_theoretical_element_percolation(net, cfg, percolation_type='bond', removal_order='random'):
@@ -1947,6 +1990,8 @@ def run_conduit_si(net, cfg, spreading_param=0, include_orig_values=False):
         fraction of conduits embolized through spreading at each infection step (the start conduit contribute to this)
     fraction_of_exposed : np.array
         fraction of exposed conduits at each infection step (only returned if si_type is stochastic_sei or physiological_sei)
+    effective_resistance : np.array
+        effective resistance (= average resistance distance between inlet and outlet conduits within the same component; for details see calculate_effective_resistance)
 
     """
     si_type = cfg.get('si_type', 'stochastic')
@@ -1990,6 +2035,7 @@ def run_conduit_si(net, cfg, spreading_param=0, include_orig_values=False):
         
     effective_conductances = np.zeros(si_length)
     lcc_size = np.zeros(si_length)
+    effective_resistance = np.zeros(si_length)
     functional_lcc_size = np.zeros(si_length)
     nonfunctional_component_size = np.zeros(si_length)
     nonfunctional_component_volume = np.zeros(si_length)
@@ -2066,6 +2112,9 @@ def run_conduit_si(net, cfg, spreading_param=0, include_orig_values=False):
         orig_lcc_size, orig_susceptibility, _ = get_conduit_lcc_size(net=perc_net, use_cylindrical_coords=use_cylindrical_coords, 
                                                                   conduit_element_length=conduit_element_length, 
                                                                   heartwood_d=heartwood_d, cec_indicator=cec_indicator)
+        orig_effective_resistance = calculate_effective_resistance(conduits, (cfg['net_size'][0] - 1)*conduit_element_length, net=perc_net, use_cylindrical_coords=use_cylindrical_coords,
+                                                                   conduit_element_length=conduit_element_length,
+                                                                   heartwood_d=heartwood_d, cec_indicator=cec_indicator)
         orig_functional_lcc_size = orig_lcc_size
         orig_functional_susceptibility = orig_susceptibility
         orig_nonfunctional_component_size = 0
@@ -2195,6 +2244,7 @@ def run_conduit_si(net, cfg, spreading_param=0, include_orig_values=False):
                                                                   heartwood_d=heartwood_d, cec_indicator=cec_indicator)
             conduit_elements = mrad_model.get_conduit_elements(net=perc_net, cec_indicator=cec_indicator, 
                                                                conduit_element_length=conduit_element_length, heartwood_d=heartwood_d, use_cylindrical_coords=use_cylindrical_coords)
+            effective_resistance[time_step] = calculate_effective_resistance(conduits, (cfg['net_size'][0] - 1)*conduit_element_length, conduit_elements=conduit_elements)
 
             removed_components = mrad_model.get_removed_components(perc_net, np.concatenate((conduit_elements[:,0:3]/conduit_element_length, conduit_elements[:,3::]),axis=1), cfg['net_size'][0] - 1)
             removed_elements = list(itertools.chain.from_iterable(removed_components)) # finding conduit elements in the non-functional (removed) components
@@ -2236,6 +2286,7 @@ def run_conduit_si(net, cfg, spreading_param=0, include_orig_values=False):
                 else:
                     nonfunctional_component_volume[time_step::] = nonfunctional_component_volume[time_step - 1] + np.sum(np.pi * 0.5 * perc_net['pore.diameter']**2 * conduit_element_length)
                 lcc_size[time_step::] = max_removed_lcc
+                effective_resistance[time_step::] = np.nan
                 prevalence[time_step::] = np.sum(embolization_times[:, 0] <= time_step) / conduits.shape[0]
                 prevalence_due_to_spontaneous_embolism[time_step::] = n_spontaneously_embolized / conduits.shape[0]
                 prevalence_due_to_spreading[time_step::] = n_embolized_through_spreading / conduits.shape[0]
@@ -2248,8 +2299,9 @@ def run_conduit_si(net, cfg, spreading_param=0, include_orig_values=False):
                 if last_removed_by_embolism:
                     nonfunctional_component_volume[time_step::] = nonfunctional_component_volume[time_step - 1]
                 else:
-                    nonfunctional_component_volume[time_step::] = nonfunctional_component_volume[time_step - 1] + np.sum(np.pi * 0.5 * perc_net['pore.diameter'] * conduit_element_length)
+                    nonfunctional_component_volume[time_step::] = nonfunctional_component_volume[time_step - 1] + np.sum(np.pi * 0.5 * perc_net['pore.diameter']**2 * conduit_element_length)
                 lcc_size[time_step::] = max_removed_lcc
+                effective_resistance[time_step::] = np.nan
                 prevalence[time_step::] = np.sum(embolization_times[:, 0] <= time_step) / conduits.shape[0]
                 prevalence_due_to_spontaneous_embolism[time_step::] = n_spontaneously_embolized / conduits.shape[0]
                 prevalence_due_to_spreading[time_step::] = n_embolized_through_spreading / conduits.shape[0]
@@ -2267,6 +2319,7 @@ def run_conduit_si(net, cfg, spreading_param=0, include_orig_values=False):
     if include_orig_values:
         effective_conductances = np.append(np.array([orig_effective_conductance]), effective_conductances[0:time_step])
         lcc_size = np.append(np.array([orig_lcc_size]), lcc_size[0:time_step])
+        effective_resistance = np.append(np.array([orig_effective_resistance]), effective_resistance[0:time_step])
         functional_lcc_size = np.append(np.array([orig_functional_lcc_size]), functional_lcc_size[0:time_step])
         nonfunctional_component_size = np.append(np.array([orig_nonfunctional_component_size]), nonfunctional_component_size[0:time_step])
         susceptibility = np.append(np.array([orig_susceptibility]), susceptibility[0:time_step])
@@ -2280,13 +2333,13 @@ def run_conduit_si(net, cfg, spreading_param=0, include_orig_values=False):
        
         if si_type in ['stochastic_sei', 'physiological_sei']:
             fraction_of_exposed = np.append(np.array([orig_fraction_of_exposed]), fraction_of_exposed[0:time_step])
-            return effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence, prevalence_due_to_spontaneous_embolism, prevalence_due_to_spreading, fraction_of_exposed
+            return effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence, prevalence_due_to_spontaneous_embolism, prevalence_due_to_spreading, fraction_of_exposed, effective_resistance
         else:
-            return effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence, prevalence_due_to_spontaneous_embolism, prevalence_due_to_spreading
+            return effective_conductances, lcc_size, functional_lcc_size, nonfunctional_component_size, susceptibility, functional_susceptibility, n_inlets, n_outlets, nonfunctional_component_volume, prevalence, prevalence_due_to_spontaneous_embolism, prevalence_due_to_spreading, effective_resistance
     elif si_type in ['stochastic_sei', 'physiological_sei']:
-        return effective_conductances[0:time_step], lcc_size[0:time_step], functional_lcc_size[0:time_step], nonfunctional_component_size[0:time_step], susceptibility[0:time_step], functional_susceptibility[0:time_step], n_inlets[0:time_step], n_outlets[0:time_step], nonfunctional_component_volume[0:time_step], prevalence[0:time_step], prevalence_due_to_spontaneous_embolism[0:time_step], prevalence_due_to_spreading[0:time_step], fraction_of_exposed[0:time_step]
+        return effective_conductances[0:time_step], lcc_size[0:time_step], functional_lcc_size[0:time_step], nonfunctional_component_size[0:time_step], susceptibility[0:time_step], functional_susceptibility[0:time_step], n_inlets[0:time_step], n_outlets[0:time_step], nonfunctional_component_volume[0:time_step], prevalence[0:time_step], prevalence_due_to_spontaneous_embolism[0:time_step], prevalence_due_to_spreading[0:time_step], fraction_of_exposed[0:time_step], effective_resistance[0:time_step]
     else:
-        return effective_conductances[0:time_step], lcc_size[0:time_step], functional_lcc_size[0:time_step], nonfunctional_component_size[0:time_step], susceptibility[0:time_step], functional_susceptibility[0:time_step], n_inlets[0:time_step], n_outlets[0:time_step], nonfunctional_component_volume[0:time_step], prevalence[0:time_step], prevalence_due_to_spontaneous_embolism[0:time_step], prevalence_due_to_spreading[0:time_step]
+        return effective_conductances[0:time_step], lcc_size[0:time_step], functional_lcc_size[0:time_step], nonfunctional_component_size[0:time_step], susceptibility[0:time_step], functional_susceptibility[0:time_step], n_inlets[0:time_step], n_outlets[0:time_step], nonfunctional_component_volume[0:time_step], prevalence[0:time_step], prevalence_due_to_spontaneous_embolism[0:time_step], prevalence_due_to_spreading[0:time_step], effective_resistance[0:time_step]
 
 def run_physiological_conduit_drainage(net, cfg, start_conduits):
     """
@@ -2370,7 +2423,7 @@ def run_physiological_conduit_drainage(net, cfg, start_conduits):
         start_conduit = np.random.randint(conduits.shape[0])
         start_conduits = [start_conduit]
     elif start_conduits == 'bottom':
-        start_conduits = get_inlet_conduits(net, conduits, cec_indicator=cec_indicator, conduit_element_length=conduit_element_length, 
+        start_conduits, _ = get_inlet_conduits(net, conduits, cec_indicator=cec_indicator, conduit_element_length=conduit_element_length, 
                                             heartwood_d=heartwood_d, use_cylindrical_coords=use_cylindrical_coords)
     n_start_conduits = len(start_conduits)
     start_pores = []
@@ -2581,45 +2634,20 @@ def get_conduit_lcc_size(net=None, pore_coords=[], conns=[], conn_types=[], use_
     """
     assert (not net is None) or (len(pore_coords) > 0), 'You must give either the net object or the pore_coords array'
     
-    if not net is None:
-        conduit_elements = mrad_model.get_conduit_elements(net=net, use_cylindrical_coords=use_cylindrical_coords, 
-                                                           conduit_element_length=conduit_element_length, 
-                                                           heartwood_d=heartwood_d, cec_indicator=cec_indicator)
-        throats = net.get('throat.conns', [])
-        n_pores = net['pore.coords'].shape[0]
-    else:
-        conduit_elements = mrad_model.get_conduit_elements(pore_coords=pore_coords, conns=conns, conn_types=conn_types, use_cylindrical_coords=use_cylindrical_coords, 
-                                                           conduit_element_length=conduit_element_length, 
-                                                           heartwood_d=heartwood_d, cec_indicator=cec_indicator)
-        throats = conns
-        n_pores = pore_coords.shape[0]
-        
-    throat_conduits = []
-    conduit_indices = []
-    if len(throats) > 0:
-        for i, throat in enumerate(throats):
-            start_conduit = conduit_elements[throat[0], 3]
-            end_conduit = conduit_elements[throat[1], 3]
-            if not start_conduit in conduit_indices:
-                conduit_indices.append(start_conduit)
-            if not end_conduit in conduit_indices:
-                conduit_indices.append(end_conduit)
-            if not start_conduit == end_conduit:
-                throat_conduits.append((start_conduit, end_conduit))
-        n_conduits = len(conduit_indices)
-        G = nx.Graph()
-        G.add_nodes_from(conduit_indices)
-        G.add_edges_from(throat_conduits)
+    G = openpnm_to_networkx(net, pore_coords, conns, conn_types, use_cylindrical_coords, conduit_element_length, heartwood_d, cec_indicator)
+    n_conduits = len(G.nodes())
+    
+    if len(G.edges()) > 0:
         component_sizes = [len(component) for component in sorted(nx.connected_components(G), key=len, reverse=True)]
         lcc_size = component_sizes[0]
         if len(component_sizes) > 1:
             susceptibility = component_sizes[1]
         else:
             susceptibility = 0
-    else: # each conduit element forms a conduit of its own
+    else: # there are no links in the network => each node is a component of its own
         lcc_size = 1
         susceptibility = 0
-        n_conduits = n_pores
+        
     return lcc_size, susceptibility, n_conduits
 
 def get_conduit_neighbors(net, use_cylindrical_coords=False, conduit_element_length=params.Lce, 
@@ -2784,10 +2812,11 @@ def get_conduit_indices(conduits, elements):
     conduit_indices = np.unique(conduit_indices)
     return conduit_indices
             
-def get_inlet_conduits(net, conduits, cec_indicator=params.cec_indicator, conduit_element_length=params.Lce, 
-                 heartwood_d=params.heartwood_d, use_cylindrical_coords=False):
+def get_inlet_conduits(net, conduits, conduit_elements=[], cec_indicator=params.cec_indicator, conduit_element_length=params.Lce, 
+                 heartwood_d=params.heartwood_d, use_cylindrical_coords=False, outlet_row_index=0):
     """
-    Finds the conduits that contain inlet pores (pores at the bottom row)
+    Finds the conduits that contain inlet pores (pores at the bottom row) and optionally conduits that contain
+    outlet poers (pores at the top row)
 
     Parameters
     ----------
@@ -2795,30 +2824,112 @@ def get_inlet_conduits(net, conduits, cec_indicator=params.cec_indicator, condui
         a network object
     conduits : np.array
         three columns: 1) the first element of the conduit, 2) the last element of the conduit, 3) size of the conduit
+    conduit_elements : np.array, optional
+        has one row for each element belonging to a conduit and 5 columns:
+        1) the row index of the element
+        2) the column index of the element
+        3) the radial (depth) index of the element
+        4) the index of the conduit the element belongs to (from 0 to n_conduits)
+        5) the index of the element (from 0 to n_conduit_elements - 1)
+        (default: [], in which case conduit_elements is created in this function)
     cec_indicator : int, optional 
-        value used to indicate that the type of a throat is CEC (default value from the Mrad Matlab implementation)
+        value used to indicate that the type of a throat is CEC (default value from the Mrad Matlab implementation) (not used if len(conduit_elements) > 0)
     conduit_element_length : float, optional
-        length of a single conduit element (m), used only if use_cylindrical_coords == True (default from the Mrad et al. article)
+        length of a single conduit element (m), used only if use_cylindrical_coords == True (default from the Mrad et al. article) (not used if len(conduit_elements) > 0)
     heartwood_d : float, optional
         diameter of the heartwood (= part of the tree not included in the xylem network) (in conduit elements)
-        used only if use_cylindrical_coords == True (default value from the Mrad et al. article)
+        used only if use_cylindrical_coords == True (default value from the Mrad et al. article) (not used if len(conduit_elements) > 0)
     use_cylindrical_coords : bln, optional
-        should Mrad model coordinates be interpreted as cylindrical ones
+        should Mrad model coordinates be interpreted as cylindrical ones (not used if len(conduit_elements) > 0)
+    outlet_row_index : int, optional
+        index of the outlet row; if >0, also outlet conduit indices are returned (default = 0)
 
     Returns
     -------
     inlet_conduit_indices : list
         indices of the conduits with inlet pores
+    outlet_conduit_indices : list
+        indices of the conduits with outlet pores
     """
-    conduit_elements = mrad_model.get_conduit_elements(net=net, use_cylindrical_coords=use_cylindrical_coords,
-                                                       conduit_element_length=conduit_element_length, 
-                                                       heartwood_d=heartwood_d, cec_indicator=cec_indicator)
+    if len(conduit_elements) == 0:
+        conduit_elements = mrad_model.get_conduit_elements(net=net, use_cylindrical_coords=use_cylindrical_coords,
+                                                           conduit_element_length=conduit_element_length, 
+                                                           heartwood_d=heartwood_d, cec_indicator=cec_indicator)
     inlet_conduit_indices = []
+    outlet_conduit_indices = []
     for pore in conduit_elements:
         if pore[0] == 0:
             inlet_conduit_indices.append(int(pore[3]))
-    return inlet_conduit_indices
+        if outlet_row_index > 0 and pore[0] == outlet_row_index:
+            outlet_conduit_indices.append(int(pore[3]))
+    inlet_conduit_indices = list(set(inlet_conduit_indices))
+    if outlet_row_index > 0:
+        outlet_conduit_indices = list(set(outlet_conduit_indices))
+    return inlet_conduit_indices, outlet_conduit_indices
 
+def calculate_effective_resistance(conduits, outlet_row_index, net=None, pore_coords=[], conns=[], conn_types=[], conduit_elements=[], use_cylindrical_coords=False, conduit_element_length=params.Lce, 
+                         heartwood_d=params.heartwood_d, cec_indicator=params.cec_indicator):
+    """
+    Calculates the effective resistance of a conduit network. Generally, effective resistance is defined as the average resistance distance between all
+    node pairs in the network, while resistance distance is the total resistance between two nodes in an electrical network where each link is a 1 ohm resistor
+    (D. J. Klein and M. Randic. Resistance distance. J. of Math. Chem. 12:81-95, 1993). Here, the resistance distance is calculated, separately for each network
+    component, between all inlet conduits and all outlet conduits and averaged across the whole network. If there are no functional components in the network,
+    effective resistance is set to NaN.
+
+    Parameters
+    ----------
+    conduits : np.array
+        three columns: 1) the first element of the conduit, 2) the last element of the conduit, 3) size of the conduit
+    outlet_row_index : int
+        index of the outlet row                                                                                                    
+    net : openpnm.Network(), optional
+        pores correspond to conduit elements, throats to connections between them (default: None, in which case
+        pore_coords, conns, and conn_types arrays are used to read network information)
+    pore_coords : np.array(), optional
+        pore coordinates of net (default: [], in which case coordinates are read from net). Note that if net is not None, pore_coords
+        is not used.
+    conns : np.array(), optional
+        throats of net, each row containing the indices of the start and end pores of a throat (default: [], in which case throat info is read from net).
+        Note that if net is not None, conns is not used.
+    conn_types : np.array(), optional
+        types of the throats (default: [], in which case throat info is read from net). Note that if net is not None, conn_types is not used.
+    conduit_elements : np.array, optional
+        has one row for each element belonging to a conduit and 5 columns:
+        1) the row index of the element
+        2) the column index of the element
+        3) the radial (depth) index of the element
+        4) the index of the conduit the element belongs to (from 0 to n_conduits)
+        5) the index of the element (from 0 to n_conduit_elements - 1)
+        (default: [], in which case conduit_elements is created in this function)
+    use_cylindrical_coords : bln, optional
+        have the net['pore.coords'] been defined by interpreting the Mrad model coordinates as cylindrical ones? (not used if len(conduit_elements > 0))
+    conduit_element_length : float, optional
+        length of a single conduit element (m), used only if use_cylindrical_coords == True (default from the Mrad et al. article) (not used if len(conduit_elements > 0))
+    heartwood_d : float, optional
+        diameter of the heartwood (= part of the tree not included in the xylem network) (in conduit elements)
+        used only if use_cylindrical_coords == True (default value from the Mrad et al. article) (not used if len(conduit_elements > 0))
+    cec_indicator : int, optional 
+        value used to indicate that the type of a throat is CEC (not used if len(conduit_elements > 0))
+        
+    Returns:
+    effective_resistance : float, effective resistance of the network
+    """
+    G = openpnm_to_networkx(net, pore_coords, conns, conn_types, conduit_elements, use_cylindrical_coords, conduit_element_length)
+    inlet_conduits, outlet_conduits = get_inlet_conduits(net, conduits, conduit_elements, cec_indicator, conduit_element_length, heartwood_d, outlet_row_index)
+    effective_resistance = 0
+    n_distances = 0
+    for component in nx.connected_components(G):
+        component_inlets = list(set(component) & set(inlet_conduits))
+        component_outlets = list(set(component) & set(outlet_conduits))
+        n_distances += len(component_inlets) * len(component_outlets) # if the component is non-functional (= lacks either inlet or outlet), this is 0
+        for inlet, outlet in itertools.product(component_inlets, component_outlets): # if the component is non-functional, this loop isn't run
+            effective_resistance += nx.resistance_distance(G, inlet, outlet)
+    if n_distances > 0: # there is at least one functional component
+        effective_resistance /= n_distances
+    else:
+        effective_resistance = np.nan
+    return effective_resistance
+        
 def calculate_bpp(net, conduits, icc_mask, cfg):
     """
     Draws the bubble propagation pressure (BPP) for each ICC from a Weibull distribution defined per equation 8
@@ -2915,3 +3026,82 @@ def get_spontaneous_embolism_probability(pressures):
         
     return embolization_probabilities
 
+def openpnm_to_networkx(net=None, pore_coords=[], conns=[], conn_types=[], conduit_elements=[], use_cylindrical_coords=False, conduit_element_length=params.Lce, 
+                         heartwood_d=params.heartwood_d, cec_indicator=params.cec_indicator):
+    """
+    Creates a networkxGraph() object based on either an openpnm.Network() object or pore coordinates and connection lists.
+
+    Parameters
+    ----------
+    net : openpnm.Network(), optional
+        pores correspond to conduit elements, throats to connections between them (default: None, in which case
+        pore_coords, conns, and conn_types arrays are used to read network information)
+    pore_coords : np.array(), optional
+        pore coordinates of net (default: [], in which case coordinates are read from net). Note that if net is not None, pore_coords
+        is not used.
+    conns : np.array(), optional
+        throats of net, each row containing the indices of the start and end pores of a throat (default: [], in which case throat info is read from net).
+        Note that if net is not None, conns is not used.
+    conn_types : np.array(), optional
+        types of the throats (default: [], in which case throat info is read from net). Note that if net is not None, conn_types is not used.
+    conduit_elements : np.array, optional
+        has one row for each element belonging to a conduit and 5 columns:
+        1) the row index of the element
+        2) the column index of the element
+        3) the radial (depth) index of the element
+        4) the index of the conduit the element belongs to (from 0 to n_conduits)
+        5) the index of the element (from 0 to n_conduit_elements - 1)
+        (default: [], in which case conduit_elements is created in this function)
+    use_cylindrical_coords : bln, optional
+        have the net['pore.coords'] been defined by interpreting the Mrad model coordinates as cylindrical ones? (not used if len(conduit_elements) > 0)
+    conduit_element_length : float, optional
+        length of a single conduit element (m), used only if use_cylindrical_coords == True (default from the Mrad et al. article) (not used if len(conduit_elements) > 0)
+    heartwood_d : float, optional
+        diameter of the heartwood (= part of the tree not included in the xylem network) (in conduit elements) 
+        used only if use_cylindrical_coords == True (default value from the Mrad et al. article) (not used if len(conduit_elements) > 0)
+    cec_indicator : int, optional 
+        value used to indicate that the type of a throat is CEC (not used if len(conduit_elements) > 0)
+        
+    Returns:
+    --------
+    G : a networkx.Graph() object
+    """
+    assert (not net is None) or (len(pore_coords) > 0), 'You must give either the net object or the pore_coords array'
+    
+    G = nx.Graph()
+ 
+    if not net is None:
+        if len(conduit_elements) == 0:
+            conduit_elements = mrad_model.get_conduit_elements(net=net, use_cylindrical_coords=use_cylindrical_coords, 
+                                                               conduit_element_length=conduit_element_length, 
+                                                               heartwood_d=heartwood_d, cec_indicator=cec_indicator)
+        throats = net.get('throat.conns', [])
+        n_pores = net['pore.coords'].shape[0]
+    else:
+        if len(conduit_elements) == 0:
+            conduit_elements = mrad_model.get_conduit_elements(pore_coords=pore_coords, conns=conns, conn_types=conn_types, use_cylindrical_coords=use_cylindrical_coords, 
+                                                               conduit_element_length=conduit_element_length, 
+                                                               heartwood_d=heartwood_d, cec_indicator=cec_indicator)
+        throats = conns
+        n_pores = pore_coords.shape[0]
+     
+    throat_conduits = []
+    conduit_indices = []
+    if len(throats) > 0:
+         for i, throat in enumerate(throats):
+             start_conduit = conduit_elements[throat[0], 3]
+             end_conduit = conduit_elements[throat[1], 3]
+             if not start_conduit in conduit_indices:
+                 conduit_indices.append(start_conduit)
+             if not end_conduit in conduit_indices:
+                 conduit_indices.append(end_conduit)
+             if not start_conduit == end_conduit:
+                 throat_conduits.append((start_conduit, end_conduit))
+         
+         G.add_nodes_from(conduit_indices)
+         G.add_edges_from(throat_conduits)
+    else: # there are no throats => nodes correspond to conduit elements, no links
+         G.add_nodes_from(range(n_pores))
+         
+    return G
+         
