@@ -626,7 +626,10 @@ def optimize_spreading_probability_from_data(simulation_data_save_folder, simula
                 data = pickle.load(f)
                 f.close()
             spontaneous_embolism = data['spontaneous_embolism']
-            delayed_embolism = data['delayed_embolism']
+            if 'delayed_embolism' in data.keys():
+                delayed_embolism = data['delayed_embolism']
+            else: # a backward compatibility case
+                delayed_embolism = data['bubble_expansion']
             if i == 0:
                 pressure_differences = data['pressure_differences']
                 spreading_probability_range = data['spreading_probability_range']
@@ -1213,7 +1216,11 @@ def read_and_combine_spreading_probability_optimization_data(simulation_data_sav
                 stoch_keys.append('stochastic_effective_resistance')
                 read_effective_resistance = True
             spontaneous_embolism = data['spontaneous_embolism']
-            delayed_embolism = data['delayed_embolism']
+            if 'delayed_embolism' in data.keys():
+                delayed_embolism = data['delayed_embolism']
+            else: # a backward compatibility case
+                delayed_embolism = data['bubble_expansion']
+
             if delayed_embolism:
                 phys_properties.append(raw_phys_frac_exposed)
                 stoch_properties.append(raw_stoch_frac_exposed)
@@ -1221,7 +1228,10 @@ def read_and_combine_spreading_probability_optimization_data(simulation_data_sav
                 stoch_keys.append('stochastic_frac_exposed')
         else:
             assert data['spontaneous_embolism'] == spontaneous_embolism, 'Please do not mix spreading probability optimization data with and without spontaneous embolism'
-            assert data['delayed_embolism'] == delayed_embolism, 'Please do not mix spreading probability optimization data with and without bubble expansion'
+            if 'delayed_embolism' in data.keys()
+                assert data['delayed_embolism'] == delayed_embolism, 'Please do not mix spreading probability optimization data with and without bubble expansion'
+            else: # a backward compatibility case
+                assert data['bubble_expansion'] == delayed_embolism, 'Please do not mix spreading probability optimization data with and without bubble expansion'
       
         #TODO: remove the following lines
         # this is a temporary hack to handle a typo in the keys
