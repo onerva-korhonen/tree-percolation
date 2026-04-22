@@ -1228,7 +1228,7 @@ def read_and_combine_spreading_probability_optimization_data(simulation_data_sav
                 stoch_keys.append('stochastic_frac_exposed')
         else:
             assert data['spontaneous_embolism'] == spontaneous_embolism, 'Please do not mix spreading probability optimization data with and without spontaneous embolism'
-            if 'delayed_embolism' in data.keys()
+            if 'delayed_embolism' in data.keys():
                 assert data['delayed_embolism'] == delayed_embolism, 'Please do not mix spreading probability optimization data with and without bubble expansion'
             else: # a backward compatibility case
                 assert data['bubble_expansion'] == delayed_embolism, 'Please do not mix spreading probability optimization data with and without bubble expansion'
