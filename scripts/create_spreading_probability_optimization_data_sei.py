@@ -58,7 +58,7 @@ cfg['Pe_tan'] = params.Pe_tan
 cfg['net_size'] = [100, 10, 100]
 cfg['bpp_type'] = 'young-laplace_with_constrictions'
 cfg['spontaneous_embolism'] = False
-cfg['bubble_expansion'] = True
+cfg['delayed_embolism'] = True
 
 vulnerability_pressure_range = np.arange(0, 3.0, step=0.05)*1E6
 spreading_probability_range = np.arange(0, 0.2, step=0.005)
