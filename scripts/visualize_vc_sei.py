@@ -21,5 +21,5 @@ if __name__=='__main__':
                                                      std_alpha=params.std_alpha, prevalence_linestyles=params.prevalence_linestyles,
                                                      prevalence_plot_save_path_base=params.optimized_prevalence_plot_save_path_base, 
                                                      upper_pressure_limit=params.optimized_vc_upper_pressure_limit,
-                                                     physiological_only=True)
+                                                     physiological_only=False)
 
