@@ -14,7 +14,7 @@ import matplotlib.pylab as plt
 
 fixed_variable = 'pressure' # TODO: select either 'pressure' or 'probability'; use 'probability' to visualize the spreading fitted to empirical data
 spontaneous_embolism = False
-bubble_expansion = False
+delayed_embolism = True
 assert fixed_variable in ['pressure', 'probability'], 'unknown fixed variable, select pressure or probability'
 if fixed_variable == 'pressure':
     pooled_data_save_name = params.pooled_optimized_spreading_probability_save_name
@@ -46,8 +46,8 @@ eff_resistance_color = params.percolation_effective_resistance_color
 eff_resistance_label = params.percolation_effective_resistance_label
 eff_resistance_alpha = params.percolation_effective_resistance_alpha
 
-pressure_differences = [1.26E6, 1.28E6, 1.29E6] # TODO: add the desired pressure differences
-spreading_probabilities = [0.015, 0.02, 0.05] # TODO: alternatively, add the desired spreading probabiltiies
+pressure_differences = [1.75E6, 1.90E6, 1.95E6] # TODO: add the desired pressure differences
+spreading_probabilities = [0.12, 0.055, 0.035] # TODO: alternatively, add the desired spreading probabiltiies
 
 def rmse(x1, x2): # helper function for calculating RMSE
     max_dim = max(len(x1), len(x2))
@@ -106,7 +106,7 @@ if __name__=='__main__':
                 std_phys_prevalence_spontaneous = data['std_physiological_prevalences_due_to_spontaneous_embolism'][index]
                 av_phys_prevalence_spreading = data['average_physiological_prevalences_due_to_spreading'][index]
                 std_phys_prevalence_spreading = data['std_physiological_prevalences_due_to_spreading'][index]
-                if bubble_expansion:
+                if delayed_embolism:
                     av_phys_frac_exposed = data['average_physiological_frac_exposed'][index]
                     std_phys_frac_exposed = data['std_physiological_frac_exposed'][index]
                     av_prevalences = [av_phys_prevalence, av_phys_prevalence_spontaneous, av_phys_prevalence_spreading, av_phys_frac_exposed]
@@ -231,7 +231,7 @@ if __name__=='__main__':
             std_stoch_prevalence_spontaneous = data['std_stochastic_prevalences_due_to_spontaneous_embolism'][index]
             av_stoch_prevalence_spreading = data['average_stochastic_prevalences_due_to_spreading'][index]
             std_stoch_prevalence_spreading = data['std_stochastic_prevalences_due_to_spreading'][index]
-            if bubble_expansion:
+            if delayed_embolism:
                 av_stoch_frac_exposed = data['average_stochastic_frac_exposed'][index]
                 std_stoch_frac_exposed = data['average_stochastic_frac_exposed'][index]
                 av_prevalences = [av_stoch_prevalence, av_stoch_prevalence_spontaneous, av_stoch_prevalence_spreading, av_stoch_frac_exposed]

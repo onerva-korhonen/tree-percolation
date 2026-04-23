@@ -779,13 +779,15 @@ def optimize_spreading_probability_from_data(simulation_data_save_folder, simula
         n_pressure_iterations = realized_n_pressure_iterations[i]
         physiological_effective_conductance = np.mean(physiological_effective_conductances[i, :n_pressure_iterations])
         averaged_physiological_effective_conductances[i] = physiological_effective_conductance
-        if i == 0:
+        if i == 0 and not spontaneous_embolism and not delayed_embolism:
             averaged_stochastic_effective_conductances = np.zeros(stochastic_effective_conductances.shape[0])
             for j, (stochastic_effective_conductance, n_probability_iterations) in enumerate(zip(stochastic_effective_conductances, realized_n_probability_iterations)):
-                if spontaneous_embolism or delayed_embolism:
-                    averaged_stochastic_effective_conductances[j] = np.mean(stochastic_effective_conductance[i, :n_probability_iterations])
-                else:
-                    averaged_stochastic_effective_conductances[j] = np.mean(stochastic_effective_conductance[:n_probability_iterations])
+                averaged_stochastic_effective_conductances[j] = np.mean(stochastic_effective_conductance[:n_probability_iterations])
+        elif spontaneous_embolism or delayed_embolism:
+            averaged_stochastic_effective_conductances = np.zeros(stochastic_effective_conductances.shape[0])
+            for j, (stochastic_effective_conductance, n_probability_iterations) in enumerate(zip(stochastic_effective_conductances, realized_n_probability_iterations)):
+                averaged_stochastic_effective_conductances[j] = np.mean(stochastic_effective_conductance[i, :n_probability_iterations])
+        averaged_stochastic_effective_conductances = signif(averaged_stochastic_effective_conductances, 10) # eliminating noise caused by rounding errors
         if not pool_physiological_only:
             optimized_spreading_probability_index = np.argmin(np.abs(averaged_stochastic_effective_conductances - physiological_effective_conductance)) 
             optimized_spreading_probabilities[i] = spreading_probability_range[optimized_spreading_probability_index]
@@ -3118,4 +3120,21 @@ def openpnm_to_networkx(net=None, pore_coords=[], conns=[], conn_types=[], condu
          G.add_nodes_from(range(n_pores))
          
     return G
-         
+    
+def signif(x, p):
+    """
+    Rounds a float expressed with the scintific notation (the e notation) to a given number
+    of significant figures. Originally written by the Stack Overflow user Scott Gigante
+    (https://stackoverflow.com/questions/18915378/rounding-to-significant-figures-in-numpy)
+
+    Input:
+    x : float
+        a number to be rounded
+    p : int
+        number of significant figures
+    """
+    x = np.asarray(x)
+    x_positive = np.where(np.isfinite(x) & (x != 0), np.abs(x), 10**(p-1))
+    mags = 10 ** (p - 1 - np.floor(np.log10(x_positive)))
+    return np.round(x * mags) / mags
+
