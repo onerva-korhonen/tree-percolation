@@ -2325,7 +2325,7 @@ def run_conduit_si(net, cfg, spreading_param=0, include_orig_values=False):
             prevalence_diff = np.abs(prevalence[time_step] - prevalence[time_step - si_tolerance_length])
             
         time_step += 1
-    
+   
     if include_orig_values:
         effective_conductances = np.append(np.array([orig_effective_conductance]), effective_conductances[0:time_step])
         lcc_size = np.append(np.array([orig_lcc_size]), lcc_size[0:time_step])
@@ -3105,15 +3105,15 @@ def openpnm_to_networkx(net=None, pore_coords=[], conns=[], conn_types=[], condu
     conduit_indices = []
     if len(throats) > 0:
          for i, throat in enumerate(throats):
-             start_conduit = conduit_elements[throat[0], 3]
-             end_conduit = conduit_elements[throat[1], 3]
+             start_conduit = int(conduit_elements[throat[0], 3])
+             end_conduit = int(conduit_elements[throat[1], 3])
              if not start_conduit in conduit_indices:
                  conduit_indices.append(start_conduit)
              if not end_conduit in conduit_indices:
                  conduit_indices.append(end_conduit)
              if not start_conduit == end_conduit:
                  throat_conduits.append((start_conduit, end_conduit))
-         
+
          G.add_nodes_from(conduit_indices)
          G.add_edges_from(throat_conduits)
     else: # there are no throats => nodes correspond to conduit elements, no links
