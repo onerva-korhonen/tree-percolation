@@ -122,11 +122,14 @@ if triton:
     bubble_propagation_pressure_data_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/bubble_propagation_pressure_data_' + identifier + '.pkl'
     conduit_length_distribution_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/conduit_length_distribution_' + identifier + '.pdf'
     bubble_expansion_probability_data_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/bubble_expansion_probability_data_' + identifier + '.pkl'
+    sei_mapping_data_save_path_base = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/sei_mapping/' + identifier + '/sei_mapping_' + identifier
     
     single_param_visualization_data_paths = ['/m/cs/scratch/networks/aokorhon/tree-percolation/output/percolation_3D_' + identifier + '_data.pkl']
     optimized_vc_plot_data_save_path_bases = ['/m/cs/scratch/networks/aokorhon/tree-percolation/output/optimized_spreading_probability/' + identifier + '/optimized_spreading_probability_' + identifier]
     empirical_vulnerability_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/optimized_spreading_probability/empirical_vc/empirical_vc_b_pendula_gonzales-munoz_2018'
     degree_distribution_fig_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/degree_distributions_' + identifier + '.pdf'
+    sei_mapping_plc_fig_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/sei_mapping_plc_' + identifier + '.pdf'
+    sei_mapping_simulation_fig_save_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/sei_mapping_simulation_length_' + identifier + '.pdf'
 
     alternative_network_save_path_base = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/optimized_spreading_probability/spreading_probability_optimization_medium_net_no_spontaneous_embolism_long_si_updated_conduit_anatomy_networks/spreading_probability_optimization_network_spreading_probability_optimization_medium_net_no_spontaneous_embolism_long_si_updated_conduit_anatomy' # for re-using networks from an earlier run with a different identifier
     alternative_bubble_propagation_pressure_data_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/bubble_propagation_pressure_data_spreading_probability_optimization_medium_net_no_spontaneous_embolism_long_si_updated_conduit_anatomy.pkl' # for re-using BPP data from an earlier run with a different identifier
@@ -152,11 +155,14 @@ else:
     bubble_propagation_pressure_data_path = '/home/onervak/projects/hidrogat/output/bubble_propagation_pressure_data_' + identifier + '.pkl'
     conduit_length_distribution_save_path ='/home/onervak/projects/hidrogat/output/conduit_length_distribution_' + identifier + '.pdf'
     bubble_expansion_probability_data_path = '/home/onervak/projects/hidrogat/output/bubble_expansion_probability_data_' + identifier + '.pkl'
+    sei_mapping_data_save_path_base = '/home/onervak/projects/hidrogat/output/sei_mapping/' + identifier + '/sei_mapping_' + identifier
     
     single_param_visualization_data_paths = ['/home/onervak/projects/hidrogat/output/percolation_3D_' + identifier + '_data.pkl']
     optimized_vc_plot_data_save_path_bases = ['/home/onervak/projects/hidrogat/output/optimized_spreading_probability/' + identifier + '/optimized_spreading_probability_' + identifier]
     empirical_vulnerability_save_path = '/home/onervak/projects/hidrogat/tree-percolation/output/optimized_spreading_probability/empirical_vc/empirical_vc_b_pendula_gonzales-munoz_2018'
     degree_distribution_fig_save_path = '/home/onervak/projects/hidrogat/tree-percolation/output/degree_distribtions_' + identifier + '.pdf'
+    sei_mapping_plc_fig_save_path = '/home/onervak/projects/hidrogat/tree-percolation/output/sei_mapping_plc_' + identifier + '.pdf'
+    sei_mapping_simulation_fig_save_path = '/home/onervak/projects/hidrogat/tree-percolation/output/sei_mapping_simulation_length_' + identifier + '.pdf'
     
     alternative_network_save_path_base = '/home/onervak/projects/hidrogat/output//optimized_spreading_probability/spreading_probability_optimization_medium_net_no_spontaneous_embolism_long_si_updated_conduit_anatomy_networks/spreading_probability_optimization_network_spreading_probability_optimization_medium_net_no_spontaneous_embolism_long_si_updated_conduit_anatomy' # for re-using networks from an earlier run with a different identifier
     alternative_bubble_propagation_pressure_data_path = '/home/onervak/projects/hidrogat/output/bubble_propagation_pressure_data_spreading_probability_optimization_medium_net_no_spontaneous_embolism_long_si_updated_conduit_anatomy.pkl' # for re-using BPP data from an earlier run with a different identifier
@@ -233,3 +239,7 @@ conduit_length_vmax = 0.3
 grouping_index_vmin = 6.0E-1
 grouping_index_vmax = 1.0E2
 
+sei_plc_vmin = 0.0
+sei_plc_vmax = 1.0
+sei_simulation_length_vmin = 0.0
+sei_simulation_length_vmax = 1200

@@ -166,10 +166,6 @@ def optimize_parameters_from_data(target_density, target_length, target_grouping
     optimization_landscape = np.reshape(optimization_landscape, conduit_densities.shape) # the optimal parameter combination minimizes the rank sum of conduit density, conduit length, and grouping index
      
     optimal_NPc_indices, optimal_Pc_indices, optimal_Pe_rad_indices, optimal_Pe_tan_indices = np.where(optimization_landscape == np.amin(optimization_landscape)) 
-    #optimal_NPc_indices = [6]
-    #optimal_Pc_indices = [6]
-    #optimal_Pe_rad_indices = [7]
-    #optimal_Pe_tan_indices = [7]
     # TODO: consider adding a tolerance parameter: include in potential optima everything that is within the tolerance from the target
     
     NPc = start_range[optimal_NPc_indices[0]]
