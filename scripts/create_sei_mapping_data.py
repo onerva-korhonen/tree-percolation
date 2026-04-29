@@ -122,7 +122,7 @@ if __name__=='__main__':
     se_probability = se_probabilities[se_index]
     ei_probability_range = ei_probabilities[slice_index * int(np.floor(n_ei_probabilities / n_slices)) : (slice_index + 1) *  int(np.floor(n_ei_probabilities / n_slices))]
     if slice_index == n_slices - 1:
-        np.concat((ei_probability_range, ei_probabilities[(slice_index + 1) *  int(np.floor(n_ei_probabilities / n_slices))::]))
+        ei_probability_range = np.concat((ei_probability_range, ei_probabilities[(slice_index + 1) *  int(np.floor(n_ei_probabilities / n_slices))::]))
         
     plcs = np.zeros(len(ei_probability_range))
     simulation_lengths = np.zeros(len(ei_probability_range))
