@@ -133,6 +133,7 @@ if triton:
 
     alternative_network_save_path_base = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/optimized_spreading_probability/spreading_probability_optimization_medium_net_no_spontaneous_embolism_long_si_updated_conduit_anatomy_networks/spreading_probability_optimization_network_spreading_probability_optimization_medium_net_no_spontaneous_embolism_long_si_updated_conduit_anatomy' # for re-using networks from an earlier run with a different identifier
     alternative_bubble_propagation_pressure_data_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/bubble_propagation_pressure_data_spreading_probability_optimization_medium_net_no_spontaneous_embolism_long_si_updated_conduit_anatomy.pkl' # for re-using BPP data from an earlier run with a different identifier
+    alternative_bubble_expansion_probability_data_path = '/m/cs/scratch/networks/aokorhon/tree-percolation/output/bubble_expansion_probability_data_sei_spreading_b_pendula_290K.pkl'
 else:
     parameter_optimization_save_path_base = '/home/onervak/projects/hidrogat/output/param_optimization/' + identifier + '/param_optimization_' + identifier
     spreading_probability_optimization_network_save_path_base = '/home/onervak/projects/hidrogat/output/optimized_spreading_probability/' + identifier + '_networks/spreading_probability_optimization_network_' + identifier

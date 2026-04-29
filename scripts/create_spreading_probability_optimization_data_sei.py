@@ -82,6 +82,12 @@ project_specific_bpp = False
 if not project_specific_bpp:
     cfg['bpp_data_path'] = params.alternative_bubble_propagation_pressure_data_path # set to True for using BPP data created for the current project, False to re-used BPP data created for an earlier project
 
+project_specific_bubble_expansion_probability = False
+if project_specific_bubble_expansion_probability:
+    bubble_expansion_probability_path = params.bubble_expansion_probability_data_path
+else:
+    bubble_expansion_probability_path = params.alternative_bubble_expansion_probability_data_path
+
 #n_iterations = 100
 pressures = [[pressure] for pressure in vulnerability_pressure_range] + [[] for i in range(len(spreading_probability_range))]
 probabilities = [[] for i in range(len(vulnerability_pressure_range))] + [[probability] for probability in spreading_probability_range]

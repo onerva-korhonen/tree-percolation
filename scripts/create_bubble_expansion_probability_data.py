@@ -18,7 +18,7 @@ import pickle
 import params
 import bubble_expansion
 
-T = 300.0 # K
+T = 290.0 # K
 apl = 0.6 # 'equilibrium' area per lipid, nm^-2
 mean_r = 190 # mean bubble radius, nm
 mu = np.log(mean_r)
@@ -29,7 +29,7 @@ pressure_range = np.arange(0, 8, step=0.01)*1E6
 
 n_iterations = 1
 
-save_path = params.bubble_expansion_probability_data_path
+save_path = params.bubble_expansion_probability_data_path.split['.'][0] + '_' + str(int(T)) + 'K.pkl'
 
 # lets not go crazy here
 assert mu - 3*sigma > 1
