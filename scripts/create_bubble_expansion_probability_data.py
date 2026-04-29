@@ -29,7 +29,7 @@ pressure_range = np.arange(0, 8, step=0.01)*1E6
 
 n_iterations = 1
 
-save_path = params.bubble_expansion_probability_data_path.split['.'][0] + '_' + str(int(T)) + 'K.pkl'
+save_path = params.bubble_expansion_probability_data_path.split('.')[0] + '_' + str(int(T)) + 'K.pkl'
 
 # lets not go crazy here
 assert mu - 3*sigma > 1
