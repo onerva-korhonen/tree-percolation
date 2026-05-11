@@ -129,7 +129,7 @@ if __name__=='__main__':
         
     for i, ei_probability in enumerate(ei_probability_range):
         cfg['bubble_expansion_probability'] = ei_probability
-        effective_conductances, _, _, _, _, _, _, _, _, _, _, _, _, _ = percolation.run_conduit_si(net, cfg, se_probability, include_orig_values)
+        effective_conductances, _, _, _, _, _, _, _, _, _, _, _, _, _, _ = percolation.run_conduit_si(net, cfg, se_probability, include_orig_values)
         plcs[i] = 100 * (1 - effective_conductances[-1] / effective_conductances[0]) # final effective conductance divided by the effective conductance of the intact network
         simulation_lengths[i] = len(effective_conductances) - 1 # - 1 compensates for including the effective conductance of the intact network as the first value
         
