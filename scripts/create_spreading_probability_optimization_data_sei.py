@@ -140,7 +140,6 @@ if __name__=='__main__':
 
         cfg['bubble_expansion_probabilities'] = bubble_expansion_probabilities
     else:
-        bubble_expansion_probability_path = params.bubble_expansion_probability_data_path
         with open(bubble_expansion_probability_path, 'rb') as f:
             bubble_expansion_probabilities = pickle.load(f)
             f.close()
