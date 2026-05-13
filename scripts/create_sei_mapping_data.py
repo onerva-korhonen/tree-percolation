@@ -54,6 +54,7 @@ cfg['net_size'] = [100, 10, 100]
 cfg['bpp_type'] = 'young-laplace_with_constrictions'
 cfg['spontaneous_embolism'] = False
 cfg['delayed_embolism'] = True
+cfg['si_type'] = 'stochastic_sei'
 
 include_orig_values = True
 
@@ -61,11 +62,6 @@ cfg['use_cylindrical_coords'] = False
 cfg['fixed_random'] = False
 
 visualize_simulations = False
-
-percolation_type = 'si'
-si_type = 'stochastic_sei'
-removal_order = 'random'
-break_nonfunctional_components = False
 
 create_networks = False
 project_specific_networks = False # set to True for using networks created for the current project, False to re-used networks created for an earlier project
@@ -127,7 +123,7 @@ if __name__=='__main__':
         
     plcs = np.zeros(len(ei_probability_range))
     simulation_lengths = np.zeros(len(ei_probability_range))
-       
+
     for i, ei_probability in enumerate(ei_probability_range):
         cfg['bubble_expansion_probability'] = ei_probability
         effective_conductances, _, _, _, _, _, _, _, _, _, _, _, _, _ = percolation.run_conduit_si(net, cfg, se_probability, include_orig_values)
