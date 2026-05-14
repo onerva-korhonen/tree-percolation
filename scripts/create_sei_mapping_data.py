@@ -136,7 +136,7 @@ if __name__=='__main__':
     
     save_folder = save_path.rsplit('/', 1)[0]
     if not os.path.exists(save_folder):
-        os.mkdir(save_folder)
+        os.makedirs(save_folder)
     with open(save_path, 'wb') as f:
         pickle.dump(data, f)
     f.close()
