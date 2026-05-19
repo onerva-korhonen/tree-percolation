@@ -67,15 +67,15 @@ if __name__ == '__main__':
     
     centers = [unique_se_probabilities.min(), unique_se_probabilities.max(), unique_ei_probabilities.min(), unique_ei_probabilities.max()]
     
-    dx, = np.diff(centers[:2])/(data.shape[1]-1)
-    dy, = -np.diff(centers[2:])/(data.shape[0]-1)
+    dx, = np.diff(centers[:2])/(averaged_plcs.shape[1]-1)
+    dy, = -np.diff(centers[2:])/(averaged_plcs.shape[0]-1)
     extent = [centers[0]-dx/2, centers[1]+dx/2, centers[2]+dy/2, centers[3]-dy/2]
     
     plc_fig = plt.figure()
     plc_ax = plc_fig.add_subplot(111)
     
     # TODO: set vmin and vmax correctly in params
-    plt.imshow(data, origin='lower', extent=extent, vmin=params.sei_plc_vmin, vmax=params.sei_plc_vmax)
+    plt.imshow(averaged_plcs, origin='lower', extent=extent, vmin=params.sei_plc_vmin, vmax=params.sei_plc_vmax)
     plt.colorbar(label='PLC (%)')
     plc_ax.set_yticks(unique_se_probabilities)
     plc_ax.set_xticks(unique_ei_probabilities)
@@ -88,7 +88,7 @@ if __name__ == '__main__':
     length_fig = plt.figure()
     length_ax = length_fig.add_subplot(111)
     
-    plt.imshow(data, origin='lower', extent=extent, vmin=params.sei_simulation_length_vmin, vmax=params.sei_simulation_length_vmax)
+    plt.imshow(averaged_simulation_lengths, origin='lower', extent=extent, vmin=params.sei_simulation_length_vmin, vmax=params.sei_simulation_length_vmax)
     plt.colorbar(label='Simulation length (steps)')
     length_ax.set_yticks(unique_se_probabilities)
     length_ax.set_xticks(unique_ei_probabilities)
