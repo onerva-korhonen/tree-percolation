@@ -94,8 +94,11 @@ probabilities = [[] for i in range(len(vulnerability_pressure_range))] + [[proba
 n_pressures = len(pressures)
 zero_index = 0 # index of the first array job
 
+n_iterations = 100
+
 # NOTE: do not modify any parameters below this point
-# Note on the indexing order: calculations are performed in the iteration -> pressure/probability order (i.e. first the first iteration for all  pressures etc.)
+# Note on the indexing order: calculations are performed in the pressure/probability -> iteration order (i.e. first all  iterations for the first  pressures etc.)
+# Using this order makes it easier to assign different computational time for the physiological and stochastic simulations
 
 if __name__=='__main__':
 
@@ -103,8 +106,8 @@ if __name__=='__main__':
     if zero_index > 0:
         index -= zero_index
 
-    iteration_index = int(np.floor(index / n_pressures))
-    pressure_index = index - n_pressures * iteration_index
+    pressure_index = int(np.floor(index / n_iterations))
+    iteration_index = index - n_iterations * pressure_index
 
     pressure = pressures[pressure_index]
     probability = probabilities[pressure_index]
